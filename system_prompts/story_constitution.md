@@ -62,6 +62,5 @@ Your final output must be a single Markdown document structured exactly as follo
 *   **Example Key Decision:** Propose a major, path-defining choice. (e.g., "A critical choice could be whether to explore a spooky sunken shipwreck for a shortcut or navigate the beautiful but labyrinthine coral reef.")
 *   **Example Character-Driven Choice:** Suggest a choice based on interaction. (e.g., "An interactive moment could involve deciding whether to trust a grumpy but knowledgeable old turtle or a fast but mischievous dolphin for directions.")
 *   **Example Thematic Choices:** Suggest how choices could influence the story's theme or the main character's growth. (e.g., "Choices could be framed around themes of courage vs. caution, or friendship vs. independence, leading to different lessons learned.")
-*   **Other Ideas:** List any other interesting interactive concepts, mini-games, or environmental interactions that fit the story.
 
 ---
