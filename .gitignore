@@ -1,0 +1,43 @@
+# Codex
+.codex/*
+!.codex/agents/
+!.codex/agents/**
+!.codex/prompts/
+!.codex/prompts/**
+.gemini/*
+!.gemini/agents/
+!.gemini/agents/**
+!.gemini/commands/
+!.gemini/commands/**
+
+# Universal noise
+.DS_Store
+Thumbs.db
+*.log
+logs
+*.tmp
+*.swp
+.env
+.env.*
+.secrets.env
+
+# Vercel
+.vercel
+.vscode/
+.idea/
+
+# Node / Next.js
+node_modules/
+dist/
+build/
+npm-debug.log*
+.next/
+
+# Supabase
+supabase/.temp
+supabase/.supabase
+supabase/volumes/
+supabase/storage/
+supabase/.branches
+supabase/config.toml
+**/dist/

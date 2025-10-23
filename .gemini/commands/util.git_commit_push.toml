@@ -1,0 +1,19 @@
+description="Git commit and push"
+prompt = """
+## User Input
+
+```text
+{{args}}
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+---
+
+1.  Commit all pending changes, including any unstaged files unless specified otherwise.
+2.  Create a detailed and well-structured commit message that accurately describes the changes.
+3.  If the scope of changes is large and contains unrelated modifications, divide it into smaller, logical commits.
+4.  After committing, push the changes to the remote repository.
+5.  If the repository contains submodules with pending changes, commit and push them as well.
+6.  **DO NOT** ask for confirmation before your action.
+"""

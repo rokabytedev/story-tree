@@ -1,0 +1,24 @@
+description="Git commit and push"
+prompt = """
+User's input:
+```text
+{{args}}
+```
+
+If the user's input is empty:
+   - ERROR: Immediately respond with a meaningful error message
+If the user's input is not empty:
+   - Read user's input and rewrite it into a single line message (without any newline, line break etc) unless it's already so
+   - Set RESEARCH_INSTRUCTION to your rewritten message
+
+Run the following command to invoke a code review sub-agent to perform the technical research task:
+```sh
+gemini --yolo --prompt "<sub_agent><type>technical_researcher</type><prompt>RESEARCH_INSTRUCTION</prompt></sub_agent>"
+```
+
+- Never perform technical research on your own
+- Always use sub-agent and if you fail to do so, report error back to the user
+- Wait patiently for 10+ minutes as the research may take time to complete
+- Print the sub-agent progress (can get from the subprocess stdout) to stdout console to provide visibility to the caller
+- Review the research report carefully and incorporate the findings into your workflow, such as design decisions
+"""

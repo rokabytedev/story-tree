@@ -1,0 +1,25 @@
+description="Git commit and push"
+prompt = """
+User's input:
+```text
+{{args}}
+```
+
+If the user's input is empty:
+   - Set REVIEW_INSTRUCTION to "Review Pending Changes"
+If the user's input is not empty:
+   - Read user's input and rewrite it into a single line message (without any newline, line break etc) unless it's already so
+   - Set REVIEW_INSTRUCTION to your rewritten message
+
+Run the following command to invoke a code review sub-agent to perform the code review task:
+```sh
+gemini --yolo --prompt "<sub_agent><type>code_reviewer</type><prompt>REVIEW_INSTRUCTION</prompt></sub_agent>"
+```
+
+- Never conduct a code review by yourself
+- Always use sub-agent and if you fail to do so, report error back to the user
+- Wait patiently for 10+ minutes as the review may take time to complete
+- Print the sub-agent progress (can get from the subprocess stdout) to stdout console to provide visibility to the caller
+- Read the code review output carefully and address every major issue
+- If you disagree with a code review suggestion, pause and request confirmation before proceeding
+"""
