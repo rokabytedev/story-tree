@@ -26,7 +26,7 @@ You must follow this precise operational sequence:
 
 # Output Specification: The Story Constitution
 
-Your final output must be a single Markdown document structured exactly as follows.
+Your final output must be a single Markdown document structured exactly as follows, written in English.
 
 ---
 
