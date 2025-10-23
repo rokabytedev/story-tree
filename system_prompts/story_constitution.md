@@ -32,32 +32,35 @@ Your final output must be a single Markdown document structured exactly as follo
 
 ### **Story Constitution: [Proposed Story Title]**
 
-**1. Logline:**
+**1. Project Overview: The Interactive Animated Story**
+*   This document outlines the creative foundation for an **interactive animated story**. The final product will be a video experience where the viewer actively participates. At key moments, the story will pause and present the viewer with choices. Their decisions will alter the narrative path, leading to different scenes, character interactions, and unique endings. This constitution serves as the master guide for all subsequent creative work, including scriptwriting, storyboarding, and animation, ensuring a cohesive and engaging final experience.
+
+**2. Logline:**
 *   A one-sentence summary of the story that captures the main character, their goal, and the central conflict.
 
-**2. Core Concept & Vision:**
+**3. Core Concept & Vision:**
 *   A paragraph describing the overall feel, style, and unique appeal of the story. What is the big idea? What atmosphere are we creating (e.g., whimsical, adventurous, mysterious)?
 
-**3. Target Audience:**
+**4. Target Audience:**
 *   A brief description of the ideal age range and what will appeal to them in this story.
 
-**4. Key Themes & Educational Goals:**
+**5. Key Themes & Educational Goals:**
 *   **Themes:** List the primary emotional or moral themes (e.g., friendship, courage, curiosity).
 *   **Educational Goals:** List the key knowledge or skills the user will learn through the story (e.g., identify three types of coral reef fish, understand the water cycle).
 
-**5. Main Characters:**
+**6. Main Characters:**
 *   **[Character Name 1]:** Brief description of their personality, motivation, and role in the story.
 *   **[Character Name 2]:** Brief description of their personality, motivation, and role in the story.
 
-**6. World & Setting:**
+**7. World & Setting:**
 *   A vivid description of the story's world, highlighting key locations that will be important for the plot.
 
-**7. Narrative Arc & Key Plot Points:**
+**8. Narrative Arc & Key Plot Points:**
 *   **Beginning:** Describe the setup, main character, their world, and the inciting incident that kicks off the adventure.
 *   **Middle:** Outline the central journey, the primary challenges, and the overall goal.
 *   **End:** Describe the story's potential climax and resolution in a general sense.
 
-**8. Potential Interactive Elements & Branching Concepts:**
+**9. Potential Interactive Elements & Branching Concepts:**
 *   This section provides inspirational material for the scriptwriting team. These are high-level suggestions for choices and paths, not a definitive plot structure. The creative team has the freedom to expand upon or change these ideas.
 *   **Example Key Decision:** Propose a major, path-defining choice. (e.g., "A critical choice could be whether to explore a spooky sunken shipwreck for a shortcut or navigate the beautiful but labyrinthine coral reef.")
 *   **Example Character-Driven Choice:** Suggest a choice based on interaction. (e.g., "An interactive moment could involve deciding whether to trust a grumpy but knowledgeable old turtle or a fast but mischievous dolphin for directions.")
