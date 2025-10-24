@@ -1,31 +1,14 @@
 # Project Context
 
 ## Purpose
-[Describe your project's purpose and goals]
+Interactive Animated Storybook Creation AI Agent
 
 ## Tech Stack
-- [List your primary technologies]
-- [e.g., TypeScript, React, Node.js]
+- Backend: TypeScript, Node.js
+- Frontend: React, Next.js, TailwindCss etc. modern Web App Stack
+- Storage: Supabase
+- AI API: Gemini, Veo, etc
 
 ## Project Conventions
 
-### Code Style
-[Describe your code style preferences, formatting rules, and naming conventions]
-
-### Architecture Patterns
-[Document your architectural decisions and patterns]
-
-### Testing Strategy
-[Explain your testing approach and requirements]
-
-### Git Workflow
-[Describe your branching strategy and commit conventions]
-
-## Domain Context
-[Add domain-specific knowledge that AI assistants need to understand]
-
-## Important Constraints
-[List any technical, business, or regulatory constraints]
-
-## External Dependencies
-[Document key external services, APIs, or systems]
+**Project Constitution:** `constitution.md`
