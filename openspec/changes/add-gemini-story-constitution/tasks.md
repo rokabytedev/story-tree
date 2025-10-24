@@ -1,5 +1,5 @@
 ## 1. Research & Planning
-- [ ] 1.1 Run the `technical_researcher` sub-agent to capture the latest recommended Node.js integration patterns for Gemini (models, thinking config, timeout support, JSON responses).
+- [ ] 1.1 Review the official `@google/genai` TypeScript/JavaScript guidance to capture the latest recommended Node.js integration patterns for Gemini (models, thinking config, timeout support, JSON responses).
 - [ ] 1.2 Finalise the shared Gemini client factory, story constitution module surface, return type, and error taxonomy based on the research findings.
 - [ ] 1.3 Confirm directory naming and structure for the new `agent-backend/` workspace.
 
