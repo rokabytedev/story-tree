@@ -36,7 +36,7 @@ You must follow this precise creative and technical process:
 
 # Output Specification
 
-Your entire output must be a single, valid JSON object. Do not include any text, explanations, or markdown outside of the JSON structure.
+Your entire output must be a single, valid JSON object. Do not include any text, explanations, or markdown outside of the JSON structure. Possible values for `reference_plate.type`: `CHARACTER_MODEL_SHEET | CHARACTER_SHOT`. Must include at least one `CHARACTER_MODEL_SHEET` typed reference plate.
 
 ```json
 {
@@ -47,11 +47,13 @@ Your entire output must be a single, valid JSON object. Do not include any text,
         "reference_plates": [
           {
             "plate_description": "Neutral expression, frontal view, full body.",
+            "type": "CHARACTER_MODEL_SHEET",
             "image_generation_prompt": "Character model sheet, orthographic view. A small, plump clownfish named Finn. Style: Whimsical Digital Watercolor. Attributes: Eyes are large, perfectly round, deep sapphire blue (#0F52BA) with large white pupils. Three clean white stripes, head stripe is thinnest. Body is vibrant tangerine orange (#F28500). Fins are delicate and translucent with faint orange edges. Expression is neutral and curious. Full body visible against a plain, neutral background. Flat, even lighting."
           },
           {
             "plate_description": "Joyful expression, leaping out of the water.",
-            "image_generation_prompt": "Action shot. A small, plump clownfish named Finn. Style: Whimsical Digital Watercolor. Attributes: Eyes are large, perfectly round, deep sapphire blue (#0F52BA) with large white pupils. Three clean white stripes. Body is vibrant tangerine orange (#F28500). Expression is one of pure joy, mouth wide open in a happy smile, eyes squinted with delight. Body is captured mid-leap, arcing above the water surface, creating a splash. Bright, sunny day lighting."
+            "type": "CHARACTER_SHOT",
+            "image_generation_prompt": "Character action shot. A small, plump clownfish named Finn. Style: Whimsical Digital Watercolor. Attributes: Eyes are large, perfectly round, deep sapphire blue (#0F52BA) with large white pupils. Three clean white stripes. Body is vibrant tangerine orange (#F28500). Expression is one of pure joy, mouth wide open in a happy smile, eyes squinted with delight. Body is captured mid-leap, arcing above the water surface, creating a splash. Bright, sunny day lighting."
           }
         ]
       }
