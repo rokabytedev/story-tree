@@ -20,6 +20,7 @@ logs
 .env
 .env.*
 .secrets.env
+!.env.example
 
 # Vercel
 .vercel
