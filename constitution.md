@@ -143,7 +143,7 @@ Note: "Major implementation milestone" refers to completion of a significant fea
 
 ### Pre-Implementation Gates
 Before coding begins:
-- Feature specification MUST be complete without [NEEDS CLARIFICATION] markers
+- Feature specification MUST be complete without any open questions
 - Technical research MUST resolve all unknowns
 - Design MUST pass constitution compliance check
 - Contract tests MUST be written and MUST fail
