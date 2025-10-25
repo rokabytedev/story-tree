@@ -35,6 +35,7 @@ interface FakeResponses {
   update?: FakeResponse<StoryRow>;
   selectSingle?: FakeResponse<StoryRow>;
   selectMany?: FakeResponse<StoryRow[]>;
+  delete?: FakeResponse<StoryRow>;
 }
 
 class FakeStoriesTable {
@@ -42,6 +43,7 @@ class FakeStoriesTable {
   public readonly updated: InsertArgs[] = [];
   public readonly updateFilters: Array<{ column: string; value: string }> = [];
   public readonly selectFilters: Array<{ column: string; value: string }> = [];
+  public readonly deleteFilters: Array<{ column: string; value: string }> = [];
 
   constructor(private readonly responses: FakeResponses) {}
 
@@ -89,6 +91,20 @@ class FakeStoriesTable {
     };
 
     return builder;
+  }
+
+  delete() {
+    return {
+      eq: (column: string, value: string) => {
+        this.deleteFilters.push({ column, value });
+        const response = this.responses.delete ?? { data: null, error: null };
+        return {
+          select: () => ({
+            maybeSingle: async (): Promise<FakeResponse<StoryRow>> => response,
+          }),
+        };
+      },
+    };
   }
 }
 
@@ -255,6 +271,34 @@ describe('storiesRepository.getStoryById', () => {
     });
 
     await expect(repo.getStoryById('oops')).rejects.toBeInstanceOf(StoriesRepositoryError);
+  });
+});
+
+describe('storiesRepository.deleteStoryById', () => {
+  it('deletes a story and resolves', async () => {
+    const row = makeStoryRow();
+    const { repo, table } = makeRepository({
+      delete: { data: row, error: null },
+    });
+
+    await expect(repo.deleteStoryById(row.id)).resolves.toBeUndefined();
+    expect(table.deleteFilters).toEqual([{ column: 'id', value: row.id }]);
+  });
+
+  it('throws StoryNotFoundError when the story is missing', async () => {
+    const { repo } = makeRepository({
+      delete: { data: null, error: null },
+    });
+
+    await expect(repo.deleteStoryById('missing-id')).rejects.toBeInstanceOf(StoryNotFoundError);
+  });
+
+  it('throws StoriesRepositoryError when delete fails', async () => {
+    const { repo } = makeRepository({
+      delete: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.deleteStoryById('story-id')).rejects.toBeInstanceOf(StoriesRepositoryError);
   });
 });
 

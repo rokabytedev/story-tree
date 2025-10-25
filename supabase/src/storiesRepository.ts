@@ -58,6 +58,7 @@ export interface StoriesRepository {
   updateStoryArtifacts(storyId: string, patch: StoryArtifactPatch): Promise<StoryRecord>;
   getStoryById(storyId: string): Promise<StoryRecord | null>;
   listStories(): Promise<StoryRecord[]>;
+  deleteStoryById(storyId: string): Promise<void>;
 }
 
 export class StoriesRepositoryError extends Error {
@@ -167,6 +168,28 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
       }
 
       return mapRowToRecord(data);
+    },
+
+    async deleteStoryById(storyId: string): Promise<void> {
+      const trimmedId = storyId?.trim();
+      if (!trimmedId) {
+        throw new StoriesRepositoryError('Story id must be provided for deletion.');
+      }
+
+      const { data, error } = await client
+        .from<StoryRow>(STORIES_TABLE)
+        .delete()
+        .eq('id', trimmedId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw new StoriesRepositoryError('Failed to delete story.', error);
+      }
+
+      if (!data) {
+        throw new StoryNotFoundError(`Story ${trimmedId} does not exist.`);
+      }
     },
   } satisfies StoriesRepository;
 }

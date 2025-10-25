@@ -44,6 +44,7 @@ type CliInvocation =
   | { kind: 'create'; connection: ConnectionOptions; displayName?: string }
   | { kind: 'list'; connection: ConnectionOptions }
   | { kind: 'show'; connection: ConnectionOptions; storyId: string }
+  | { kind: 'delete'; connection: ConnectionOptions; storyId: string }
   | {
       kind: 'set-constitution';
       connection: ConnectionOptions;
@@ -89,6 +90,14 @@ function parseArguments(argv: string[]): CliInvocation {
       }
 
       return { kind: 'show', connection, storyId };
+    }
+    case 'delete': {
+      const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
+      if (!storyId || !storyId.trim()) {
+        throw new CliParseError('Story id is required. Provide --story-id <id>.');
+      }
+
+      return { kind: 'delete', connection, storyId };
     }
     case 'set-constitution': {
       const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
@@ -296,6 +305,11 @@ async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<void> {
         console.log(JSON.stringify(story, null, 2));
         break;
       }
+      case 'delete': {
+        await repository.deleteStoryById(invocation.storyId);
+        console.log(`Deleted story ${invocation.storyId}`);
+        break;
+      }
       case 'set-constitution': {
         const constitution = await loadConstitution(invocation.constitutionSource);
         await repository.updateStoryArtifacts(invocation.storyId, {
@@ -401,6 +415,7 @@ function printHelp(): void {
     '  stories-cli create [--name <display_name>] [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli list [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli show --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli delete --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli set-constitution --story-id <id> (--constitution <text> | --constitution-file <path>) [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli --help',
     '',
@@ -410,7 +425,7 @@ function printHelp(): void {
     '  --url                Override Supabase URL for the selected mode.',
     '  --service-role-key   Override Supabase service role key for the selected mode.',
     '  --name               Optional display name for `create` command.',
-    '  --story-id           Target story id for `set-constitution`.',
+    '  --story-id           Target story id for `set-constitution` and `delete`.',
     '  --constitution       Inline constitution markdown text.',
     '  --constitution-file  Path to file containing constitution markdown.',
     '  -h, --help           Show this message.',

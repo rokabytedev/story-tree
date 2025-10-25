@@ -76,6 +76,14 @@ describe('storiesCli parseArguments', () => {
       expect(invocation.storyId).toBe('abc');
     }
   });
+
+  it('parses delete command with positional id', () => {
+    const invocation = parseArguments(['delete', 'abc']);
+    expect(invocation.kind).toBe('delete');
+    if (invocation.kind === 'delete') {
+      expect(invocation.storyId).toBe('abc');
+    }
+  });
 });
 
 describe('storiesCli utilities', () => {
@@ -140,6 +148,7 @@ describe('storiesCli runCli', () => {
   const updateStoryArtifactsMock = vi.fn();
   const listStoriesMock = vi.fn();
   const getStoryByIdMock = vi.fn();
+  const deleteStoryByIdMock = vi.fn();
   const logs: string[] = [];
   const errors: string[] = [];
 
@@ -150,12 +159,14 @@ describe('storiesCli runCli', () => {
       updateStoryArtifacts: updateStoryArtifactsMock,
       getStoryById: getStoryByIdMock,
       listStories: listStoriesMock,
+      deleteStoryById: deleteStoryByIdMock,
     });
 
     createStoryMock.mockResolvedValue({ id: 'generated-id' });
     updateStoryArtifactsMock.mockResolvedValue({ id: 'story-id' });
     listStoriesMock.mockResolvedValue([]);
     getStoryByIdMock.mockResolvedValue(null);
+    deleteStoryByIdMock.mockResolvedValue(undefined);
 
     logs.length = 0;
     errors.length = 0;
@@ -286,5 +297,28 @@ describe('storiesCli runCli', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors).toContain('Story abc not found.');
+  });
+
+  it('runs delete command and prints confirmation', async () => {
+    await runCli(['delete', 'abc'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(deleteStoryByIdMock).toHaveBeenCalledWith('abc');
+    expect(logs).toContain('Deleted story abc');
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('delete command surfaces StoryNotFoundError', async () => {
+    deleteStoryByIdMock.mockRejectedValueOnce(new MockStoryNotFoundError('missing story'));
+
+    await runCli(['delete', '--story-id', 'abc'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors).toContain('missing story');
   });
 });
