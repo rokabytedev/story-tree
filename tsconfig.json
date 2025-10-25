@@ -14,7 +14,9 @@
   },
   "include": [
     "agent-backend/src/**/*.ts",
-    "agent-backend/test/**/*.ts"
+    "agent-backend/test/**/*.ts",
+    "supabase/src/**/*.ts",
+    "supabase/test/**/*.ts"
   ],
   "exclude": [
     "node_modules",

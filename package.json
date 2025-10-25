@@ -6,7 +6,8 @@
     "story-constitution:cli": "tsx agent-backend/src/cli/storyConstitutionCli.ts"
   },
   "dependencies": {
-    "@google/genai": "^1.27.0"
+    "@google/genai": "^1.27.0",
+    "@supabase/supabase-js": "^2.76.1"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
