@@ -98,3 +98,27 @@ You can generate a secrets template by running utility scripts from the Supabase
 - Confirm Docker Desktop is running; Supabase uses containers for Postgres, storage, and authentication.
 - Use `supabase status --json` to inspect service health.
 - Delete the `.supabase/` folder if you need a clean slate after stopping the stack.
+
+## 7. Stories Seeding CLI
+
+Use the Stories CLI to seed and inspect rows in the `stories` table without writing ad-hoc scripts. The CLI wraps the TypeScript repository helpers so it behaves exactly like application code.
+
+Run the CLI via npm:
+
+```bash
+npm run supabase:stories-cli -- <command> [options]
+```
+
+### Commands
+
+- `create` &ndash; Inserts a new story row. Optionally provide `--name "Display Name"`; otherwise the CLI generates a timestamped name and prints the story id to stdout.
+- `set-constitution` &ndash; Updates `story_constitution` for an existing story. Provide `--story-id <uuid>` and either `--constitution "markdown"` or `--constitution-file path/to/file.md`.
+
+### Connection Modes
+
+- **Local (default):** The CLI reads credentials from `SUPABASE_LOCAL_URL` and `SUPABASE_LOCAL_SERVICE_ROLE_KEY`. If those are unset it falls back to `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (e.g. values from `.env.local`).
+- **Remote:** Pass `--mode remote` (or `--remote`) and set `SUPABASE_REMOTE_URL` and `SUPABASE_REMOTE_SERVICE_ROLE_KEY`. You can override either value per invocation with `--url` or `--service-role-key`.
+
+The CLI automatically loads `.env` followed by `.env.local` from the repository root (and the current working directory), so you usually only need to populate `.env.local` once.
+
+The CLI exits with non-zero status and prints a descriptive error when credentials are missing or the requested story id does not exist.
