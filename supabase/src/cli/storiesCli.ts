@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
-import { pathToFileURL } from 'node:url';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { config as loadEnv } from 'dotenv';
 
 import {
   createSupabaseServiceClient,
@@ -28,6 +32,9 @@ interface ConnectionOptions {
   serviceRoleKeyOverride?: string;
 }
 
+const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(CLI_DIRECTORY, '../../..');
+
 type ConstitutionSource =
   | { kind: 'inline'; value: string }
   | { kind: 'file'; path: string };
@@ -41,6 +48,8 @@ type CliInvocation =
       storyId: string;
       constitutionSource: ConstitutionSource;
     };
+
+loadEnvironmentVariables();
 
 class CliParseError extends Error {
   constructor(message: string) {
@@ -186,6 +195,20 @@ function partitionArgs(argv: string[]): {
   };
 
   return { globalOptions, positionals, flagValues };
+}
+
+function loadEnvironmentVariables(): void {
+  const searchRoots = Array.from(new Set([process.cwd(), REPO_ROOT]));
+  const envFiles = ['.env', '.env.local'];
+
+  for (const root of searchRoots) {
+    for (const fileName of envFiles) {
+      const path = resolve(root, fileName);
+      if (existsSync(path)) {
+        loadEnv({ path, override: true });
+      }
+    }
+  }
 }
 
 function resolveFlagValue(
