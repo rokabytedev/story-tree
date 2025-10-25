@@ -21,3 +21,13 @@ A developer-facing CLI MUST wrap the Supabase stories repository so engineers ca
 - **WHEN** they supply constitution content either through a command-line argument or by referencing an input file
 - **THEN** the CLI MUST load the constitution text accordingly and update the story via the stories repository
 - **AND** it MUST exit non-zero with a descriptive error if the story id is missing or the repository reports the story was not found.
+
+#### Scenario: List command prints story summaries
+- **GIVEN** the developer runs the CLI `list` command
+- **THEN** it MUST fetch all stories via the repository and print each story id and display name to stdout in a human-readable format
+- **AND** it MUST exit zero even when no stories exist (printing nothing beyond optional headers).
+
+#### Scenario: Show command returns story details
+- **GIVEN** the developer runs the CLI `show` command with a story id
+- **THEN** it MUST load that story via the repository and print the full record as JSON to stdout
+- **AND** it MUST exit non-zero with a descriptive error when the story is missing or the id argument is not provided.

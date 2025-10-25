@@ -112,6 +112,8 @@ npm run supabase:stories-cli -- <command> [options]
 ### Commands
 
 - `create` &ndash; Inserts a new story row. Optionally provide `--name "Display Name"`; otherwise the CLI generates a timestamped name and prints the story id to stdout.
+- `list` &ndash; Prints each story id and display name on its own line. Exits zero even when there are no stories.
+- `show` &ndash; Fetches a single story by id and prints the full record as formatted JSON.
 - `set-constitution` &ndash; Updates `story_constitution` for an existing story. Provide `--story-id <uuid>` and either `--constitution "markdown"` or `--constitution-file path/to/file.md`.
 
 ### Connection Modes

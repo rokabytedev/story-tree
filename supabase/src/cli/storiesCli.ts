@@ -42,6 +42,8 @@ type ConstitutionSource =
 type CliInvocation =
   | { kind: 'help'; connection: ConnectionOptions }
   | { kind: 'create'; connection: ConnectionOptions; displayName?: string }
+  | { kind: 'list'; connection: ConnectionOptions }
+  | { kind: 'show'; connection: ConnectionOptions; storyId: string }
   | {
       kind: 'set-constitution';
       connection: ConnectionOptions;
@@ -77,6 +79,16 @@ function parseArguments(argv: string[]): CliInvocation {
     case 'create': {
       const displayName = flagValues.get('name') ?? positionals[1];
       return { kind: 'create', connection, displayName };
+    }
+    case 'list':
+      return { kind: 'list', connection };
+    case 'show': {
+      const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
+      if (!storyId || !storyId.trim()) {
+        throw new CliParseError('Story id is required. Provide --story-id <id>.');
+      }
+
+      return { kind: 'show', connection, storyId };
     }
     case 'set-constitution': {
       const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
@@ -263,6 +275,27 @@ async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<void> {
         console.log(record.id);
         break;
       }
+      case 'list': {
+        const stories = await repository.listStories();
+        if (stories.length > 0) {
+          console.log('ID\tDisplay Name');
+          for (const story of stories) {
+            console.log(`${story.id}\t${story.displayName}`);
+          }
+        }
+        break;
+      }
+      case 'show': {
+        const story = await repository.getStoryById(invocation.storyId);
+        if (!story) {
+          handleError(new StoryNotFoundError(`Story ${invocation.storyId} not found.`));
+          process.exitCode = 1;
+          return;
+        }
+
+        console.log(JSON.stringify(story, null, 2));
+        break;
+      }
       case 'set-constitution': {
         const constitution = await loadConstitution(invocation.constitutionSource);
         await repository.updateStoryArtifacts(invocation.storyId, {
@@ -366,6 +399,8 @@ function printHelp(): void {
     '',
     'Usage:',
     '  stories-cli create [--name <display_name>] [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli list [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli show --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli set-constitution --story-id <id> (--constitution <text> | --constitution-file <path>) [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli --help',
     '',
