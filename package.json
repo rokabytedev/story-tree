@@ -4,6 +4,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "story-constitution:cli": "tsx agent-backend/src/cli/storyConstitutionCli.ts",
+    "interactive-story:cli": "tsx agent-backend/src/cli/interactiveStoryCli.ts",
     "supabase:stories-cli": "tsx supabase/src/cli/storiesCli.ts"
   },
   "dependencies": {
