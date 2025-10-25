@@ -42,6 +42,8 @@ type ConstitutionSource =
 type CliInvocation =
   | { kind: 'help'; connection: ConnectionOptions }
   | { kind: 'create'; connection: ConnectionOptions; displayName?: string }
+  | { kind: 'list'; connection: ConnectionOptions }
+  | { kind: 'show'; connection: ConnectionOptions; storyId: string }
   | {
       kind: 'set-constitution';
       connection: ConnectionOptions;
@@ -77,6 +79,16 @@ function parseArguments(argv: string[]): CliInvocation {
     case 'create': {
       const displayName = flagValues.get('name') ?? positionals[1];
       return { kind: 'create', connection, displayName };
+    }
+    case 'list':
+      return { kind: 'list', connection };
+    case 'show': {
+      const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
+      if (!storyId || !storyId.trim()) {
+        throw new CliParseError('Story id is required. Provide --story-id <id>.');
+      }
+
+      return { kind: 'show', connection, storyId };
     }
     case 'set-constitution': {
       const storyId = flagValues.get('story-id') ?? flagValues.get('id') ?? positionals[1];
@@ -263,6 +275,27 @@ async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<void> {
         console.log(record.id);
         break;
       }
+      case 'list': {
+        const stories = await repository.listStories();
+        if (stories.length > 0) {
+          console.log('ID\tDisplay Name');
+          for (const story of stories) {
+            console.log(`${story.id}\t${story.displayName}`);
+          }
+        }
+        break;
+      }
+      case 'show': {
+        const story = await repository.getStoryById(invocation.storyId);
+        if (!story) {
+          handleError(new StoryNotFoundError(`Story ${invocation.storyId} not found.`));
+          process.exitCode = 1;
+          return;
+        }
+
+        console.log(JSON.stringify(story, null, 2));
+        break;
+      }
       case 'set-constitution': {
         const constitution = await loadConstitution(invocation.constitutionSource);
         await repository.updateStoryArtifacts(invocation.storyId, {
@@ -294,23 +327,18 @@ function resolveSupabaseCredentials(
   connection: ConnectionOptions,
   env: NodeJS.ProcessEnv
 ): { url: string; serviceRoleKey: string } {
-  const url =
-    connection.urlOverride ??
-    firstNonEmpty(
-      connection.mode === 'remote'
-        ? ['SUPABASE_REMOTE_URL', 'SUPABASE_URL']
-        : ['SUPABASE_LOCAL_URL', 'SUPABASE_URL'],
-      env
-    );
+  const urlSources: Array<string | undefined> =
+    connection.mode === 'remote'
+      ? [connection.urlOverride, env.SUPABASE_REMOTE_URL]
+      : [connection.urlOverride, env.SUPABASE_LOCAL_URL, env.SUPABASE_URL];
 
-  const serviceRoleKey =
-    connection.serviceRoleKeyOverride ??
-    firstNonEmpty(
-      connection.mode === 'remote'
-        ? ['SUPABASE_REMOTE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
-        : ['SUPABASE_LOCAL_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
-      env
-    );
+  const keySources: Array<string | undefined> =
+    connection.mode === 'remote'
+      ? [connection.serviceRoleKeyOverride, env.SUPABASE_REMOTE_SERVICE_ROLE_KEY]
+      : [connection.serviceRoleKeyOverride, env.SUPABASE_LOCAL_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY];
+
+  const url = firstNonEmptyValue(urlSources);
+  const serviceRoleKey = firstNonEmptyValue(keySources);
 
   if (!url) {
     const message =
@@ -331,9 +359,8 @@ function resolveSupabaseCredentials(
   return { url, serviceRoleKey };
 }
 
-function firstNonEmpty(keys: string[], env: NodeJS.ProcessEnv): string | undefined {
-  for (const key of keys) {
-    const value = env[key];
+function firstNonEmptyValue(values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
@@ -372,6 +399,8 @@ function printHelp(): void {
     '',
     'Usage:',
     '  stories-cli create [--name <display_name>] [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli list [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli show --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli set-constitution --story-id <id> (--constitution <text> | --constitution-file <path>) [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli --help',
     '',

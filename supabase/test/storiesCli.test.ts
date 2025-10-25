@@ -68,6 +68,14 @@ describe('storiesCli parseArguments', () => {
   it('throws when constitution source missing', () => {
     expect(() => parseArguments(['set-constitution', '--story-id', 'abc'])).toThrow(CliParseError);
   });
+
+  it('parses show command with positional id', () => {
+    const invocation = parseArguments(['show', 'abc']);
+    expect(invocation.kind).toBe('show');
+    if (invocation.kind === 'show') {
+      expect(invocation.storyId).toBe('abc');
+    }
+  });
 });
 
 describe('storiesCli utilities', () => {
@@ -101,14 +109,37 @@ describe('storiesCli utilities', () => {
 
   it('resolveSupabaseCredentials throws when remote env missing', () => {
     expect(() =>
-      resolveSupabaseCredentials({ mode: 'remote' }, { SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' })
+      resolveSupabaseCredentials(
+        { mode: 'remote' },
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+        }
+      )
     ).toThrow(MockSupabaseConfigurationError);
+  });
+
+  it('resolveSupabaseCredentials returns remote env values when present', () => {
+    const creds = resolveSupabaseCredentials(
+      { mode: 'remote' },
+      {
+        SUPABASE_REMOTE_URL: 'https://remote.supabase.co',
+        SUPABASE_REMOTE_SERVICE_ROLE_KEY: 'remote-key',
+      }
+    );
+
+    expect(creds).toEqual({
+      serviceRoleKey: 'remote-key',
+      url: 'https://remote.supabase.co',
+    });
   });
 });
 
 describe('storiesCli runCli', () => {
   const createStoryMock = vi.fn();
   const updateStoryArtifactsMock = vi.fn();
+  const listStoriesMock = vi.fn();
+  const getStoryByIdMock = vi.fn();
   const logs: string[] = [];
   const errors: string[] = [];
 
@@ -117,11 +148,14 @@ describe('storiesCli runCli', () => {
     createStoriesRepositoryMock.mockReturnValue({
       createStory: createStoryMock,
       updateStoryArtifacts: updateStoryArtifactsMock,
-      getStoryById: vi.fn(),
+      getStoryById: getStoryByIdMock,
+      listStories: listStoriesMock,
     });
 
     createStoryMock.mockResolvedValue({ id: 'generated-id' });
     updateStoryArtifactsMock.mockResolvedValue({ id: 'story-id' });
+    listStoriesMock.mockResolvedValue([]);
+    getStoryByIdMock.mockResolvedValue(null);
 
     logs.length = 0;
     errors.length = 0;
@@ -187,5 +221,70 @@ describe('storiesCli runCli', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors).toContain('missing');
+  });
+
+  it('runs list command and prints summaries', async () => {
+    listStoriesMock.mockResolvedValueOnce([
+      { id: 'id-1', displayName: 'Alpha', displayNameUpper: 'ALPHA', createdAt: '', updatedAt: '', storyConstitution: null, interactiveScript: null, visualDesignDocument: null, audioDesignDocument: null, visualReferencePackage: null, storyboardBreakdown: null, generationPrompts: null },
+      { id: 'id-2', displayName: 'Beta', displayNameUpper: 'BETA', createdAt: '', updatedAt: '', storyConstitution: null, interactiveScript: null, visualDesignDocument: null, audioDesignDocument: null, visualReferencePackage: null, storyboardBreakdown: null, generationPrompts: null },
+    ]);
+
+    await runCli(['list'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(listStoriesMock).toHaveBeenCalled();
+    expect(logs[0]).toBe('ID\tDisplay Name');
+    expect(logs[1]).toBe('id-1\tAlpha');
+    expect(logs[2]).toBe('id-2\tBeta');
+  });
+
+  it('list command emits no output when empty', async () => {
+    listStoriesMock.mockResolvedValueOnce([]);
+
+    await runCli(['list'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(logs).toHaveLength(0);
+  });
+
+  it('runs show command and prints JSON', async () => {
+    getStoryByIdMock.mockResolvedValueOnce({
+      id: 'abc',
+      displayName: 'Alpha',
+      displayNameUpper: 'ALPHA',
+      createdAt: '2025-01-01',
+      updatedAt: '2025-01-02',
+      storyConstitution: null,
+      interactiveScript: null,
+      visualDesignDocument: null,
+      audioDesignDocument: null,
+      visualReferencePackage: null,
+      storyboardBreakdown: null,
+      generationPrompts: null,
+    });
+
+    await runCli(['show', 'abc'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(getStoryByIdMock).toHaveBeenCalledWith('abc');
+    expect(JSON.parse(logs[0])).toMatchObject({ id: 'abc', displayName: 'Alpha' });
+  });
+
+  it('show command sets exit code when story missing', async () => {
+    getStoryByIdMock.mockResolvedValueOnce(null);
+
+    await runCli(['show', '--story-id', 'abc'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors).toContain('Story abc not found.');
   });
 });

@@ -57,6 +57,7 @@ export interface StoriesRepository {
   createStory(input: CreateStoryInput): Promise<StoryRecord>;
   updateStoryArtifacts(storyId: string, patch: StoryArtifactPatch): Promise<StoryRecord>;
   getStoryById(storyId: string): Promise<StoryRecord | null>;
+  listStories(): Promise<StoryRecord[]>;
 }
 
 export class StoriesRepositoryError extends Error {
@@ -82,6 +83,20 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
   }
 
   return {
+    async listStories(): Promise<StoryRecord[]> {
+      const { data, error } = await client.from<StoryRow>(STORIES_TABLE).select();
+
+      if (error) {
+        throw new StoriesRepositoryError('Failed to list stories.', error);
+      }
+
+      if (!data) {
+        return [];
+      }
+
+      return data.map(mapRowToRecord);
+    },
+
     async createStory(input: CreateStoryInput): Promise<StoryRecord> {
       const baseName = input.displayName?.trim();
       if (!baseName) {

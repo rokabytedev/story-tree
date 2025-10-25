@@ -30,19 +30,20 @@ interface FakeResponse<T> {
 
 type InsertArgs = Partial<StoryRow>;
 
+interface FakeResponses {
+  insert?: FakeResponse<StoryRow>;
+  update?: FakeResponse<StoryRow>;
+  selectSingle?: FakeResponse<StoryRow>;
+  selectMany?: FakeResponse<StoryRow[]>;
+}
+
 class FakeStoriesTable {
   public readonly inserted: InsertArgs[] = [];
   public readonly updated: InsertArgs[] = [];
   public readonly updateFilters: Array<{ column: string; value: string }> = [];
   public readonly selectFilters: Array<{ column: string; value: string }> = [];
 
-  constructor(
-    private readonly responses: {
-      insert?: FakeResponse<StoryRow>;
-      update?: FakeResponse<StoryRow>;
-      select?: FakeResponse<StoryRow>;
-    }
-  ) {}
+  constructor(private readonly responses: FakeResponses) {}
 
   insert(values: InsertArgs) {
     this.inserted.push(values);
@@ -70,15 +71,24 @@ class FakeStoriesTable {
   }
 
   select() {
-    return {
+    const singleResponse = this.responses.selectSingle ?? { data: null, error: null };
+    const manyResponse = this.responses.selectMany ?? { data: [], error: null };
+
+    const promise = Promise.resolve(manyResponse);
+
+    const builder: any = {
       eq: (column: string, value: string) => {
         this.selectFilters.push({ column, value });
-        const response = this.responses.select ?? { data: null, error: null };
         return {
-          maybeSingle: async (): Promise<FakeResponse<StoryRow>> => response,
+          maybeSingle: async (): Promise<FakeResponse<StoryRow>> => singleResponse,
         };
       },
+      then: promise.then.bind(promise),
+      catch: promise.catch.bind(promise),
+      finally: promise.finally?.bind(promise),
     };
+
+    return builder;
   }
 }
 
@@ -93,11 +103,11 @@ class FakeSupabaseClient {
   }
 }
 
-function makeRepository(responses: {
-  insert?: FakeResponse<StoryRow>;
-  update?: FakeResponse<StoryRow>;
-  select?: FakeResponse<StoryRow>;
-}): { repo: StoriesRepository; table: FakeStoriesTable; client: FakeSupabaseClient } {
+function makeRepository(responses: FakeResponses): {
+  repo: StoriesRepository;
+  table: FakeStoriesTable;
+  client: FakeSupabaseClient;
+} {
   const table = new FakeStoriesTable(responses);
   const client = new FakeSupabaseClient(table);
   const repo = createStoriesRepository(client as unknown as any);
@@ -218,7 +228,7 @@ describe('storiesRepository.getStoryById', () => {
   it('returns a mapped StoryRecord when the row exists', async () => {
     const row = makeStoryRow({ display_name: 'Existing Story' });
     const { repo, table } = makeRepository({
-      select: { data: row, error: null },
+      selectSingle: { data: row, error: null },
     });
 
     const result = await repo.getStoryById(row.id);
@@ -232,7 +242,7 @@ describe('storiesRepository.getStoryById', () => {
 
   it('returns null when the row does not exist', async () => {
     const { repo } = makeRepository({
-      select: { data: null, error: null },
+      selectSingle: { data: null, error: null },
     });
 
     const result = await repo.getStoryById('missing');
@@ -241,9 +251,36 @@ describe('storiesRepository.getStoryById', () => {
 
   it('throws StoriesRepositoryError when select fails', async () => {
     const { repo } = makeRepository({
-      select: { data: null, error: { message: 'network issue' } },
+      selectSingle: { data: null, error: { message: 'network issue' } },
     });
 
     await expect(repo.getStoryById('oops')).rejects.toBeInstanceOf(StoriesRepositoryError);
+  });
+});
+
+describe('storiesRepository.listStories', () => {
+  it('returns mapped StoryRecords for all rows', async () => {
+    const rows = [
+      makeStoryRow({ id: 'id-1', display_name: 'Story One' }),
+      makeStoryRow({ id: 'id-2', display_name: 'Story Two' }),
+    ];
+
+    const { repo } = makeRepository({
+      selectMany: { data: rows, error: null },
+    });
+
+    const result = await repo.listStories();
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 'id-1', displayName: 'Story One' });
+    expect(result[1]).toMatchObject({ id: 'id-2', displayName: 'Story Two' });
+  });
+
+  it('throws StoriesRepositoryError when listing fails', async () => {
+    const { repo } = makeRepository({
+      selectMany: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.listStories()).rejects.toBeInstanceOf(StoriesRepositoryError);
   });
 });
