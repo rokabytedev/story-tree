@@ -101,8 +101,29 @@ describe('storiesCli utilities', () => {
 
   it('resolveSupabaseCredentials throws when remote env missing', () => {
     expect(() =>
-      resolveSupabaseCredentials({ mode: 'remote' }, { SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' })
+      resolveSupabaseCredentials(
+        { mode: 'remote' },
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+        }
+      )
     ).toThrow(MockSupabaseConfigurationError);
+  });
+
+  it('resolveSupabaseCredentials returns remote env values when present', () => {
+    const creds = resolveSupabaseCredentials(
+      { mode: 'remote' },
+      {
+        SUPABASE_REMOTE_URL: 'https://remote.supabase.co',
+        SUPABASE_REMOTE_SERVICE_ROLE_KEY: 'remote-key',
+      }
+    );
+
+    expect(creds).toEqual({
+      serviceRoleKey: 'remote-key',
+      url: 'https://remote.supabase.co',
+    });
   });
 });
 

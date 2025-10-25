@@ -294,23 +294,18 @@ function resolveSupabaseCredentials(
   connection: ConnectionOptions,
   env: NodeJS.ProcessEnv
 ): { url: string; serviceRoleKey: string } {
-  const url =
-    connection.urlOverride ??
-    firstNonEmpty(
-      connection.mode === 'remote'
-        ? ['SUPABASE_REMOTE_URL', 'SUPABASE_URL']
-        : ['SUPABASE_LOCAL_URL', 'SUPABASE_URL'],
-      env
-    );
+  const urlSources: Array<string | undefined> =
+    connection.mode === 'remote'
+      ? [connection.urlOverride, env.SUPABASE_REMOTE_URL]
+      : [connection.urlOverride, env.SUPABASE_LOCAL_URL, env.SUPABASE_URL];
 
-  const serviceRoleKey =
-    connection.serviceRoleKeyOverride ??
-    firstNonEmpty(
-      connection.mode === 'remote'
-        ? ['SUPABASE_REMOTE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
-        : ['SUPABASE_LOCAL_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
-      env
-    );
+  const keySources: Array<string | undefined> =
+    connection.mode === 'remote'
+      ? [connection.serviceRoleKeyOverride, env.SUPABASE_REMOTE_SERVICE_ROLE_KEY]
+      : [connection.serviceRoleKeyOverride, env.SUPABASE_LOCAL_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY];
+
+  const url = firstNonEmptyValue(urlSources);
+  const serviceRoleKey = firstNonEmptyValue(keySources);
 
   if (!url) {
     const message =
@@ -331,9 +326,8 @@ function resolveSupabaseCredentials(
   return { url, serviceRoleKey };
 }
 
-function firstNonEmpty(keys: string[], env: NodeJS.ProcessEnv): string | undefined {
-  for (const key of keys) {
-    const value = env[key];
+function firstNonEmptyValue(values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }

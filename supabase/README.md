@@ -117,7 +117,7 @@ npm run supabase:stories-cli -- <command> [options]
 ### Connection Modes
 
 - **Local (default):** The CLI reads credentials from `SUPABASE_LOCAL_URL` and `SUPABASE_LOCAL_SERVICE_ROLE_KEY`. If those are unset it falls back to `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (e.g. values from `.env.local`).
-- **Remote:** Pass `--mode remote` (or `--remote`) and set `SUPABASE_REMOTE_URL` and `SUPABASE_REMOTE_SERVICE_ROLE_KEY`. You can override either value per invocation with `--url` or `--service-role-key`.
+- **Remote:** Pass `--mode remote` (or `--remote`) and set `SUPABASE_REMOTE_URL` and `SUPABASE_REMOTE_SERVICE_ROLE_KEY`. You can override either value per invocation with `--url` or `--service-role-key`. The CLI does **not** fall back to local `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` when running in remote mode.
 
 The CLI automatically loads `.env` followed by `.env.local` from the repository root (and the current working directory), so you usually only need to populate `.env.local` once.
 
