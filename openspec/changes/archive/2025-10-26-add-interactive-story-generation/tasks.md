@@ -1,0 +1,6 @@
+- [x] 1. Add interactive scriptwriter prompt loader and request formatter utilities.
+- [x] 2. Implement DFS story tree generator orchestrator with dependency injection hooks for Gemini and persistence.
+- [x] 3. Introduce Supabase scenelets migration and repository for inserting and updating scenelet records.
+- [x] 4. Wire generator service into backend exports and add a developer CLI for manual runs using stubs.
+- [x] 5. Cover generator and repository with unit tests plus migration assertions; run `npm test` to verify.
+- [x] 6. Update this checklist to confirm completion after implementation.

@@ -20,7 +20,7 @@ This project is an AI-powered agent that creates interactive and animated storyb
 ### Prerequisites
 
 *   Node.js
-*   pnpm
+*   npm
 *   Supabase account and project
 
 ### Installation
@@ -31,7 +31,7 @@ This project is an AI-powered agent that creates interactive and animated storyb
     ```
 2.  Install the dependencies:
     ```bash
-    pnpm install
+    npm install
     ```
 
 ### Configuration
@@ -50,7 +50,7 @@ This project is an AI-powered agent that creates interactive and animated storyb
 To generate a new story constitution, run the following command:
 
 ```bash
-pnpm story-constitution:cli "A story about a brave little robot who explores a mysterious planet."
+npm run story-constitution:cli -- --brief "A story about a brave little robot who explores a mysterious planet."
 ```
 
 This will generate a new story constitution and save it to the database.
@@ -68,7 +68,7 @@ The `supabase:stories-cli` provides a command-line interface for managing storie
 **Usage:**
 
 ```bash
-pnpm supabase:stories-cli list
-pnpm supabase:stories-cli get 1
-pnpm supabase:stories-cli delete 1
+npm run supabase:stories-cli list
+npm run supabase:stories-cli get 1
+npm run supabase:stories-cli delete 1
 ```
