@@ -7,6 +7,7 @@ import { generateInteractiveStoryTree } from '../interactive-story/generateInter
 import { InteractiveStoryError } from '../interactive-story/errors.js';
 import type {
   InteractiveStoryGeneratorOptions,
+  InteractiveStoryLogger,
   SceneletPersistence,
   ScriptwriterScenelet,
 } from '../interactive-story/types.js';
@@ -16,6 +17,7 @@ interface CliInvocation {
   storyId: string;
   storyConstitution: string;
   responsesPath: string;
+  verbose: boolean;
 }
 
 class CliParseError extends Error {
@@ -29,13 +31,15 @@ async function main(argv: string[]): Promise<void> {
   try {
     const invocation = await parseArguments(argv);
     const responses = await loadResponses(invocation.responsesPath);
-    const geminiClient = new FixtureGeminiClient(responses);
+    const logger = invocation.verbose ? createVerboseLogger() : undefined;
+    const geminiClient = new FixtureGeminiClient(responses, logger);
     const persistence = new InMemorySceneletPersistence();
 
     await generateInteractiveStoryTree(invocation.storyId, invocation.storyConstitution, {
       geminiClient,
       promptLoader: async () => 'Stub interactive scriptwriter prompt',
       sceneletPersistence: persistence,
+      ...(logger ? { logger } : {}),
     } satisfies InteractiveStoryGeneratorOptions);
 
     printSummary(persistence.getScenelets());
@@ -65,6 +69,7 @@ async function parseArguments(args: string[]): Promise<CliInvocation> {
   let constitution: string | undefined;
   let constitutionFile: string | undefined;
   let responsesPath: string | undefined;
+  let verbose = false;
 
   const positional: string[] = [];
 
@@ -94,6 +99,10 @@ async function parseArguments(args: string[]): Promise<CliInvocation> {
       case '--responses-file':
         responsesPath = args[++index];
         break;
+      case '--verbose':
+      case '-v':
+        verbose = true;
+        break;
       default:
         throw new CliParseError(`Unknown flag: ${arg}`);
     }
@@ -117,6 +126,7 @@ async function parseArguments(args: string[]): Promise<CliInvocation> {
     storyId: storyId.trim(),
     storyConstitution,
     responsesPath,
+    verbose,
   } satisfies CliInvocation;
 }
 
@@ -170,18 +180,32 @@ async function loadResponses(location: string): Promise<string[]> {
 class FixtureGeminiClient implements GeminiJsonClient {
   private index = 0;
 
-  constructor(private readonly responses: string[]) {}
+  constructor(
+    private readonly responses: string[],
+    private readonly logger?: InteractiveStoryLogger
+  ) {}
 
   async generateJson(
-    _request: GeminiGenerateJsonRequest,
-    _options?: GeminiGenerateJsonOptions
+    request: GeminiGenerateJsonRequest,
+    options?: GeminiGenerateJsonOptions
   ): Promise<string> {
     if (this.index >= this.responses.length) {
       throw new CliParseError('Ran out of fixture responses while generating the story.');
     }
 
+    this.logger?.debug?.('Gemini request payload', {
+      callIndex: this.index + 1,
+      systemInstruction: request.systemInstruction,
+      userContent: request.userContent,
+      timeoutMs: options?.timeoutMs ?? null,
+    });
+
     const response = this.responses[this.index];
     this.index += 1;
+    this.logger?.debug?.('Gemini stub response', {
+      callIndex: this.index,
+      responseJson: response,
+    });
     return response;
   }
 }
@@ -255,6 +279,18 @@ class InMemorySceneletPersistence implements SceneletPersistence {
   }
 }
 
+function createVerboseLogger(): InteractiveStoryLogger {
+  return {
+    debug(message, metadata) {
+      if (metadata && Object.keys(metadata).length > 0) {
+        console.error(`[interactive-story:debug] ${message}`, metadata);
+        return;
+      }
+      console.error(`[interactive-story:debug] ${message}`);
+    },
+  };
+}
+
 function printSummary(scenelets: SceneletRecordSummary[]): void {
   console.log(JSON.stringify(scenelets, null, 2));
 }
@@ -267,6 +303,7 @@ Options:
   --constitution <text>     Provide constitution inline (mutually exclusive with --constitution-file).
   --constitution-file <path>Load constitution markdown from a file.
   --responses-file <path>   Path to JSON array of Gemini responses to replay.
+  --verbose, -v             Print Gemini request and response debug information.
   --help, -h                Show this help message.`);
 }
 
