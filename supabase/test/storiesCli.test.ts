@@ -37,11 +37,12 @@ import {
 } from '../src/cli/storiesCli.js';
 
 describe('storiesCli parseArguments', () => {
-  it('parses create command with optional name', () => {
-    const invocation = parseArguments(['create', '--name', 'Alpha Story']);
+  it('parses create command with name and prompt', () => {
+    const invocation = parseArguments(['create', '--name', 'Alpha Story', '--prompt', 'Tell Alpha.']);
     expect(invocation.kind).toBe('create');
     if (invocation.kind === 'create') {
       expect(invocation.displayName).toBe('Alpha Story');
+      expect(invocation.initialPrompt).toBe('Tell Alpha.');
       expect(invocation.connection.mode).toBe('local');
     }
   });
@@ -187,7 +188,7 @@ describe('storiesCli runCli', () => {
   });
 
   it('runs create command and prints id', async () => {
-    await runCli(['create', '--name', 'CLI Story'], {
+    await runCli(['create', '--name', 'CLI Story', '--prompt', 'Tell me a story.'], {
       SUPABASE_URL: 'http://localhost:54321',
       SUPABASE_SERVICE_ROLE_KEY: 'local-key',
     });
@@ -196,9 +197,22 @@ describe('storiesCli runCli', () => {
       serviceRoleKey: 'local-key',
       url: 'http://localhost:54321',
     });
-    expect(createStoryMock).toHaveBeenCalledWith({ displayName: 'CLI Story' });
+    expect(createStoryMock).toHaveBeenCalledWith({
+      displayName: 'CLI Story',
+      initialPrompt: 'Tell me a story.',
+    });
     expect(logs).toContain('generated-id');
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it('requires a prompt for create command', async () => {
+    await runCli(['create', '--name', 'CLI Story'], {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'local-key',
+    });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.some((line) => line.includes('Initial prompt is required'))).toBe(true);
   });
 
   it('runs set-constitution with file content', async () => {
@@ -236,8 +250,34 @@ describe('storiesCli runCli', () => {
 
   it('runs list command and prints summaries', async () => {
     listStoriesMock.mockResolvedValueOnce([
-      { id: 'id-1', displayName: 'Alpha', displayNameUpper: 'ALPHA', createdAt: '', updatedAt: '', storyConstitution: null, interactiveScript: null, visualDesignDocument: null, audioDesignDocument: null, visualReferencePackage: null, storyboardBreakdown: null, generationPrompts: null },
-      { id: 'id-2', displayName: 'Beta', displayNameUpper: 'BETA', createdAt: '', updatedAt: '', storyConstitution: null, interactiveScript: null, visualDesignDocument: null, audioDesignDocument: null, visualReferencePackage: null, storyboardBreakdown: null, generationPrompts: null },
+      {
+        id: 'id-1',
+        displayName: 'Alpha',
+        displayNameUpper: 'ALPHA',
+        initialPrompt: 'Tell Alpha.',
+        createdAt: '',
+        updatedAt: '',
+        storyConstitution: null,
+        visualDesignDocument: null,
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+        storyboardBreakdown: null,
+        generationPrompts: null,
+      },
+      {
+        id: 'id-2',
+        displayName: 'Beta',
+        displayNameUpper: 'BETA',
+        initialPrompt: 'Tell Beta.',
+        createdAt: '',
+        updatedAt: '',
+        storyConstitution: null,
+        visualDesignDocument: null,
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+        storyboardBreakdown: null,
+        generationPrompts: null,
+      },
     ]);
 
     await runCli(['list'], {
@@ -267,10 +307,10 @@ describe('storiesCli runCli', () => {
       id: 'abc',
       displayName: 'Alpha',
       displayNameUpper: 'ALPHA',
+      initialPrompt: 'Tell Alpha.',
       createdAt: '2025-01-01',
       updatedAt: '2025-01-02',
       storyConstitution: null,
-      interactiveScript: null,
       visualDesignDocument: null,
       audioDesignDocument: null,
       visualReferencePackage: null,
