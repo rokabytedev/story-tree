@@ -4,29 +4,29 @@
 TBD - created by archiving change add-supabase-storage-layer. Update Purpose after archive.
 ## Requirements
 ### Requirement: Persist Story Artifacts in Supabase
-The database MUST provide a `stories` table that stores interactive story metadata and generated artifacts.
+The stories table MUST now record the player's original prompt and drop the unused `interactive_script` column.
 
-#### Scenario: Stories table captures artifacts as JSON
+#### Scenario: Stories table captures prompt and artifacts as JSON
 - **GIVEN** the Supabase migrations are applied
 - **WHEN** the `public.stories` table is inspected
-- **THEN** it MUST include columns `id` (UUID primary key), `display_name` (text), `created_at` (timestamp with time zone defaulting to the current UTC time), and `updated_at` (timestamp with time zone automatically updated on row changes)
-- **AND** it MUST include JSONB columns named `story_constitution`, `interactive_script`, `visual_design_document`, `audio_design_document`, `visual_reference_package`, `storyboard_breakdown`, and `generation_prompts`
-- **AND** each JSONB column MUST default to `NULL` with no additional constraints so partial artifacts can be saved incrementally.
-
-#### Scenario: Stories table supports UUID generation and update timestamps
-- **GIVEN** a new story row is inserted without specifying `id` or `created_at`
-- **THEN** the migration MUST supply default expressions that set `id` via `gen_random_uuid()` and `created_at` to the current UTC time
-- **AND** subsequent updates MUST automatically refresh `updated_at` without manual timestamp handling in application code.
+- **THEN** it MUST include an `initial_prompt` text column that stores the user brief
+- **AND** it MUST include JSONB columns `story_constitution`, `visual_design_document`, `audio_design_document`, `visual_reference_package`, `storyboard_breakdown`, and `generation_prompts`
+- **AND** the legacy `interactive_script` JSONB column MUST be absent.
 
 ### Requirement: Provide Stories Repository API
-A TypeScript repository MUST expose a typed interface for interacting with the `stories` table via Supabase.
+The repository MUST expose the stored prompt and stop referencing the removed column.
 
-#### Scenario: Delete helper removes story by id
-- **GIVEN** a caller provides a story `id`
-- **WHEN** the repository `deleteStoryById` helper executes
-- **THEN** it MUST call Supabase to delete the matching row
-- **AND** it MUST throw a `StoryNotFoundError` when no row was deleted
-- **AND** it MUST wrap delete failures reported by Supabase in `StoriesRepositoryError`.
+#### Scenario: Repository maps prompt field
+- **GIVEN** the stories repository returns a record
+- **WHEN** the story row includes `initial_prompt`
+- **THEN** the repository MUST surface it as `initialPrompt`
+- **AND** it MUST NOT expose an `interactiveScript` property anymore.
+
+#### Scenario: Repository updates display name
+- **GIVEN** a caller provides a story id and new title
+- **WHEN** the repository helper updates the story
+- **THEN** it MUST set `display_name` to the provided value alongside any artifact changes
+- **AND** it MUST return the refreshed record.
 
 ### Requirement: Supabase Workspace and Local Tooling
 Supabase resources MUST live under a dedicated root `supabase/` directory with local development guidance.
