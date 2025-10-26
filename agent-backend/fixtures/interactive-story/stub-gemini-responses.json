@@ -1,0 +1,114 @@
+[
+  {
+    "branch_point": false,
+    "is_concluding_scene": false,
+    "next_scenelets": [
+      {
+        "description": "In the glowing sandbox studio, Rhea calibrates the narrative tree before kickoff.",
+        "dialogue": [
+          {
+            "character": "Narrator",
+            "line": "Rhea powers up the story simulator, ready to stress-test the new constitution."
+          },
+          {
+            "character": "Rhea",
+            "line": "Let's see if this scriptwriter mode can keep up with our testers."
+          }
+        ],
+        "shot_suggestions": [
+          "Wide shot of the studio with translucent story nodes hovering in the air.",
+          "Close-up of Rhea's console showing branches flickering into existence."
+        ]
+      }
+    ]
+  },
+  {
+    "branch_point": true,
+    "is_concluding_scene": false,
+    "choice_prompt": "How should Rhea prototype the first divergence in the interactive story?",
+    "next_scenelets": [
+      {
+        "choice_label": "Pilot a playful tutorial",
+        "description": "Rhea maps a lighthearted tutorial path where the reader experiments safely.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "We'll lead with a welcoming tutorial, keep things breezy."
+          },
+          {
+            "character": "Testing Agent",
+            "line": "Logging: tutorial tone, comedic beats, zero peril."
+          }
+        ],
+        "shot_suggestions": [
+          "Medium shot of Rhea sketching cheerful icons onto a holographic branch.",
+          "Insert of the Testing Agent's HUD highlighting safety parameters."
+        ]
+      },
+      {
+        "choice_label": "Jump to a high-stakes trial",
+        "description": "Rhea sketches a tense branch that drops players straight into a creative challenge.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "Or we launch with a challenge to jolt them awake."
+          },
+          {
+            "character": "Testing Agent",
+            "line": "Noted. Tracking elevated tension and time pressure cues."
+          }
+        ],
+        "shot_suggestions": [
+          "Tracking shot following a glowing branch that pulses with warning colors.",
+          "Close-up of countdown timer materializing in mid-air."
+        ]
+      }
+    ]
+  },
+  {
+    "branch_point": false,
+    "is_concluding_scene": true,
+    "next_scenelets": [
+      {
+        "description": "The tutorial path concludes with Rhea watching testers laugh as they master the tools.",
+        "dialogue": [
+          {
+            "character": "Narrator",
+            "line": "Minutes later, testers confidently remix the tutorial scenelets."
+          },
+          {
+            "character": "Rhea",
+            "line": "Perfect. Friendly tone achieved, and they're already riffing."
+          }
+        ],
+        "shot_suggestions": [
+          "Montage of testers high-fiving beside glowing story loops.",
+          "Soft focus on Rhea's satisfied grin as metrics stabilize."
+        ]
+      }
+    ]
+  },
+  {
+    "branch_point": false,
+    "is_concluding_scene": true,
+    "next_scenelets": [
+      {
+        "description": "The high-stakes branch ends with Rhea recording lessons from the intense trial run.",
+        "dialogue": [
+          {
+            "character": "Narrator",
+            "line": "The room hums as players sprint through puzzles, breathless but exhilarated."
+          },
+          {
+            "character": "Rhea",
+            "line": "We kept them on their toes. Let's capture this momentum for iteration two."
+          }
+        ],
+        "shot_suggestions": [
+          "Handheld shot weaving between testers as neon puzzles rearrange around them.",
+          "Cut to Rhea annotating a holoboard with looping action footage."
+        ]
+      }
+    ]
+  }
+]
