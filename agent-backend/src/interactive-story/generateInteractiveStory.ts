@@ -61,6 +61,14 @@ export async function generateInteractiveStoryTree(
       isRoot,
     });
 
+    options.logger?.debug?.('Interactive story Gemini request', {
+      storyId: task.storyId,
+      parentSceneletId: task.parentSceneletId,
+      isRoot,
+      pathContextLength: task.pathContext.length,
+      userContent,
+    });
+
     const rawResponse = await geminiClient.generateJson(
       {
         systemInstruction,
@@ -68,6 +76,12 @@ export async function generateInteractiveStoryTree(
       },
       options.timeoutMs ? { timeoutMs: options.timeoutMs } : undefined
     );
+
+    options.logger?.debug?.('Interactive story Gemini response', {
+      storyId: task.storyId,
+      parentSceneletId: task.parentSceneletId,
+      rawResponse,
+    });
 
     const parsedResponse = parseInteractiveScriptwriterResponse(rawResponse);
 

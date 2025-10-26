@@ -41,7 +41,7 @@ type ConstitutionSource =
 
 type CliInvocation =
   | { kind: 'help'; connection: ConnectionOptions }
-  | { kind: 'create'; connection: ConnectionOptions; displayName?: string }
+  | { kind: 'create'; connection: ConnectionOptions; displayName?: string; initialPrompt?: string }
   | { kind: 'list'; connection: ConnectionOptions }
   | { kind: 'show'; connection: ConnectionOptions; storyId: string }
   | { kind: 'delete'; connection: ConnectionOptions; storyId: string }
@@ -79,7 +79,12 @@ function parseArguments(argv: string[]): CliInvocation {
   switch (command) {
     case 'create': {
       const displayName = flagValues.get('name') ?? positionals[1];
-      return { kind: 'create', connection, displayName };
+      const prompt =
+        flagValues.get('prompt') ??
+        flagValues.get('brief') ??
+        flagValues.get('initial-prompt') ??
+        positionals[2];
+      return { kind: 'create', connection, displayName, initialPrompt: prompt };
     }
     case 'list':
       return { kind: 'list', connection };
@@ -280,7 +285,8 @@ async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<void> {
     switch (invocation.kind) {
       case 'create': {
         const displayName = buildDisplayName(invocation.displayName);
-        const record = await repository.createStory({ displayName });
+        const initialPrompt = buildInitialPrompt(invocation.initialPrompt);
+        const record = await repository.createStory({ displayName, initialPrompt });
         console.log(record.id);
         break;
       }
@@ -390,6 +396,14 @@ function buildDisplayName(proposed?: string): string {
   return `Story ${new Date().toISOString()}`;
 }
 
+function buildInitialPrompt(proposed?: string): string {
+  const trimmed = proposed?.trim();
+  if (!trimmed) {
+    throw new CliParseError('Initial prompt is required. Provide --prompt <text>.');
+  }
+  return trimmed;
+}
+
 async function loadConstitution(source: ConstitutionSource): Promise<string> {
   if (source.kind === 'inline') {
     const value = source.value.trim();
@@ -412,7 +426,7 @@ function printHelp(): void {
     'Supabase Stories CLI',
     '',
     'Usage:',
-    '  stories-cli create [--name <display_name>] [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
+    '  stories-cli create --prompt <story_prompt> [--name <display_name>] [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli list [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli show --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',
     '  stories-cli delete --story-id <id> [--mode <local|remote>] [--url <url>] [--service-role-key <key>]',

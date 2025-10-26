@@ -6,10 +6,10 @@ type StoryRow = {
   id: string;
   display_name: string;
   display_name_upper: string | null;
+  initial_prompt: string;
   created_at: string;
   updated_at: string;
   story_constitution: unknown | null;
-  interactive_script: unknown | null;
   visual_design_document: unknown | null;
   audio_design_document: unknown | null;
   visual_reference_package: unknown | null;
@@ -21,10 +21,10 @@ export interface StoryRecord {
   id: string;
   displayName: string;
   displayNameUpper: string | null;
+  initialPrompt: string;
   createdAt: string;
   updatedAt: string;
   storyConstitution: unknown | null;
-  interactiveScript: unknown | null;
   visualDesignDocument: unknown | null;
   audioDesignDocument: unknown | null;
   visualReferencePackage: unknown | null;
@@ -34,8 +34,8 @@ export interface StoryRecord {
 
 export interface CreateStoryInput {
   displayName: string;
+  initialPrompt: string;
   storyConstitution?: unknown;
-  interactiveScript?: unknown;
   visualDesignDocument?: unknown;
   audioDesignDocument?: unknown;
   visualReferencePackage?: unknown;
@@ -44,8 +44,8 @@ export interface CreateStoryInput {
 }
 
 export interface StoryArtifactPatch {
+  displayName?: string;
   storyConstitution?: unknown;
-  interactiveScript?: unknown;
   visualDesignDocument?: unknown;
   audioDesignDocument?: unknown;
   visualReferencePackage?: unknown;
@@ -102,6 +102,11 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
       const baseName = input.displayName?.trim();
       if (!baseName) {
         throw new StoriesRepositoryError('Story display name must be provided.');
+      }
+
+      const prompt = input.initialPrompt?.trim();
+      if (!prompt) {
+        throw new StoriesRepositoryError('Story initial prompt must be provided.');
       }
 
       const payload = buildInsertPayload(input);
@@ -197,13 +202,11 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
 function buildInsertPayload(input: CreateStoryInput): Partial<StoryRow> {
   const payload: Partial<StoryRow> = {
     display_name: input.displayName.trim(),
+    initial_prompt: input.initialPrompt.trim(),
   };
 
   if (input.storyConstitution !== undefined) {
     payload.story_constitution = input.storyConstitution;
-  }
-  if (input.interactiveScript !== undefined) {
-    payload.interactive_script = input.interactiveScript;
   }
   if (input.visualDesignDocument !== undefined) {
     payload.visual_design_document = input.visualDesignDocument;
@@ -227,11 +230,15 @@ function buildInsertPayload(input: CreateStoryInput): Partial<StoryRow> {
 function buildUpdatePayload(patch: StoryArtifactPatch): Partial<StoryRow> {
   const payload: Partial<StoryRow> = {};
 
+  if (patch.displayName !== undefined) {
+    const trimmed = patch.displayName.trim();
+    if (!trimmed) {
+      throw new StoriesRepositoryError('Story display name must not be empty when provided.');
+    }
+    payload.display_name = trimmed;
+  }
   if (patch.storyConstitution !== undefined) {
     payload.story_constitution = patch.storyConstitution;
-  }
-  if (patch.interactiveScript !== undefined) {
-    payload.interactive_script = patch.interactiveScript;
   }
   if (patch.visualDesignDocument !== undefined) {
     payload.visual_design_document = patch.visualDesignDocument;
@@ -257,10 +264,10 @@ function mapRowToRecord(row: StoryRow): StoryRecord {
     id: row.id,
     displayName: row.display_name,
     displayNameUpper: row.display_name_upper,
+    initialPrompt: row.initial_prompt,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storyConstitution: row.story_constitution,
-    interactiveScript: row.interactive_script,
     visualDesignDocument: row.visual_design_document,
     audioDesignDocument: row.audio_design_document,
     visualReferencePackage: row.visual_reference_package,

@@ -1,0 +1,5 @@
+- [x] Add Supabase migration that adds `initial_prompt` to `stories` and drops `interactive_script`, plus README/docs updates if required.
+- [x] Update `storiesRepository` types, mapping, and tests to expose `initialPrompt` and stop surfacing `interactiveScript`.
+- [x] Implement a pure agent workflow orchestrator that accepts injected Gemini/story persistence dependencies, saves the prompt, stores the constitution, and triggers interactive story generation.
+- [x] Add an IO wrapper (CLI or handler) that wires Supabase repositories and Gemini clients into the orchestrator.
+- [x] Cover the new workflow with unit tests using fakes/mocks per the TDD requirement.

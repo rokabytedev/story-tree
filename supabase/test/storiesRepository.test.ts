@@ -12,10 +12,10 @@ interface StoryRow {
   id: string;
   display_name: string;
   display_name_upper: string | null;
+  initial_prompt: string;
   created_at: string;
   updated_at: string;
   story_constitution: unknown | null;
-  interactive_script: unknown | null;
   visual_design_document: unknown | null;
   audio_design_document: unknown | null;
   visual_reference_package: unknown | null;
@@ -135,10 +135,10 @@ function makeStoryRow(overrides: Partial<StoryRow> = {}): StoryRow {
     id: '3b177127-2f46-4cb0-9cc9-0b0b891ee7de',
     display_name: 'Galactic Garden',
     display_name_upper: 'GALACTIC GARDEN',
+    initial_prompt: 'Grow a space garden.',
     created_at: '2025-01-01T00:00:00.000Z',
     updated_at: '2025-01-01T00:00:00.000Z',
     story_constitution: { title: 'Galactic Garden' },
-    interactive_script: { scenelets: [] },
     visual_design_document: { characters: [] },
     audio_design_document: { sonic_identity: {} },
     visual_reference_package: { character_model_sheets: [] },
@@ -161,6 +161,7 @@ describe('storiesRepository.createStory', () => {
 
     const result = await repo.createStory({
       displayName: 'New Story',
+      initialPrompt: 'Tell me a bedtime story.',
       storyConstitution: { title: 'New Story' },
     });
 
@@ -168,11 +169,13 @@ describe('storiesRepository.createStory', () => {
     expect(table.inserted).toHaveLength(1);
     expect(table.inserted[0]).toMatchObject({
       display_name: 'New Story',
+      initial_prompt: 'Tell me a bedtime story.',
       story_constitution: { title: 'New Story' },
     });
     expect(result.displayName).toBe('New Story');
     expect(result.id).toBe(insertedRow.id);
     expect(result.storyConstitution).toEqual({ title: 'New Story' });
+    expect(result.initialPrompt).toBe(insertedRow.initial_prompt);
   });
 
   it('throws StoriesRepositoryError when insert fails', async () => {
@@ -181,8 +184,18 @@ describe('storiesRepository.createStory', () => {
     });
 
     await expect(
-      repo.createStory({ displayName: 'Broken Story' })
+      repo.createStory({ displayName: 'Broken Story', initialPrompt: 'Oops.' })
     ).rejects.toBeInstanceOf(StoriesRepositoryError);
+  });
+
+  it('throws when initial prompt is empty', async () => {
+    const { repo } = makeRepository({
+      insert: { data: null, error: null },
+    });
+
+    await expect(
+      repo.createStory({ displayName: 'Promptless Story', initialPrompt: '   ' })
+    ).rejects.toThrow('Story initial prompt must be provided.');
   });
 });
 
@@ -198,12 +211,14 @@ describe('storiesRepository.updateStoryArtifacts', () => {
     });
 
     const result = await repo.updateStoryArtifacts(updatedRow.id, {
+      storyConstitution: { title: 'Alpha' },
       visualDesignDocument: { characters: ['Hero'] },
       audioDesignDocument: { voices: [] },
     });
 
     expect(table.updated).toHaveLength(1);
     expect(table.updated[0]).toMatchObject({
+      story_constitution: { title: 'Alpha' },
       visual_design_document: { characters: ['Hero'] },
       audio_design_document: { voices: [] },
     });
@@ -211,8 +226,27 @@ describe('storiesRepository.updateStoryArtifacts', () => {
       { column: 'id', value: updatedRow.id },
     ]);
     expect(result.id).toBe(updatedRow.id);
+    expect(result.storyConstitution).toEqual({ title: 'Alpha' });
     expect(result.visualDesignDocument).toEqual({ characters: ['Hero'] });
     expect(result.audioDesignDocument).toEqual({ voices: [] });
+  });
+
+  it('updates display name when provided', async () => {
+    const updatedRow = makeStoryRow({
+      display_name: 'Renamed Story',
+    });
+    const { repo, table } = makeRepository({
+      update: { data: updatedRow, error: null },
+    });
+
+    await repo.updateStoryArtifacts(updatedRow.id, {
+      displayName: 'Renamed Story',
+    });
+
+    expect(table.updated).toHaveLength(1);
+    expect(table.updated[0]).toMatchObject({
+      display_name: 'Renamed Story',
+    });
   });
 
   it('throws StoryNotFoundError when the row is missing', async () => {

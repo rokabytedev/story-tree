@@ -5,6 +5,7 @@
     "typecheck": "tsc --noEmit",
     "story-constitution:cli": "tsx agent-backend/src/cli/storyConstitutionCli.ts",
     "interactive-story:cli": "tsx agent-backend/src/cli/interactiveStoryCli.ts",
+    "agent-workflow:cli": "tsx agent-backend/src/cli/agentWorkflowCli.ts",
     "supabase:stories-cli": "tsx supabase/src/cli/storiesCli.ts"
   },
   "dependencies": {
