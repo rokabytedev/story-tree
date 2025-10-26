@@ -65,6 +65,7 @@ export interface SceneletPersistence {
   createScenelet(input: CreateSceneletInput): Promise<SceneletRecord>;
   markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<void>;
   markSceneletAsTerminal(sceneletId: string): Promise<void>;
+  hasSceneletsForStory(storyId: string): Promise<boolean>;
 }
 
 export interface GenerationTask {

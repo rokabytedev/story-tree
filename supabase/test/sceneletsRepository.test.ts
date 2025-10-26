@@ -29,6 +29,7 @@ interface FakeResponses {
   insert?: FakeResponse<SceneletRow>;
   markBranch?: FakeResponse<SceneletRow>;
   markTerminal?: FakeResponse<SceneletRow>;
+  hasScenelets?: FakeResponse<SceneletRow[]>;
 }
 
 type InsertArgs = Partial<SceneletRow>;
@@ -69,7 +70,15 @@ class FakeSceneletsTable {
   }
 
   select() {
-    throw new Error('select not implemented in fake');
+    return {
+      eq: (column: string, value: string) => {
+        this.filters.push({ column, value });
+        const response = this.responses.hasScenelets ?? { data: [], error: null };
+        return {
+          limit: async () => response,
+        };
+      },
+    };
   }
 
   delete() {
@@ -218,6 +227,44 @@ describe('sceneletsRepository.markSceneletAsBranchPoint', () => {
     await expect(
       repo.markSceneletAsBranchPoint('scenelet-id', 'Question')
     ).rejects.toBeInstanceOf(SceneletsRepositoryError);
+  });
+});
+
+describe('sceneletsRepository.hasSceneletsForStory', () => {
+  it('returns true when scenelets exist', async () => {
+    const { repo, table } = makeRepository({
+      hasScenelets: { data: [makeSceneletRow()], error: null },
+    });
+
+    const result = await repo.hasSceneletsForStory('story-id');
+
+    expect(result).toBe(true);
+    expect(table.filters).toContainEqual({ column: 'story_id', value: 'story-id' });
+  });
+
+  it('returns false when no scenelets exist', async () => {
+    const { repo } = makeRepository({
+      hasScenelets: { data: [], error: null },
+    });
+
+    const result = await repo.hasSceneletsForStory('story-id');
+    expect(result).toBe(false);
+  });
+
+  it('throws when supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      hasScenelets: { data: null, error: { message: 'query failed' } },
+    });
+
+    await expect(repo.hasSceneletsForStory('story-id')).rejects.toBeInstanceOf(
+      SceneletsRepositoryError
+    );
+  });
+
+  it('throws when story id missing', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.hasSceneletsForStory('  ')).rejects.toBeInstanceOf(SceneletsRepositoryError);
   });
 });
 
