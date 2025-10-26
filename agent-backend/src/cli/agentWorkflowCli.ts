@@ -3,48 +3,60 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
 import process from 'node:process';
 
 import { config as loadEnv } from 'dotenv';
 
-import { createSupabaseServiceClient, SupabaseConfigurationError } from '../../../supabase/src/client.js';
-import { createSceneletsRepository } from '../../../supabase/src/sceneletsRepository.js';
-import type { SceneletsRepository, SceneletRecord } from '../../../supabase/src/sceneletsRepository.js';
-import { createStoriesRepository, type StoriesRepository, type StoryRecord } from '../../../supabase/src/storiesRepository.js';
-import type { StoryArtifactPatch } from '../../../supabase/src/storiesRepository.js';
-import { runAgentWorkflow } from '../workflow/runAgentWorkflow.js';
-import type {
-  AgentWorkflowLogger,
-  AgentWorkflowOptions,
-  AgentWorkflowResult,
-} from '../workflow/types.js';
-import type {
-  SceneletPersistence,
-  CreateSceneletInput,
-  SceneletRecord as GeneratedSceneletRecord,
-  InteractiveStoryLogger,
-} from '../interactive-story/types.js';
+import {
+  createSupabaseServiceClient,
+  SupabaseConfigurationError,
+} from '../../../supabase/src/client.js';
+import {
+  createSceneletsRepository,
+  type SceneletsRepository,
+} from '../../../supabase/src/sceneletsRepository.js';
+import { createStoriesRepository } from '../../../supabase/src/storiesRepository.js';
 import type { StoryConstitution } from '../story-constitution/types.js';
 import type { GeminiGenerateJsonOptions, GeminiGenerateJsonRequest, GeminiJsonClient } from '../gemini/types.js';
+import type { AgentWorkflowOptions, StoryWorkflowTask } from '../workflow/types.js';
+import { createWorkflowFromPrompt, resumeWorkflowFromStoryId } from '../workflow/storyWorkflow.js';
+import type { SceneletPersistence } from '../interactive-story/types.js';
+import type { InteractiveStoryLogger } from '../interactive-story/types.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
+const SUPPORTED_TASKS: StoryWorkflowTask[] = ['CREATE_CONSTITUTION', 'CREATE_INTERACTIVE_SCRIPT'];
 
-loadEnvironmentVariables();
+type CliMode = 'stub' | 'real';
 
-interface CliOptions {
-  prompt: string;
-  displayName?: string;
+interface BaseCliOptions {
+  mode: CliMode;
+  verbose: boolean;
   supabaseUrl?: string;
   supabaseKey?: string;
-  stubMode: boolean;
-  hybridMode: boolean;
-  verbose: boolean;
   connectionMode: 'local' | 'remote';
 }
+
+interface CreateCommandOptions extends BaseCliOptions {
+  command: 'create';
+  prompt: string;
+}
+
+interface RunTaskCommandOptions extends BaseCliOptions {
+  command: 'run-task';
+  storyId: string;
+  task: StoryWorkflowTask;
+}
+
+interface RunAllCommandOptions extends BaseCliOptions {
+  command: 'run-all';
+  prompt?: string;
+  storyId?: string;
+}
+
+type ParsedCliCommand = CreateCommandOptions | RunTaskCommandOptions | RunAllCommandOptions;
 
 class CliParseError extends Error {
   constructor(message: string) {
@@ -56,7 +68,7 @@ class CliParseError extends Error {
 class SceneletPersistenceAdapter implements SceneletPersistence {
   constructor(private readonly repository: SceneletsRepository) {}
 
-  async createScenelet(input: CreateSceneletInput): Promise<GeneratedSceneletRecord> {
+  async createScenelet(input: Parameters<SceneletPersistence['createScenelet']>[0]) {
     const record = await this.repository.createScenelet({
       storyId: input.storyId,
       parentId: input.parentId ?? null,
@@ -84,120 +96,9 @@ class SceneletPersistenceAdapter implements SceneletPersistence {
   async markSceneletAsTerminal(sceneletId: string): Promise<void> {
     await this.repository.markSceneletAsTerminal(sceneletId);
   }
-}
 
-class InMemoryStoriesRepository implements StoriesRepository {
-  private rows: StoryRecord[] = [];
-
-  async createStory(input: { displayName: string; initialPrompt: string }): Promise<StoryRecord> {
-    const now = new Date().toISOString();
-    const record: StoryRecord = {
-      id: randomUUID(),
-      displayName: input.displayName,
-      displayNameUpper: input.displayName.toUpperCase(),
-      initialPrompt: input.initialPrompt,
-      createdAt: now,
-      updatedAt: now,
-      storyConstitution: null,
-      visualDesignDocument: null,
-      audioDesignDocument: null,
-      visualReferencePackage: null,
-      storyboardBreakdown: null,
-      generationPrompts: null,
-    };
-
-    this.rows.push(record);
-    return record;
-  }
-
-  async updateStoryArtifacts(storyId: string, patch: StoryArtifactPatch): Promise<StoryRecord> {
-    const record = this.rows.find((row) => row.id === storyId);
-    if (!record) {
-      throw new Error(`Story ${storyId} not found.`);
-    }
-
-    if (patch.displayName) {
-      record.displayName = patch.displayName;
-      record.displayNameUpper = patch.displayName.toUpperCase();
-    }
-    if (patch.storyConstitution !== undefined) {
-      record.storyConstitution = patch.storyConstitution ?? null;
-    }
-    if (patch.visualDesignDocument !== undefined) {
-      record.visualDesignDocument = patch.visualDesignDocument ?? null;
-    }
-    if (patch.audioDesignDocument !== undefined) {
-      record.audioDesignDocument = patch.audioDesignDocument ?? null;
-    }
-    if (patch.visualReferencePackage !== undefined) {
-      record.visualReferencePackage = patch.visualReferencePackage ?? null;
-    }
-    if (patch.storyboardBreakdown !== undefined) {
-      record.storyboardBreakdown = patch.storyboardBreakdown ?? null;
-    }
-    if (patch.generationPrompts !== undefined) {
-      record.generationPrompts = patch.generationPrompts ?? null;
-    }
-
-    record.updatedAt = new Date().toISOString();
-    return record;
-  }
-
-  async getStoryById(storyId: string): Promise<StoryRecord | null> {
-    return this.rows.find((row) => row.id === storyId) ?? null;
-  }
-
-  async listStories(): Promise<StoryRecord[]> {
-    return [...this.rows];
-  }
-
-  async deleteStoryById(storyId: string): Promise<void> {
-    this.rows = this.rows.filter((row) => row.id !== storyId);
-  }
-
-  dump(): StoryRecord[] {
-    return [...this.rows];
-  }
-}
-
-class InMemorySceneletPersistence implements SceneletPersistence {
-  private records: GeneratedSceneletRecord[] = [];
-
-  constructor(private readonly clock = () => new Date().toISOString()) {}
-
-  async createScenelet(input: CreateSceneletInput): Promise<GeneratedSceneletRecord> {
-    const record: GeneratedSceneletRecord = {
-      id: randomUUID(),
-      storyId: input.storyId,
-      parentId: input.parentId ?? null,
-      choiceLabelFromParent: input.choiceLabelFromParent ?? null,
-      choicePrompt: null,
-      content: input.content,
-      isBranchPoint: false,
-      isTerminalNode: false,
-      createdAt: this.clock(),
-    };
-    this.records.push(record);
-    return record;
-  }
-
-  async markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<void> {
-    const record = this.records.find((row) => row.id === sceneletId);
-    if (record) {
-      record.isBranchPoint = true;
-      record.choicePrompt = choicePrompt;
-    }
-  }
-
-  async markSceneletAsTerminal(sceneletId: string): Promise<void> {
-    const record = this.records.find((row) => row.id === sceneletId);
-    if (record) {
-      record.isTerminalNode = true;
-    }
-  }
-
-  dump(): GeneratedSceneletRecord[] {
-    return [...this.records];
+  async hasSceneletsForStory(storyId: string): Promise<boolean> {
+    return this.repository.hasSceneletsForStory(storyId);
   }
 }
 
@@ -219,198 +120,225 @@ class FixtureGeminiClient implements GeminiJsonClient {
 }
 
 export async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<void> {
-  try {
-    const options = parseArguments(argv);
-    if (options.stubMode) {
-      await runStubWorkflow(options);
-      return;
-    }
+  loadEnvironmentVariables();
 
-    const runResult = options.hybridMode
-      ? await runHybridWorkflow(options, env)
-      : await runRealWorkflow(options, env);
-    console.log(JSON.stringify(runResult, null, 2));
+  try {
+    const parsed = parseArguments(argv);
+    const result = await executeCommand(parsed, env);
+
+    if (result !== undefined) {
+      console.log(JSON.stringify(result, null, 2));
+    }
   } catch (error) {
     handleError(error);
     process.exitCode = 1;
   }
 }
 
-function parseArguments(argv: string[]): CliOptions {
-  if (argv.includes('--help') || argv.includes('-h')) {
+async function executeCommand(
+  command: ParsedCliCommand,
+  env: NodeJS.ProcessEnv
+): Promise<unknown> {
+  const workflowOptions = await buildWorkflowDependencies(command, env);
+
+  switch (command.command) {
+    case 'create': {
+      const workflow = await createWorkflowFromPrompt(command.prompt, workflowOptions);
+      return { storyId: workflow.storyId };
+    }
+    case 'run-task': {
+      const workflow = await resumeWorkflowFromStoryId(command.storyId, workflowOptions);
+      await workflow.runTask(command.task);
+      return { storyId: workflow.storyId, task: command.task, status: 'completed' };
+    }
+    case 'run-all': {
+      if (command.prompt) {
+        const workflow = await createWorkflowFromPrompt(command.prompt, workflowOptions);
+        const result = await workflow.runAllTasks();
+        return result;
+      }
+
+      if (!command.storyId) {
+        throw new CliParseError('Provide either --prompt or --story-id for run-all.');
+      }
+
+      const workflow = await resumeWorkflowFromStoryId(command.storyId, workflowOptions);
+      return workflow.runAllTasks();
+    }
+    default:
+      throw new CliParseError(`Unsupported command: ${(command as ParsedCliCommand).command}`);
+  }
+}
+
+async function buildWorkflowDependencies(
+  options: ParsedCliCommand,
+  env: NodeJS.ProcessEnv
+): Promise<AgentWorkflowOptions> {
+  const { mode, verbose, supabaseKey, supabaseUrl, connectionMode } = options;
+
+  const credentials = resolveSupabaseCredentials(
+    { supabaseKey, supabaseUrl, connectionMode },
+    env
+  );
+
+  const client = createSupabaseServiceClient(credentials);
+  const storiesRepository = createStoriesRepository(client);
+  const sceneletsRepository = createSceneletsRepository(client);
+  const sceneletPersistence = new SceneletPersistenceAdapter(sceneletsRepository);
+  const logger = createDebugLogger(verbose);
+
+  const workflowOptions: AgentWorkflowOptions = {
+    storiesRepository,
+    sceneletPersistence,
+    logger,
+    interactiveStoryOptions: {
+      logger,
+    },
+  };
+
+  if (mode === 'stub') {
+    const interactiveResponses = await loadInteractiveResponses();
+    const geminiClient = new FixtureGeminiClient(interactiveResponses);
+    workflowOptions.generateStoryConstitution = async (prompt) => loadStubConstitution(prompt);
+    workflowOptions.interactiveStoryOptions = {
+      geminiClient,
+      promptLoader: async () => 'Stub interactive scriptwriter prompt',
+      logger,
+    };
+  }
+
+  return workflowOptions;
+}
+
+function parseArguments(argv: string[]): ParsedCliCommand {
+  if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
     printHelp();
     process.exit(0);
   }
 
+  const [commandToken, ...rest] = argv;
+  const modeOptions: BaseCliOptions = {
+    mode: 'stub',
+    verbose: false,
+    connectionMode: 'local',
+  };
+
   let prompt: string | undefined;
-  let displayName: string | undefined;
-  let supabaseUrl: string | undefined;
-  let supabaseKey: string | undefined;
-  let stubMode = false;
-  let hybridMode = false;
-  let verbose = false;
-  let connectionMode: 'local' | 'remote' = 'local';
+  let storyId: string | undefined;
+  let taskName: string | undefined;
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const token = argv[index];
-
+  for (let index = 0; index < rest.length; index += 1) {
+    const token = rest[index];
     if (!token.startsWith('-')) {
-      if (!prompt) {
-        prompt = token;
-      } else if (!displayName) {
-        displayName = token;
-      }
       continue;
     }
 
     switch (token) {
       case '--prompt':
-        prompt = argv[++index];
+        prompt = rest[++index];
         break;
-      case '--name':
-        displayName = argv[++index];
+      case '--story-id':
+        storyId = rest[++index];
         break;
-      case '--supabase-url':
-        supabaseUrl = argv[++index];
-        break;
-      case '--supabase-key':
-        supabaseKey = argv[++index];
-        break;
-      case '--stub':
-        stubMode = true;
-        break;
-      case '--hybrid':
-        hybridMode = true;
-        break;
-      case '--remote':
-        connectionMode = 'remote';
+      case '--task':
+        taskName = rest[++index];
         break;
       case '--mode': {
-        const value = argv[++index];
+        const value = rest[++index];
         if (!value) {
-          throw new CliParseError('Missing value for --mode flag. Use "local" or "remote".');
+          throw new CliParseError('Missing value for --mode flag. Use "stub" or "real".');
         }
         const normalized = value.trim().toLowerCase();
-        if (normalized === 'remote') {
-          connectionMode = 'remote';
-        } else if (normalized === 'local') {
-          connectionMode = 'local';
+        if (normalized === 'stub' || normalized === 'real') {
+          modeOptions.mode = normalized;
         } else {
-          throw new CliParseError('Invalid --mode value. Use "local" or "remote".');
+          throw new CliParseError('Invalid mode. Use "stub" or "real".');
         }
         break;
       }
+      case '--stub':
+        modeOptions.mode = 'stub';
+        break;
+      case '--real':
+        modeOptions.mode = 'real';
+        break;
+      case '--supabase-url':
+        modeOptions.supabaseUrl = rest[++index];
+        break;
+      case '--supabase-key':
+        modeOptions.supabaseKey = rest[++index];
+        break;
+      case '--remote':
+        modeOptions.connectionMode = 'remote';
+        break;
       case '--verbose':
       case '-v':
-        verbose = true;
+        modeOptions.verbose = true;
         break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
   }
 
-  const trimmedPrompt = prompt?.trim() ?? '';
-  if (!trimmedPrompt) {
-    throw new CliParseError('Provide a story prompt via --prompt "<text>" or as the first positional argument.');
+  switch (commandToken) {
+    case 'create': {
+      const trimmedPrompt = prompt?.trim() ?? '';
+      if (!trimmedPrompt) {
+        throw new CliParseError('Provide a story prompt via --prompt "<text>".');
+      }
+      return {
+        command: 'create',
+        prompt: trimmedPrompt,
+        ...modeOptions,
+      };
+    }
+    case 'run-task': {
+      const trimmedStoryId = storyId?.trim() ?? '';
+      if (!trimmedStoryId) {
+        throw new CliParseError('Provide --story-id when running a task.');
+      }
+      const task = normalizeTask(taskName);
+      return {
+        command: 'run-task',
+        storyId: trimmedStoryId,
+        task,
+        ...modeOptions,
+      };
+    }
+    case 'run-all': {
+      const trimmedPrompt = prompt?.trim() ?? '';
+      const trimmedStoryId = storyId?.trim() ?? '';
+      if (!trimmedPrompt && !trimmedStoryId) {
+        throw new CliParseError('Provide either --prompt or --story-id for run-all.');
+      }
+      return {
+        command: 'run-all',
+        prompt: trimmedPrompt || undefined,
+        storyId: trimmedStoryId || undefined,
+        ...modeOptions,
+      };
+    }
+    default:
+      throw new CliParseError(`Unknown command: ${commandToken}`);
+  }
+}
+
+function normalizeTask(taskName: string | undefined): StoryWorkflowTask {
+  if (!taskName) {
+    throw new CliParseError(
+      `Provide --task <TASK_NAME> (options: ${SUPPORTED_TASKS.join(', ')}) when running a workflow task.`
+    );
   }
 
-  if (stubMode && hybridMode) {
-    throw new CliParseError('Choose either --stub or --hybrid, not both.');
+  const normalized = taskName.trim().toUpperCase();
+  const match = SUPPORTED_TASKS.find((value) => value === normalized);
+  if (!match) {
+    throw new CliParseError(
+      `Unsupported task "${taskName}". Supported tasks: ${SUPPORTED_TASKS.join(', ')}.`
+    );
   }
 
-  return {
-    prompt: trimmedPrompt,
-    displayName: displayName?.trim() ?? undefined,
-    supabaseUrl: supabaseUrl?.trim() ?? undefined,
-    supabaseKey: supabaseKey?.trim() ?? undefined,
-    stubMode,
-    hybridMode,
-    verbose,
-    connectionMode,
-  };
-}
-
-async function runRealWorkflow(options: CliOptions, env: NodeJS.ProcessEnv): Promise<AgentWorkflowResult> {
-  const { storiesRepository, persistence } = createRealDependencies(options, env);
-  const logger = createDebugLogger(options.verbose || env.DEBUG?.toLowerCase() === 'true');
-
-  const workflowOptions: AgentWorkflowOptions = {
-    storiesRepository,
-    sceneletPersistence: persistence,
-    ...(options.displayName
-      ? {
-          initialDisplayNameFactory: () => options.displayName as string,
-        }
-      : {}),
-    logger,
-    interactiveStoryOptions: {
-      logger,
-    },
-  };
-
-  return runAgentWorkflow(options.prompt, workflowOptions);
-}
-
-async function runHybridWorkflow(options: CliOptions, env: NodeJS.ProcessEnv): Promise<AgentWorkflowResult> {
-  const { storiesRepository, persistence } = createRealDependencies(options, env);
-  const logger = createDebugLogger(options.verbose || env.DEBUG?.toLowerCase() === 'true');
-
-  const constitution = await loadStubConstitution(options.prompt);
-  const interactiveResponses = await loadInteractiveResponses();
-  const geminiClient = new FixtureGeminiClient(interactiveResponses);
-
-  const workflowOptions: AgentWorkflowOptions = {
-    storiesRepository,
-    sceneletPersistence: persistence,
-    generateStoryConstitution: async () => constitution,
-    interactiveStoryOptions: {
-      geminiClient,
-      promptLoader: async () => 'Stub interactive scriptwriter prompt',
-      logger,
-    },
-    ...(options.displayName
-      ? {
-          initialDisplayNameFactory: () => options.displayName as string,
-        }
-      : {}),
-    logger,
-  };
-
-  return runAgentWorkflow(options.prompt, workflowOptions);
-}
-
-async function runStubWorkflow(options: CliOptions): Promise<void> {
-  const storiesRepository = new InMemoryStoriesRepository();
-  const sceneletPersistence = new InMemorySceneletPersistence();
-  const constitution = await loadStubConstitution(options.prompt);
-  const interactiveResponses = await loadInteractiveResponses();
-  const geminiClient = new FixtureGeminiClient(interactiveResponses);
-  const logger = createDebugLogger(options.verbose);
-
-  const workflowOptions: AgentWorkflowOptions = {
-    storiesRepository,
-    sceneletPersistence,
-    generateStoryConstitution: async () => constitution,
-    interactiveStoryOptions: {
-      geminiClient,
-      promptLoader: async () => 'Stub interactive scriptwriter prompt',
-      logger,
-    },
-    ...(options.displayName
-      ? {
-          initialDisplayNameFactory: () => options.displayName as string,
-        }
-      : {}),
-    logger,
-  };
-
-  const result = await runAgentWorkflow(options.prompt, workflowOptions);
-
-  console.log(JSON.stringify(result, null, 2));
-  console.log('--- Stub Stories Table ---');
-  console.log(JSON.stringify(storiesRepository.dump(), null, 2));
-  console.log('--- Stub Scenelets Table ---');
-  console.log(JSON.stringify(sceneletPersistence.dump(), null, 2));
+  return match;
 }
 
 async function loadStubConstitution(prompt: string): Promise<StoryConstitution> {
@@ -458,73 +386,28 @@ async function loadInteractiveResponses(): Promise<string[]> {
   });
 }
 
-function printHelp(): void {
-  console.log('Agent Workflow CLI');
-  console.log('');
-  console.log('Usage:');
-  console.log(
-    '  agent-workflow --prompt "<story brief>" [--name "<display name>"] [--supabase-url <url>] [--supabase-key <key>] [--mode <local|remote>] [--verbose]'
-  );
-  console.log('  agent-workflow "<story brief>" ["<display name>"] [--verbose]');
-  console.log('');
-  console.log('Flags:');
-  console.log('  --stub               Run with local fixtures and in-memory persistence.');
-  console.log('  --hybrid             Stub Gemini responses while using Supabase for persistence.');
-  console.log('  --remote             Resolve Supabase credentials using remote environment variables.');
-  console.log('  --mode <mode>        Explicitly choose "local" or "remote" Supabase connection.');
-  console.log('  --verbose (-v)       Print debug logs (Gemini requests, workflow milestones).');
-}
-
-function loadEnvironmentVariables(): void {
-  const searchRoots = Array.from(new Set([process.cwd(), REPO_ROOT]));
-  const envFiles = ['.env', '.env.local'];
-
-  for (const root of searchRoots) {
-    for (const fileName of envFiles) {
-      const path = resolve(root, fileName);
-      if (existsSync(path)) {
-        loadEnv({ path, override: true });
-      }
-    }
-  }
-}
-
-function createRealDependencies(options: CliOptions, env: NodeJS.ProcessEnv): {
-  storiesRepository: StoriesRepository;
-  persistence: SceneletPersistenceAdapter;
-} {
-  const { url, serviceRoleKey } = resolveSupabaseCredentials(options, env);
-  const client = createSupabaseServiceClient({
-    url,
-    serviceRoleKey,
-  });
-
-  const storiesRepository: StoriesRepository = createStoriesRepository(client);
-  const sceneletsRepository = createSceneletsRepository(client);
-  const persistence = new SceneletPersistenceAdapter(sceneletsRepository);
-
-  return { storiesRepository, persistence };
-}
-
 function resolveSupabaseCredentials(
-  options: CliOptions,
+  options: { supabaseUrl?: string; supabaseKey?: string; connectionMode: 'local' | 'remote' },
   env: NodeJS.ProcessEnv
 ): { url?: string; serviceRoleKey?: string } {
-  const url = firstNonEmptyValue([
+  const urlCandidates = [
     options.supabaseUrl,
     ...(options.connectionMode === 'remote'
       ? [env.SUPABASE_REMOTE_URL, env.SUPABASE_URL]
       : [env.SUPABASE_LOCAL_URL, env.SUPABASE_URL]),
-  ]);
+  ];
 
-  const serviceRoleKey = firstNonEmptyValue([
+  const keyCandidates = [
     options.supabaseKey,
     ...(options.connectionMode === 'remote'
       ? [env.SUPABASE_REMOTE_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY]
       : [env.SUPABASE_LOCAL_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY]),
-  ]);
+  ];
 
-  return { url, serviceRoleKey };
+  return {
+    url: firstNonEmptyValue(urlCandidates),
+    serviceRoleKey: firstNonEmptyValue(keyCandidates),
+  };
 }
 
 function firstNonEmptyValue(values: Array<string | undefined>): string | undefined {
@@ -549,11 +432,44 @@ function handleError(error: unknown): void {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runCli(process.argv.slice(2), process.env);
+function printHelp(): void {
+  console.log('Agent Workflow CLI');
+  console.log('');
+  console.log('Commands:');
+  console.log(
+    `  create   --prompt "<story brief>" [--mode stub|real] [--supabase-url <url>] [--supabase-key <key>]`
+  );
+  console.log(
+    `  run-task --task <TASK> (options: ${SUPPORTED_TASKS.join(', ')}) --story-id <id> [--mode stub|real] [--supabase-url <url>] [--supabase-key <key>]`
+  );
+  console.log(
+    `  run-all  (--prompt "<story brief>" | --story-id <id>) [--mode stub|real] [--supabase-url <url>] [--supabase-key <key>]`
+  );
+  console.log('');
+  console.log('Flags:');
+  console.log('  --mode <stub|real>      Choose Gemini mode (stub uses fixtures). Default: stub.');
+  console.log('  --supabase-url <url>    Supabase URL override (falls back to SUPABASE_URL env).');
+  console.log('  --supabase-key <key>    Supabase service role key override (falls back to env).');
+  console.log('  --remote                Use remote Supabase credentials (default is local).');
+  console.log('  --verbose (-v)          Print debug logs.');
+  console.log('  --help (-h)             Show this help message.');
 }
 
-function createDebugLogger(enabled: boolean | undefined): AgentWorkflowLogger & InteractiveStoryLogger {
+function loadEnvironmentVariables(): void {
+  const searchRoots = Array.from(new Set([process.cwd(), REPO_ROOT]));
+  const envFiles = ['.env', '.env.local'];
+
+  for (const root of searchRoots) {
+    for (const fileName of envFiles) {
+      const path = resolve(root, fileName);
+      if (existsSync(path)) {
+        loadEnv({ path, override: true });
+      }
+    }
+  }
+}
+
+function createDebugLogger(enabled: boolean | undefined): AgentWorkflowOptions['logger'] & InteractiveStoryLogger {
   const isEnabled = Boolean(enabled);
   return {
     debug: isEnabled
@@ -562,4 +478,8 @@ function createDebugLogger(enabled: boolean | undefined): AgentWorkflowLogger & 
         }
       : undefined,
   };
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runCli(process.argv.slice(2), process.env);
 }

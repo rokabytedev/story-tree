@@ -24,6 +24,7 @@ export interface AgentWorkflowStoryUpdatePatch {
 export interface AgentWorkflowStoriesRepository {
   createStory(input: AgentWorkflowStoryCreateInput): Promise<AgentWorkflowStoryRecord>;
   updateStoryArtifacts(storyId: string, patch: AgentWorkflowStoryUpdatePatch): Promise<AgentWorkflowStoryRecord>;
+  getStoryById(storyId: string): Promise<AgentWorkflowStoryRecord | null>;
 }
 
 export type AgentWorkflowConstitutionGenerator = (
@@ -56,4 +57,12 @@ export interface AgentWorkflowResult {
   storyId: string;
   storyTitle: string;
   storyConstitutionMarkdown: string;
+}
+
+export type StoryWorkflowTask = 'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT';
+
+export interface StoryWorkflow {
+  readonly storyId: string;
+  runTask(task: StoryWorkflowTask): Promise<void>;
+  runAllTasks(): Promise<AgentWorkflowResult>;
 }

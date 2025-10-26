@@ -37,6 +37,7 @@ export interface SceneletsRepository {
   createScenelet(input: CreateSceneletInput): Promise<SceneletRecord>;
   markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<SceneletRecord>;
   markSceneletAsTerminal(sceneletId: string): Promise<SceneletRecord>;
+  hasSceneletsForStory(storyId: string): Promise<boolean>;
 }
 
 export class SceneletsRepositoryError extends Error {
@@ -148,6 +149,25 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       return mapRowToRecord(data);
+    },
+
+    async hasSceneletsForStory(storyId: string): Promise<boolean> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new SceneletsRepositoryError('Story id must be provided to check scenelets.');
+      }
+
+      const { data, error } = await client
+        .from<SceneletRow>(SCENELETS_TABLE)
+        .select('id')
+        .eq('story_id', trimmedStoryId)
+        .limit(1);
+
+      if (error) {
+        throw new SceneletsRepositoryError('Failed to check scenelet existence.', error);
+      }
+
+      return Array.isArray(data) && data.length > 0;
     },
   } satisfies SceneletsRepository;
 }

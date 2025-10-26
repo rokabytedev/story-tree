@@ -1,8 +1,4 @@
-# story-workflow Specification
-
-## Purpose
-TBD - created by archiving change add-agent-workflow-orchestrator. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Provide Agent Workflow Orchestrator
 The backend MUST expose workflow factories that either create a new story from a prompt or resume an existing story and return a stateless workflow handle.
 
@@ -65,4 +61,3 @@ The workflow MUST expose `runTask` and `runAllTasks` so callers can execute indi
 - **WHEN** `runAllTasks` is invoked
 - **THEN** it MUST execute the supported tasks in the defined order (constitution then interactive script)
 - **AND** it MUST surface the final constitution metadata for compatibility with existing callers.
-

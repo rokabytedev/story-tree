@@ -1,0 +1,7 @@
+- [X] Finalize task-based workflow API design (StoryWorkflow interface, task enums, dependency injection).
+- [X] Implement workflow factories for new/existing stories with validation and story repository integration.
+- [X] Implement task runners for constitution and interactive script with idempotency guards and persistence.
+- [X] Refactor `runAgentWorkflow` to delegate to task workflow primitives while preserving current return shape.
+- [X] Update CLI to support stub/real modes and task-specific commands; remove stub-DB logic.
+- [X] Add unit/integration tests covering new workflow factories, task execution, idempotency errors, and CLI paths.
+- [X] Update `story-workflow` spec with task-based requirements and run `openspec validate update-task-workflow --strict`.
