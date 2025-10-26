@@ -1,9 +1,12 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import process from 'node:process';
+
+import { config as loadEnv } from 'dotenv';
 
 import { createSupabaseServiceClient, SupabaseConfigurationError } from '../../../supabase/src/client.js';
 import { createSceneletsRepository } from '../../../supabase/src/sceneletsRepository.js';
@@ -30,13 +33,17 @@ const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 
+loadEnvironmentVariables();
+
 interface CliOptions {
   prompt: string;
   displayName?: string;
   supabaseUrl?: string;
   supabaseKey?: string;
   stubMode: boolean;
+  hybridMode: boolean;
   verbose: boolean;
+  connectionMode: 'local' | 'remote';
 }
 
 class CliParseError extends Error {
@@ -219,7 +226,9 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv): Promise<vo
       return;
     }
 
-    const runResult = await runRealWorkflow(options, env);
+    const runResult = options.hybridMode
+      ? await runHybridWorkflow(options, env)
+      : await runRealWorkflow(options, env);
     console.log(JSON.stringify(runResult, null, 2));
   } catch (error) {
     handleError(error);
@@ -238,7 +247,9 @@ function parseArguments(argv: string[]): CliOptions {
   let supabaseUrl: string | undefined;
   let supabaseKey: string | undefined;
   let stubMode = false;
+  let hybridMode = false;
   let verbose = false;
+  let connectionMode: 'local' | 'remote' = 'local';
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -268,6 +279,27 @@ function parseArguments(argv: string[]): CliOptions {
       case '--stub':
         stubMode = true;
         break;
+      case '--hybrid':
+        hybridMode = true;
+        break;
+      case '--remote':
+        connectionMode = 'remote';
+        break;
+      case '--mode': {
+        const value = argv[++index];
+        if (!value) {
+          throw new CliParseError('Missing value for --mode flag. Use "local" or "remote".');
+        }
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'remote') {
+          connectionMode = 'remote';
+        } else if (normalized === 'local') {
+          connectionMode = 'local';
+        } else {
+          throw new CliParseError('Invalid --mode value. Use "local" or "remote".');
+        }
+        break;
+      }
       case '--verbose':
       case '-v':
         verbose = true;
@@ -282,25 +314,24 @@ function parseArguments(argv: string[]): CliOptions {
     throw new CliParseError('Provide a story prompt via --prompt "<text>" or as the first positional argument.');
   }
 
+  if (stubMode && hybridMode) {
+    throw new CliParseError('Choose either --stub or --hybrid, not both.');
+  }
+
   return {
     prompt: trimmedPrompt,
     displayName: displayName?.trim() ?? undefined,
     supabaseUrl: supabaseUrl?.trim() ?? undefined,
     supabaseKey: supabaseKey?.trim() ?? undefined,
     stubMode,
+    hybridMode,
     verbose,
+    connectionMode,
   };
 }
 
 async function runRealWorkflow(options: CliOptions, env: NodeJS.ProcessEnv): Promise<AgentWorkflowResult> {
-  const client = createSupabaseServiceClient({
-    url: options.supabaseUrl ?? env.SUPABASE_URL,
-    serviceRoleKey: options.supabaseKey ?? env.SUPABASE_SERVICE_ROLE_KEY,
-  });
-
-  const storiesRepository: StoriesRepository = createStoriesRepository(client);
-  const sceneletsRepository = createSceneletsRepository(client);
-  const persistence = new SceneletPersistenceAdapter(sceneletsRepository);
+  const { storiesRepository, persistence } = createRealDependencies(options, env);
   const logger = createDebugLogger(options.verbose || env.DEBUG?.toLowerCase() === 'true');
 
   const workflowOptions: AgentWorkflowOptions = {
@@ -315,6 +346,34 @@ async function runRealWorkflow(options: CliOptions, env: NodeJS.ProcessEnv): Pro
     interactiveStoryOptions: {
       logger,
     },
+  };
+
+  return runAgentWorkflow(options.prompt, workflowOptions);
+}
+
+async function runHybridWorkflow(options: CliOptions, env: NodeJS.ProcessEnv): Promise<AgentWorkflowResult> {
+  const { storiesRepository, persistence } = createRealDependencies(options, env);
+  const logger = createDebugLogger(options.verbose || env.DEBUG?.toLowerCase() === 'true');
+
+  const constitution = await loadStubConstitution(options.prompt);
+  const interactiveResponses = await loadInteractiveResponses();
+  const geminiClient = new FixtureGeminiClient(interactiveResponses);
+
+  const workflowOptions: AgentWorkflowOptions = {
+    storiesRepository,
+    sceneletPersistence: persistence,
+    generateStoryConstitution: async () => constitution,
+    interactiveStoryOptions: {
+      geminiClient,
+      promptLoader: async () => 'Stub interactive scriptwriter prompt',
+      logger,
+    },
+    ...(options.displayName
+      ? {
+          initialDisplayNameFactory: () => options.displayName as string,
+        }
+      : {}),
+    logger,
   };
 
   return runAgentWorkflow(options.prompt, workflowOptions);
@@ -403,12 +462,78 @@ function printHelp(): void {
   console.log('Agent Workflow CLI');
   console.log('');
   console.log('Usage:');
-  console.log('  agent-workflow --prompt "<story brief>" [--name "<display name>"] [--supabase-url <url>] [--supabase-key <key>] [--verbose]');
+  console.log(
+    '  agent-workflow --prompt "<story brief>" [--name "<display name>"] [--supabase-url <url>] [--supabase-key <key>] [--mode <local|remote>] [--verbose]'
+  );
   console.log('  agent-workflow "<story brief>" ["<display name>"] [--verbose]');
   console.log('');
   console.log('Flags:');
   console.log('  --stub               Run with local fixtures and in-memory persistence.');
+  console.log('  --hybrid             Stub Gemini responses while using Supabase for persistence.');
+  console.log('  --remote             Resolve Supabase credentials using remote environment variables.');
+  console.log('  --mode <mode>        Explicitly choose "local" or "remote" Supabase connection.');
   console.log('  --verbose (-v)       Print debug logs (Gemini requests, workflow milestones).');
+}
+
+function loadEnvironmentVariables(): void {
+  const searchRoots = Array.from(new Set([process.cwd(), REPO_ROOT]));
+  const envFiles = ['.env', '.env.local'];
+
+  for (const root of searchRoots) {
+    for (const fileName of envFiles) {
+      const path = resolve(root, fileName);
+      if (existsSync(path)) {
+        loadEnv({ path, override: true });
+      }
+    }
+  }
+}
+
+function createRealDependencies(options: CliOptions, env: NodeJS.ProcessEnv): {
+  storiesRepository: StoriesRepository;
+  persistence: SceneletPersistenceAdapter;
+} {
+  const { url, serviceRoleKey } = resolveSupabaseCredentials(options, env);
+  const client = createSupabaseServiceClient({
+    url,
+    serviceRoleKey,
+  });
+
+  const storiesRepository: StoriesRepository = createStoriesRepository(client);
+  const sceneletsRepository = createSceneletsRepository(client);
+  const persistence = new SceneletPersistenceAdapter(sceneletsRepository);
+
+  return { storiesRepository, persistence };
+}
+
+function resolveSupabaseCredentials(
+  options: CliOptions,
+  env: NodeJS.ProcessEnv
+): { url?: string; serviceRoleKey?: string } {
+  const url = firstNonEmptyValue([
+    options.supabaseUrl,
+    ...(options.connectionMode === 'remote'
+      ? [env.SUPABASE_REMOTE_URL, env.SUPABASE_URL]
+      : [env.SUPABASE_LOCAL_URL, env.SUPABASE_URL]),
+  ]);
+
+  const serviceRoleKey = firstNonEmptyValue([
+    options.supabaseKey,
+    ...(options.connectionMode === 'remote'
+      ? [env.SUPABASE_REMOTE_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY]
+      : [env.SUPABASE_LOCAL_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY]),
+  ]);
+
+  return { url, serviceRoleKey };
+}
+
+function firstNonEmptyValue(values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
 }
 
 function handleError(error: unknown): void {
