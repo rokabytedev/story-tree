@@ -83,6 +83,42 @@ Key expectations:
 - Serializer errors surface clear messages when the tree is malformed (missing root, orphaned children, conflicting parent links).
 - Keep the serializer pure: database fetching and tree assembly live in separate modules so TDD can operate on in-memory arrays of scenelets.
 
+### Snapshot Schema
+The storage layer returns a snapshot shaped for both YAML emission and richer assertions in tests. The TypeScript contract is the authoritative source:
+
+```ts
+type SceneletDigest = {
+  id: string;                 // scenelet-1, scenelet-2, ...
+  parentId: string | null;    // null only for the root scenelet
+  role: 'root' | 'branch' | 'terminal' | 'linear';
+  choiceLabel?: string | null;
+  description: unknown;
+  dialogue: unknown;
+  shotSuggestions: unknown;
+};
+
+type BranchingPointDigest = {
+  id: string; // branching-point-1, branching-point-2, ...
+  sourceSceneletId: string;
+  choicePrompt: string;
+  choices: Array<{ label: string; leadsTo: string }>;
+};
+
+type StoryTreeEntry =
+  | { kind: 'scenelet'; data: SceneletDigest }
+  | { kind: 'branching-point'; data: BranchingPointDigest };
+
+interface StoryTreeSnapshot {
+  entries: StoryTreeEntry[];  // depth-first order
+  yaml: string;               // deterministic YAML representation
+}
+```
+
+Additional guarantees:
+- `entries` preserves a depth-first traversal so tests can assert the exact sequence alongside the YAML string.
+- `role` is set to `'linear'` during assembly and omitted automatically when formatting YAML, ensuring the serializer can round-trip without leaking extra metadata.
+- Invalid trees surface typed errors identifying the offending scenelet so debugging malformed data remains straightforward.
+
 ## Task Flow
 1. **Load Story Inputs**
    - Fetch the target story; validate constitution exists and `visual_design_document` is empty (duplicate runs remain unsupported for now).
@@ -106,6 +142,21 @@ Key expectations:
 - On missing prerequisites (constitution or scenelets) the task should throw and avoid side effects.
 - If `visual_design_document` already exists, surface a descriptive error and skip mutation.
 - CLI command gains a new task option instead of adding a separate command; update help text and validation accordingly.
+
+## Developer Workflow
+### Running the Task
+- Use the agent workflow CLI to trigger the task for an existing story:
+  ```bash
+  npm run agent-workflow:cli -- run-task --task CREATE_VISUAL_DESIGN --story-id <story-id> --mode stub
+  ```
+  The `stub` mode exercises the end-to-end flow with fixture Gemini responses; switch to `--mode real` when targeting live services.
+- `run-all` automatically executes `CREATE_VISUAL_DESIGN` after the interactive script step, so no additional wiring is required when invoking the full pipeline.
+
+### Testing Expectations
+- Serializer unit tests live in `agent-backend/test/storyTreeSnapshot.test.ts` and cover linear, branching, and error cases using golden YAML snapshots.
+- Visual design task unit tests (`agent-backend/test/visualDesignTask.test.ts`) validate prompt assembly, Gemini parsing, prerequisite failures, and repeated invocations.
+- Integration tests (`agent-backend/test/visualDesignIntegration.test.ts`) exercise the real story tree loader with stubbed Gemini responses for success, missing interactive data, Gemini parse errors, and duplicate execution checks.
+- CLI coverage ensures `CREATE_VISUAL_DESIGN` is exposed, scheduled in `run-all`, and respects stubbed environments via `agent-backend/test/agentWorkflowCli.test.ts`.
 
 ## Testing Strategy (TDD Required)
 - **Serializer Unit Tests:** linear stories, branching stories, orphan detection, deterministic output ordering.

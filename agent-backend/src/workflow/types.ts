@@ -3,12 +3,18 @@ import type {
   InteractiveStoryGeneratorOptions,
   SceneletPersistence,
 } from '../interactive-story/types.js';
+import type { StoryTreeSnapshot } from '../story-storage/types.js';
+import type {
+  VisualDesignTaskDependencies,
+  VisualDesignTaskRunner,
+} from '../visual-design/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
   displayName: string;
   initialPrompt: string;
   storyConstitution: unknown | null;
+  visualDesignDocument: unknown | null;
 }
 
 export interface AgentWorkflowStoryCreateInput {
@@ -19,6 +25,7 @@ export interface AgentWorkflowStoryCreateInput {
 export interface AgentWorkflowStoryUpdatePatch {
   displayName?: string;
   storyConstitution?: unknown;
+  visualDesignDocument?: unknown;
 }
 
 export interface AgentWorkflowStoriesRepository {
@@ -51,6 +58,9 @@ export interface AgentWorkflowOptions {
   generateInteractiveStoryTree?: AgentWorkflowInteractiveGenerator;
   initialDisplayNameFactory?: (prompt: string) => string;
   logger?: AgentWorkflowLogger;
+  storyTreeLoader?: (storyId: string) => Promise<StoryTreeSnapshot>;
+  visualDesignTaskOptions?: VisualDesignTaskOptions;
+  runVisualDesignTask?: VisualDesignTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -59,10 +69,17 @@ export interface AgentWorkflowResult {
   storyConstitutionMarkdown: string;
 }
 
-export type StoryWorkflowTask = 'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT';
+export type StoryWorkflowTask =
+  | 'CREATE_CONSTITUTION'
+  | 'CREATE_INTERACTIVE_SCRIPT'
+  | 'CREATE_VISUAL_DESIGN';
 
 export interface StoryWorkflow {
   readonly storyId: string;
   runTask(task: StoryWorkflowTask): Promise<void>;
   runAllTasks(): Promise<AgentWorkflowResult>;
 }
+
+export type VisualDesignTaskOptions = Partial<
+  Omit<VisualDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;

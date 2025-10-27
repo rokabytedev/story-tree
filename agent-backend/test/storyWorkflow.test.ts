@@ -13,19 +13,21 @@ import type {
   AgentWorkflowStoriesRepository,
 } from '../src/workflow/types.js';
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
+import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
+import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 
 function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>): AgentWorkflowStoriesRepository & {
   records: AgentWorkflowStoryRecord[];
 } {
-  const records: AgentWorkflowStoryRecord[] = [
-    initial ??
-      ({
-        id: 'story-existing',
-        displayName: 'Existing Story',
-        initialPrompt: 'Existing prompt',
-        storyConstitution: null,
-      } satisfies AgentWorkflowStoryRecord),
-  ];
+  const baseRecord: AgentWorkflowStoryRecord = {
+    id: 'story-existing',
+    displayName: 'Existing Story',
+    initialPrompt: 'Existing prompt',
+    storyConstitution: null,
+    visualDesignDocument: null,
+  };
+
+  const records: AgentWorkflowStoryRecord[] = [{ ...baseRecord, ...(initial ?? {}) }];
 
   return {
     records,
@@ -35,6 +37,7 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
         displayName: input.displayName,
         initialPrompt: input.initialPrompt,
         storyConstitution: null,
+        visualDesignDocument: null,
       };
       records.push(record);
       return record;
@@ -49,6 +52,9 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
       }
       if (patch.storyConstitution !== undefined) {
         record.storyConstitution = patch.storyConstitution;
+      }
+      if (patch.visualDesignDocument !== undefined) {
+        record.visualDesignDocument = patch.visualDesignDocument;
       }
       return record;
     },
@@ -91,10 +97,46 @@ function createSceneletPersistence(): SceneletPersistence & {
   };
 }
 
+const STORY_TREE_SNAPSHOT: StoryTreeSnapshot = {
+  entries: [],
+  yaml: '- scenelet-1:\n  role: root\n  description: ""\n  dialogue: []\n  shot_suggestions: []',
+};
+
+function createStoryTreeLoaderStub(): {
+  loader: (storyId: string) => Promise<StoryTreeSnapshot>;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  return {
+    calls,
+    async loader(storyId: string) {
+      calls.push(storyId);
+      return STORY_TREE_SNAPSHOT;
+    },
+  };
+}
+
+function createVisualDesignTaskStub(): {
+  runner: VisualDesignTaskRunner;
+  calls: Array<{ storyId: string }>;
+} {
+  const calls: Array<{ storyId: string }> = [];
+  const runner: VisualDesignTaskRunner = async (storyId) => {
+    calls.push({ storyId });
+    return {
+      storyId,
+      visualDesignDocument: { stub: true },
+    };
+  };
+  return { runner, calls };
+}
+
 describe('StoryWorkflow factories', () => {
   it('creates a workflow from prompt and persists story', async () => {
     const repository = createTestStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     const workflow = await createWorkflowFromPrompt('  Brave new world ', {
       storiesRepository: repository,
@@ -105,6 +147,8 @@ describe('StoryWorkflow factories', () => {
       }),
       generateInteractiveStoryTree: async () => {},
       initialDisplayNameFactory: () => 'Draft',
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
     });
 
     expect(workflow.storyId).toMatch(/^story-/);
@@ -117,6 +161,8 @@ describe('StoryWorkflow factories', () => {
   it('throws when prompt is missing', async () => {
     const repository = createTestStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     await expect(
       createWorkflowFromPrompt('   ', {
@@ -127,6 +173,8 @@ describe('StoryWorkflow factories', () => {
           storyConstitutionMarkdown: '# Constitution',
         }),
         generateInteractiveStoryTree: async () => {},
+        storyTreeLoader: treeLoader.loader,
+        runVisualDesignTask: visualDesign.runner,
       })
     ).rejects.toThrow(AgentWorkflowError);
   });
@@ -134,6 +182,8 @@ describe('StoryWorkflow factories', () => {
   it('resumes workflow and errors when story missing', async () => {
     const repository = createTestStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     await expect(
       resumeWorkflowFromStoryId('missing', {
@@ -144,6 +194,8 @@ describe('StoryWorkflow factories', () => {
           storyConstitutionMarkdown: '# Constitution',
         }),
         generateInteractiveStoryTree: async () => {},
+        storyTreeLoader: treeLoader.loader,
+        runVisualDesignTask: visualDesign.runner,
       })
     ).rejects.toThrow('Story missing not found.');
   });
@@ -161,6 +213,8 @@ describe('StoryWorkflow tasks', () => {
       storyConstitution: null,
     });
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     let constitutionCalls = 0;
     const generateStoryConstitution: AgentWorkflowConstitutionGenerator = async () => {
@@ -176,6 +230,8 @@ describe('StoryWorkflow tasks', () => {
       sceneletPersistence,
       generateStoryConstitution,
       generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
     });
 
     await workflow.runTask(taskConstitution);
@@ -199,6 +255,8 @@ describe('StoryWorkflow tasks', () => {
       storyConstitution: null,
     });
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-2', {
       storiesRepository: repository,
@@ -208,6 +266,8 @@ describe('StoryWorkflow tasks', () => {
         storyConstitutionMarkdown: '# Constitution',
       }),
       generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
     });
 
     await expect(workflow.runTask(taskInteractive)).rejects.toThrow(
@@ -226,6 +286,8 @@ describe('StoryWorkflow tasks', () => {
       },
     });
     const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     let interactiveCalls = 0;
     const generateInteractiveStoryTree: AgentWorkflowInteractiveGenerator = async () => {
@@ -245,6 +307,8 @@ describe('StoryWorkflow tasks', () => {
         storyConstitutionMarkdown: '# Constitution',
       }),
       generateInteractiveStoryTree,
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
     });
 
     await workflow.runTask(taskInteractive);
@@ -264,6 +328,8 @@ describe('StoryWorkflow tasks', () => {
     });
     const sceneletPersistence = createSceneletPersistence();
     sceneletPersistence.hasScenelets.clear(); // ensure clean slate
+    const treeLoader = createStoryTreeLoaderStub();
+    const visualDesign = createVisualDesignTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-4', {
       storiesRepository: repository,
@@ -279,6 +345,8 @@ describe('StoryWorkflow tasks', () => {
           content: { description: 'Intro', dialogue: [], shot_suggestions: [] },
         });
       },
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
     });
 
     const result = await workflow.runAllTasks();
@@ -289,5 +357,47 @@ describe('StoryWorkflow tasks', () => {
       storyConstitutionMarkdown: '# Constitution',
     });
     expect(sceneletPersistence.createCalls.length).toBeGreaterThan(0);
+    expect(visualDesign.calls).toEqual([{ storyId: 'story-4' }]);
+  });
+
+  it('runs visual design task using injected runner', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-visual',
+      displayName: 'Draft',
+      initialPrompt: 'Mountain tale',
+      storyConstitution: {
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: null,
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const runnerCalls: Array<{ storyId: string }> = [];
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      runnerCalls.push({ storyId });
+      repository.records[0]!.visualDesignDocument = { stub: true };
+      return {
+        storyId,
+        visualDesignDocument: { stub: true },
+      };
+    };
+
+    const workflow = await resumeWorkflowFromStoryId('story-visual', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesignRunner,
+    });
+
+    await workflow.runTask('CREATE_VISUAL_DESIGN');
+
+    expect(runnerCalls).toEqual([{ storyId: 'story-visual' }]);
+    expect(repository.records[0]?.visualDesignDocument).toEqual({ stub: true });
   });
 });

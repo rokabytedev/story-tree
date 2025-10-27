@@ -22,12 +22,17 @@ import type { AgentWorkflowOptions, StoryWorkflowTask } from '../workflow/types.
 import { createWorkflowFromPrompt, resumeWorkflowFromStoryId } from '../workflow/storyWorkflow.js';
 import type { SceneletPersistence } from '../interactive-story/types.js';
 import type { InteractiveStoryLogger } from '../interactive-story/types.js';
+import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
-const SUPPORTED_TASKS: StoryWorkflowTask[] = ['CREATE_CONSTITUTION', 'CREATE_INTERACTIVE_SCRIPT'];
+const SUPPORTED_TASKS: StoryWorkflowTask[] = [
+  'CREATE_CONSTITUTION',
+  'CREATE_INTERACTIVE_SCRIPT',
+  'CREATE_VISUAL_DESIGN',
+];
 
 type CliMode = 'stub' | 'real';
 
@@ -186,12 +191,18 @@ async function buildWorkflowDependencies(
   const sceneletsRepository = createSceneletsRepository(client);
   const sceneletPersistence = new SceneletPersistenceAdapter(sceneletsRepository);
   const logger = createDebugLogger(verbose);
+  const storyTreeLoader = (storyId: string) =>
+    loadStoryTreeSnapshot(storyId, { sceneletsRepository });
 
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
     sceneletPersistence,
     logger,
     interactiveStoryOptions: {
+      logger,
+    },
+    storyTreeLoader,
+    visualDesignTaskOptions: {
       logger,
     },
   };
@@ -204,6 +215,13 @@ async function buildWorkflowDependencies(
       geminiClient,
       promptLoader: async () => 'Stub interactive scriptwriter prompt',
       logger,
+    };
+    workflowOptions.visualDesignTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub visual design system prompt',
+      geminiClient: new FixtureGeminiClient([
+        JSON.stringify({ visual_design_document: { stub: true } }),
+      ]),
     };
   }
 

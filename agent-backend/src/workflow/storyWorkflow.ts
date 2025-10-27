@@ -2,6 +2,12 @@ import { generateStoryConstitution } from '../story-constitution/generateStoryCo
 import type { StoryConstitution, StoryConstitutionOptions } from '../story-constitution/types.js';
 import { generateInteractiveStoryTree } from '../interactive-story/generateInteractiveStory.js';
 import type { InteractiveStoryGeneratorOptions, SceneletPersistence } from '../interactive-story/types.js';
+import { runVisualDesignTask } from '../visual-design/visualDesignTask.js';
+import type {
+  VisualDesignTaskOptions,
+  VisualDesignTaskRunner,
+  VisualDesignTaskDependencies,
+} from '../visual-design/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -16,10 +22,15 @@ import type {
 import { AgentWorkflowError } from './errors.js';
 
 const DEFAULT_DISPLAY_NAME = 'Untitled Story';
-const TASK_SEQUENCE: StoryWorkflowTask[] = ['CREATE_CONSTITUTION', 'CREATE_INTERACTIVE_SCRIPT'];
+const TASK_SEQUENCE: StoryWorkflowTask[] = [
+  'CREATE_CONSTITUTION',
+  'CREATE_INTERACTIVE_SCRIPT',
+  'CREATE_VISUAL_DESIGN',
+];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
   storiesRepository: Required<AgentWorkflowStoriesRepository>;
+  storyTreeLoader: NonNullable<AgentWorkflowOptions['storyTreeLoader']>;
 }
 
 export async function createWorkflowFromPrompt(
@@ -75,6 +86,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly constitutionOptions?: StoryConstitutionOptions;
   private readonly interactiveOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
   private readonly logger?: AgentWorkflowLogger;
+  private readonly storyTreeLoader: NonNullable<AgentWorkflowOptions['storyTreeLoader']>;
+  private readonly visualDesignTaskRunner: VisualDesignTaskRunner;
+  private readonly visualDesignOptions?: VisualDesignTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -90,6 +104,12 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.interactiveOptions = dependencies.interactiveStoryOptions
       ? { ...dependencies.interactiveStoryOptions }
       : undefined;
+    this.storyTreeLoader = dependencies.storyTreeLoader;
+    this.visualDesignTaskRunner =
+      dependencies.runVisualDesignTask ?? runVisualDesignTask;
+    this.visualDesignOptions = dependencies.visualDesignTaskOptions
+      ? { ...dependencies.visualDesignTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -101,6 +121,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
       case 'CREATE_INTERACTIVE_SCRIPT':
         await this.runInteractiveScriptTask();
         return;
+      case 'CREATE_VISUAL_DESIGN':
+        await this.runVisualDesignTask();
+        return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
     }
@@ -110,10 +133,18 @@ class StoryWorkflowImpl implements StoryWorkflow {
     let constitutionOutcome: StoryConstitution | null = null;
 
     for (const task of TASK_SEQUENCE) {
-      if (task === 'CREATE_CONSTITUTION') {
-        constitutionOutcome = await this.runConstitutionTask();
-      } else {
-        await this.runInteractiveScriptTask();
+      switch (task) {
+        case 'CREATE_CONSTITUTION':
+          constitutionOutcome = await this.runConstitutionTask();
+          break;
+        case 'CREATE_INTERACTIVE_SCRIPT':
+          await this.runInteractiveScriptTask();
+          break;
+        case 'CREATE_VISUAL_DESIGN':
+          await this.runVisualDesignTask();
+          break;
+        default:
+          break;
       }
     }
 
@@ -213,6 +244,38 @@ class StoryWorkflowImpl implements StoryWorkflow {
     );
   }
 
+  private async runVisualDesignTask(): Promise<void> {
+    const dependencies = this.buildVisualDesignDependencies();
+    await this.visualDesignTaskRunner(this.storyId, dependencies);
+  }
+
+  private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
+    const overrides = this.visualDesignOptions;
+    const dependencies: VisualDesignTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      storyTreeLoader: this.storyTreeLoader,
+    };
+
+    if (overrides?.promptLoader) {
+      dependencies.promptLoader = overrides.promptLoader;
+    }
+
+    if (overrides?.geminiClient) {
+      dependencies.geminiClient = overrides.geminiClient;
+    }
+
+    if (overrides?.geminiOptions) {
+      dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
   private async ensureStory(): Promise<AgentWorkflowStoryRecord> {
     const story = await this.storiesRepository.getStoryById(this.storyId);
     if (!story) {
@@ -227,13 +290,17 @@ function normalizeDependencies(options: AgentWorkflowOptions): StoryWorkflowDepe
     throw new AgentWorkflowError('Agent workflow options must be provided.');
   }
 
-  const { storiesRepository, sceneletPersistence } = options;
+  const { storiesRepository, sceneletPersistence, storyTreeLoader } = options;
   if (!storiesRepository) {
     throw new AgentWorkflowError('Stories repository dependency is required.');
   }
 
   if (!sceneletPersistence) {
     throw new AgentWorkflowError('Scenelet persistence dependency is required.');
+  }
+
+  if (!storyTreeLoader) {
+    throw new AgentWorkflowError('Story tree loader dependency is required.');
   }
 
   if (typeof sceneletPersistence.hasSceneletsForStory !== 'function') {
@@ -246,6 +313,7 @@ function normalizeDependencies(options: AgentWorkflowOptions): StoryWorkflowDepe
     ...options,
     storiesRepository,
     sceneletPersistence,
+    storyTreeLoader,
   };
 }
 

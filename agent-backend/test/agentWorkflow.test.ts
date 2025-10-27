@@ -9,6 +9,8 @@ import type {
   AgentWorkflowStoryRecord,
 } from '../src/workflow/types.js';
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
+import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
+import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 
 function createStoriesRepository(): AgentWorkflowStoriesRepository & {
   record: AgentWorkflowStoryRecord | null;
@@ -23,6 +25,7 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
         displayName,
         initialPrompt,
         storyConstitution: null,
+        visualDesignDocument: null,
       };
       return repository.record;
     },
@@ -35,6 +38,9 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
       }
       if (patch.storyConstitution !== undefined) {
         repository.record.storyConstitution = patch.storyConstitution;
+      }
+      if (patch.visualDesignDocument !== undefined) {
+        repository.record.visualDesignDocument = patch.visualDesignDocument;
       }
       return repository.record;
     },
@@ -78,10 +84,23 @@ function createSceneletPersistence(): SceneletPersistence & {
   };
 }
 
+const VISUAL_STORY_TREE: StoryTreeSnapshot = {
+  entries: [],
+  yaml: '- scenelet-1:\n  role: root\n  description: ""\n  dialogue: []\n  shot_suggestions: []',
+};
+
 describe('runAgentWorkflow', () => {
   it('creates the story, stores constitution, and launches interactive generation', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const storyTreeLoader = async () => VISUAL_STORY_TREE;
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      storiesRepository.record!.visualDesignDocument = { stub: true };
+      return {
+        storyId,
+        visualDesignDocument: { stub: true },
+      };
+    };
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (prompt) => {
       expect(prompt).toBe('Galactic explorers');
@@ -105,6 +124,8 @@ describe('runAgentWorkflow', () => {
       generateInteractiveStoryTree: interactiveGenerator,
       initialDisplayNameFactory: () => 'Draft Story',
       interactiveStoryOptions: { timeoutMs: 60_000 },
+      storyTreeLoader,
+      runVisualDesignTask: visualDesignRunner,
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -117,11 +138,17 @@ describe('runAgentWorkflow', () => {
       proposedStoryTitle: 'Star Trail',
       storyConstitutionMarkdown: '## Constitution',
     });
+    expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
   });
 
   it('uses default display name when no factory provided', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const storyTreeLoader = async () => VISUAL_STORY_TREE;
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
+      storyId,
+      visualDesignDocument: {},
+    });
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
       proposedStoryTitle: '',
@@ -135,6 +162,8 @@ describe('runAgentWorkflow', () => {
       sceneletPersistence,
       generateStoryConstitution: constitutionGenerator,
       generateInteractiveStoryTree: interactiveGenerator,
+      storyTreeLoader,
+      runVisualDesignTask: visualDesignRunner,
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -143,6 +172,11 @@ describe('runAgentWorkflow', () => {
   it('propagates generator failures', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const storyTreeLoader = async () => VISUAL_STORY_TREE;
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
+      storyId,
+      visualDesignDocument: {},
+    });
 
     await expect(
       runAgentWorkflow('Failure prompt', {
@@ -155,6 +189,8 @@ describe('runAgentWorkflow', () => {
         generateInteractiveStoryTree: async () => {
           throw new Error('Interactive generator failed');
         },
+        storyTreeLoader,
+        runVisualDesignTask: visualDesignRunner,
       })
     ).rejects.toThrow('Interactive generator failed');
   });
@@ -165,16 +201,28 @@ describe('runAgentWorkflow', () => {
         // @ts-expect-error intentionally missing repository
         storiesRepository: undefined,
         sceneletPersistence: createSceneletPersistence(),
+        storyTreeLoader: async () => VISUAL_STORY_TREE,
+        runVisualDesignTask: async (storyId) => ({
+          storyId,
+          visualDesignDocument: {},
+        }),
       })
     ).rejects.toThrow(AgentWorkflowError);
 
     const storiesRepository = createStoriesRepository();
+    const storyTreeLoader = async () => VISUAL_STORY_TREE;
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
+      storyId,
+      visualDesignDocument: {},
+    });
 
     await expect(
       runAgentWorkflow('Prompt', {
         storiesRepository,
         // @ts-expect-error intentionally missing persistence
         sceneletPersistence: undefined,
+        storyTreeLoader,
+        runVisualDesignTask: visualDesignRunner,
       })
     ).rejects.toThrow(AgentWorkflowError);
   });
@@ -183,6 +231,11 @@ describe('runAgentWorkflow', () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
     const constitutionOptions = { promptLoader: async () => 'System prompt' };
+    const storyTreeLoader = async () => VISUAL_STORY_TREE;
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
+      storyId,
+      visualDesignDocument: {},
+    });
 
     let receivedOptions: unknown;
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (_prompt, options) => {
@@ -201,6 +254,8 @@ describe('runAgentWorkflow', () => {
       generateStoryConstitution: constitutionGenerator,
       generateInteractiveStoryTree: interactiveGenerator,
       constitutionOptions,
+      storyTreeLoader,
+      runVisualDesignTask: visualDesignRunner,
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);
