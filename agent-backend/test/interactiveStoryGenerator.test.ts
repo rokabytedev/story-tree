@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { generateInteractiveStoryTree } from '../src/interactive-story/generateInteractiveStory.js';
 import { InteractiveStoryError } from '../src/interactive-story/errors.js';
@@ -165,6 +165,43 @@ describe('generateInteractiveStoryTree', () => {
     expect(persistence.terminalMarks).toEqual(['scenelet-4', 'scenelet-5']);
 
     expect(geminiClient.requests[1].userContent).toContain('## Current Narrative Path');
+  });
+
+  it('logs Gemini request payload when logger is provided', async () => {
+    const geminiClient = new StubGeminiClient([
+      () =>
+        JSON.stringify({
+          branch_point: false,
+          is_concluding_scene: true,
+          next_scenelets: [
+            {
+              description: 'Closing scene',
+              dialogue: [{ character: 'Narrator', line: 'The end.' }],
+              shot_suggestions: ['Fade out'],
+            },
+          ],
+        }),
+    ]);
+    const persistence = new StubSceneletPersistence();
+    const logger = { debug: vi.fn() };
+
+    await generateInteractiveStoryTree('story-logging', '# Constitution', {
+      geminiClient,
+      promptLoader: async () => 'interactive system prompt',
+      sceneletPersistence: persistence,
+      logger: logger as any,
+    });
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Interactive story Gemini request',
+      expect.objectContaining({
+        storyId: 'story-logging',
+        geminiRequest: expect.objectContaining({
+          systemInstruction: 'interactive system prompt',
+          userContent: expect.stringContaining('# Constitution'),
+        }),
+      })
+    );
   });
 
   it('throws when Gemini returns malformed JSON', async () => {

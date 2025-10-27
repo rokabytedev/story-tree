@@ -1,6 +1,6 @@
 import { ApiError } from '@google/genai';
 import type { GenerateContentParameters, GenerateContentResponse } from '@google/genai';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createGeminiJsonClient } from '../src/gemini/client.js';
 import { GeminiRateLimitError } from '../src/gemini/errors.js';
@@ -36,6 +36,35 @@ describe('generateStoryConstitution', () => {
 
     expect(result.proposedStoryTitle).toBe('Enchanted Trails');
     expect(result.storyConstitutionMarkdown).toContain('Stub markdown.');
+  });
+
+  it('logs Gemini request payload when logger is provided', async () => {
+    const brief = 'A reflective prompt';
+    const jsonResponse = JSON.stringify({
+      proposed_story_title: 'Reflective Tale',
+      story_constitution_markdown: '## Tale',
+    });
+
+    const client = makeClient(
+      () => ({ text: jsonResponse } as unknown as GenerateContentResponse)
+    );
+    const logger = { debug: vi.fn() };
+
+    await generateStoryConstitution(brief, {
+      geminiClient: client,
+      promptLoader: async () => 'constitution system prompt',
+      logger: logger as any,
+    } as any);
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Story constitution Gemini request',
+      expect.objectContaining({
+        geminiRequest: {
+          systemInstruction: 'constitution system prompt',
+          userContent: brief,
+        },
+      })
+    );
   });
 
   it('throws a parsing error when Gemini returns malformed JSON', async () => {

@@ -198,6 +198,9 @@ async function buildWorkflowDependencies(
     storiesRepository,
     sceneletPersistence,
     logger,
+    constitutionOptions: {
+      logger,
+    },
     interactiveStoryOptions: {
       logger,
     },

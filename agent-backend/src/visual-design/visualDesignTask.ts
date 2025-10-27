@@ -81,6 +81,10 @@ export async function runVisualDesignTask(
 
   logger?.debug?.('Invoking Gemini for visual design task', {
     storyId: trimmedStoryId,
+    geminiRequest: {
+      systemInstruction: request.systemInstruction,
+      userContent: request.userPrompt,
+    },
   });
 
   const rawResponse = await geminiClient.generateJson(
