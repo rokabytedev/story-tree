@@ -14,6 +14,12 @@ import type {
   StoryboardTaskRunner,
   StoryboardTaskDependencies,
 } from '../storyboard/types.js';
+import { runAudioDesignTask } from '../audio-design/audioDesignTask.js';
+import type {
+  AudioDesignTaskOptions,
+  AudioDesignTaskRunner,
+  AudioDesignTaskDependencies,
+} from '../audio-design/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -33,6 +39,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_STORYBOARD',
+  'CREATE_AUDIO_DESIGN',
 ];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
@@ -98,6 +105,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
   private readonly storyboardTaskRunner: StoryboardTaskRunner;
   private readonly storyboardOptions?: StoryboardTaskOptions;
+  private readonly audioDesignTaskRunner: AudioDesignTaskRunner;
+  private readonly audioDesignOptions?: AudioDesignTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -124,6 +133,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.storyboardOptions = dependencies.storyboardTaskOptions
       ? { ...dependencies.storyboardTaskOptions }
       : undefined;
+    this.audioDesignTaskRunner =
+      dependencies.runAudioDesignTask ?? runAudioDesignTask;
+    this.audioDesignOptions = dependencies.audioDesignTaskOptions
+      ? { ...dependencies.audioDesignTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -140,6 +154,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_STORYBOARD':
         await this.runStoryboardTask();
+        return;
+      case 'CREATE_AUDIO_DESIGN':
+        await this.runAudioDesignTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -162,6 +179,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_STORYBOARD':
           await this.runStoryboardTask();
+          break;
+        case 'CREATE_AUDIO_DESIGN':
+          await this.runAudioDesignTask();
           break;
         default:
           break;
@@ -274,6 +294,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.storyboardTaskRunner(this.storyId, dependencies);
   }
 
+  private async runAudioDesignTask(): Promise<void> {
+    const dependencies = this.buildAudioDesignDependencies();
+    await this.audioDesignTaskRunner(this.storyId, dependencies);
+  }
+
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
     const overrides = this.visualDesignOptions;
     const dependencies: VisualDesignTaskDependencies = {
@@ -304,6 +329,33 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private buildStoryboardDependencies(): StoryboardTaskDependencies {
     const overrides = this.storyboardOptions;
     const dependencies: StoryboardTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      storyTreeLoader: this.storyTreeLoader,
+    };
+
+    if (overrides?.promptLoader) {
+      dependencies.promptLoader = overrides.promptLoader;
+    }
+
+    if (overrides?.geminiClient) {
+      dependencies.geminiClient = overrides.geminiClient;
+    }
+
+    if (overrides?.geminiOptions) {
+      dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildAudioDesignDependencies(): AudioDesignTaskDependencies {
+    const overrides = this.audioDesignOptions;
+    const dependencies: AudioDesignTaskDependencies = {
       storiesRepository: this.storiesRepository,
       storyTreeLoader: this.storyTreeLoader,
     };
