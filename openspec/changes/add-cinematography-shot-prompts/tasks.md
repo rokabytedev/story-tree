@@ -1,0 +1,6 @@
+- [ ] Add Supabase migration for `shot_generation_prompts` (story + shot identifiers, prompt text columns, indexes) and extend repository layer tests to cover CRUD + uniqueness rules.
+- [ ] Build a cinematography prompt builder that assembles constitution, story tree YAML, visual + audio design, and storyboard shot context into the Gemini request; cover with snapshots.
+- [ ] Implement a response validator that enforces JSON shape, non-empty prompt strings, and referential integrity against storyboard/audio design data; add exhaustive unit tests.
+- [ ] Create the workflow task runner that iterates storyboard shots, skips already-persisted rows, calls Gemini via injected client per shot, and writes validated prompts through the repository; cover with task-level tests.
+- [ ] Update story workflow sequencing, task enums, and CLI run-task/run-all paths (including stub fixture plumbing) to include the cinematography task with prerequisite checks.
+- [ ] Add integration coverage exercising the full pipeline under stub mode and ensure docs/fixtures/guides reflect the new capability.
