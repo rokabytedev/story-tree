@@ -60,12 +60,6 @@ export async function runAudioDesignTask(
     );
   }
 
-  if (story.storyboardBreakdown === null || story.storyboardBreakdown === undefined) {
-    logger?.debug?.('Audio design running without storyboard artifact', {
-      storyId: trimmedStoryId,
-    });
-  }
-
   let storyTree: StoryTreeSnapshot;
   try {
     storyTree = await storyTreeLoader(trimmedStoryId);

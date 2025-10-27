@@ -11,8 +11,8 @@ import type {
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
-import type { StoryboardTaskRunner } from '../src/storyboard/types.js';
 import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
+import type { ShotProductionTaskRunner, ShotProductionShotsRepository } from '../src/shot-production/types.js';
 
 function createStoriesRepository(): AgentWorkflowStoriesRepository & {
   record: AgentWorkflowStoryRecord | null;
@@ -28,8 +28,8 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
         initialPrompt,
         storyConstitution: null,
         visualDesignDocument: null,
-        storyboardBreakdown: null,
         audioDesignDocument: null,
+        visualReferencePackage: null,
       };
       return repository.record;
     },
@@ -46,11 +46,11 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
       if (patch.visualDesignDocument !== undefined) {
         repository.record.visualDesignDocument = patch.visualDesignDocument;
       }
-      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
-        repository.record.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
-      }
       if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
         repository.record.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument ?? null;
+      }
+      if ((patch as { visualReferencePackage?: unknown }).visualReferencePackage !== undefined) {
+        repository.record.visualReferencePackage = (patch as { visualReferencePackage?: unknown }).visualReferencePackage ?? null;
       }
       return repository.record;
     },
@@ -94,6 +94,28 @@ function createSceneletPersistence(): SceneletPersistence & {
   };
 }
 
+function createShotsRepository(): ShotProductionShotsRepository & {
+  created: Array<{ storyId: string; sceneletId: string }>;
+} {
+  const created: Array<{ storyId: string; sceneletId: string }> = [];
+  const existing = new Set<string>();
+
+  return {
+    created,
+    async createSceneletShots(storyId, sceneletId, _sequence, shots) {
+      const key = `${storyId}:${sceneletId}`;
+      if (existing.has(key)) {
+        throw new Error('Duplicate shots');
+      }
+      existing.add(key);
+      created.push({ storyId, sceneletId });
+    },
+    async findSceneletIdsMissingShots(storyId, sceneletIds) {
+      return sceneletIds.filter((id) => !existing.has(`${storyId}:${id}`));
+    },
+  };
+}
+
 const VISUAL_STORY_TREE: StoryTreeSnapshot = {
   entries: [],
   yaml: '- scenelet-1:\n  role: root\n  description: ""\n  dialogue: []\n  shot_suggestions: []',
@@ -103,19 +125,13 @@ describe('runAgentWorkflow', () => {
   it('creates the story, stores constitution, and launches interactive generation', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
       storiesRepository.record!.visualDesignDocument = { stub: true };
       return {
         storyId,
         visualDesignDocument: { stub: true },
-      };
-    };
-    const storyboardRunner: StoryboardTaskRunner = async (storyId) => {
-      storiesRepository.record!.storyboardBreakdown = { storyboard_breakdown: [] };
-      return {
-        storyId,
-        storyboardBreakdown: { storyboard_breakdown: [] },
       };
     };
     const audioRunner: AudioDesignTaskRunner = async (storyId) => {
@@ -125,6 +141,14 @@ describe('runAgentWorkflow', () => {
       return {
         storyId,
         audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+      };
+    };
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => {
+      shotsRepository.created.push({ storyId, sceneletId: 'scenelet-1' });
+      return {
+        storyId,
+        scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+        totalShots: 1,
       };
     };
 
@@ -145,6 +169,7 @@ describe('runAgentWorkflow', () => {
 
     const result = await runAgentWorkflow('  Galactic explorers  ', {
       storiesRepository,
+      shotsRepository,
       sceneletPersistence,
       generateStoryConstitution: constitutionGenerator,
       generateInteractiveStoryTree: interactiveGenerator,
@@ -152,8 +177,8 @@ describe('runAgentWorkflow', () => {
       interactiveStoryOptions: { timeoutMs: 60_000 },
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
-      runStoryboardTask: storyboardRunner,
       runAudioDesignTask: audioRunner,
+      runShotProductionTask: shotProductionRunner,
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -167,27 +192,29 @@ describe('runAgentWorkflow', () => {
       storyConstitutionMarkdown: '## Constitution',
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
-    expect(storiesRepository.record?.storyboardBreakdown).toEqual({ storyboard_breakdown: [] });
     expect(storiesRepository.record?.audioDesignDocument).toEqual({
       audio_design_document: { sonic_identity: {} },
     });
+    expect(shotsRepository.created).toEqual([{ storyId: result.storyId, sceneletId: 'scenelet-1' }]);
   });
 
   it('uses default display name when no factory provided', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
     });
-    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
-      storyId,
-      storyboardBreakdown: { storyboard_breakdown: [] },
-    });
     const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
       audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    });
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
+      storyId,
+      scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+      totalShots: 1,
     });
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
@@ -199,13 +226,14 @@ describe('runAgentWorkflow', () => {
 
     await runAgentWorkflow('Forest quest', {
       storiesRepository,
+      shotsRepository,
       sceneletPersistence,
       generateStoryConstitution: constitutionGenerator,
       generateInteractiveStoryTree: interactiveGenerator,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
-      runStoryboardTask: storyboardRunner,
       runAudioDesignTask: audioRunnerStub,
+      runShotProductionTask: shotProductionRunner,
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -214,23 +242,26 @@ describe('runAgentWorkflow', () => {
   it('propagates generator failures', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
     });
-    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
-      storyId,
-      storyboardBreakdown: { storyboard_breakdown: [] },
-    });
     const audioRunner: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
       audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    });
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
+      storyId,
+      scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+      totalShots: 1,
     });
 
     await expect(
       runAgentWorkflow('Failure prompt', {
         storiesRepository,
+        shotsRepository,
         sceneletPersistence,
         generateStoryConstitution: async () => ({
           proposedStoryTitle: 'Failure Title',
@@ -241,7 +272,8 @@ describe('runAgentWorkflow', () => {
         },
         storyTreeLoader,
         runVisualDesignTask: visualDesignRunner,
-        runStoryboardTask: storyboardRunner,
+        runAudioDesignTask: audioRunner,
+        runShotProductionTask: shotProductionRunner,
       })
     ).rejects.toThrow('Interactive generator failed');
   });
@@ -261,6 +293,7 @@ describe('runAgentWorkflow', () => {
     ).rejects.toThrow(AgentWorkflowError);
 
     const storiesRepository = createStoriesRepository();
+    const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
@@ -270,6 +303,7 @@ describe('runAgentWorkflow', () => {
     await expect(
       runAgentWorkflow('Prompt', {
         storiesRepository,
+        shotsRepository,
         // @ts-expect-error intentionally missing persistence
         sceneletPersistence: undefined,
         storyTreeLoader,
@@ -281,19 +315,21 @@ describe('runAgentWorkflow', () => {
   it('passes constitution options to generator', async () => {
     const storiesRepository = createStoriesRepository();
     const sceneletPersistence = createSceneletPersistence();
+    const shotsRepository = createShotsRepository();
     const constitutionOptions = { promptLoader: async () => 'System prompt' };
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
     });
-    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
-      storyId,
-      storyboardBreakdown: { storyboard_breakdown: [] },
-    });
     const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
       audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    });
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
+      storyId,
+      scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+      totalShots: 1,
     });
 
     let receivedOptions: unknown;
@@ -309,14 +345,15 @@ describe('runAgentWorkflow', () => {
 
     await runAgentWorkflow('Option prompt', {
       storiesRepository,
+      shotsRepository,
       sceneletPersistence,
       generateStoryConstitution: constitutionGenerator,
       generateInteractiveStoryTree: interactiveGenerator,
       constitutionOptions,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
-      runStoryboardTask: storyboardRunner,
       runAudioDesignTask: audioRunnerForOptions,
+      runShotProductionTask: shotProductionRunner,
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);

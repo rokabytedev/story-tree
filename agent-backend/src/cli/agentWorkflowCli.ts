@@ -16,6 +16,7 @@ import {
   type SceneletsRepository,
 } from '../../../supabase/src/sceneletsRepository.js';
 import { createStoriesRepository } from '../../../supabase/src/storiesRepository.js';
+import { createShotsRepository } from '../../../supabase/src/shotsRepository.js';
 import type { StoryConstitution } from '../story-constitution/types.js';
 import type { GeminiGenerateJsonOptions, GeminiGenerateJsonRequest, GeminiJsonClient } from '../gemini/types.js';
 import type { AgentWorkflowOptions, StoryWorkflowTask } from '../workflow/types.js';
@@ -29,7 +30,6 @@ const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
-const STORYBOARD_FIXTURE = resolve(REPO_ROOT, 'fixtures/storyboard/stub-gemini-response.json');
 const AUDIO_DESIGN_FIXTURE = resolve(
   REPO_ROOT,
   'fixtures/gemini/audio-design/success.json'
@@ -38,8 +38,8 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
-  'CREATE_STORYBOARD',
   'CREATE_AUDIO_DESIGN',
+  'CREATE_SHOT_PRODUCTION',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -196,6 +196,7 @@ async function buildWorkflowDependencies(
 
   const client = createSupabaseServiceClient(credentials);
   const storiesRepository = createStoriesRepository(client);
+  const shotsRepository = createShotsRepository(client);
   const sceneletsRepository = createSceneletsRepository(client);
   const sceneletPersistence = new SceneletPersistenceAdapter(sceneletsRepository);
   const logger = createDebugLogger(verbose);
@@ -204,6 +205,7 @@ async function buildWorkflowDependencies(
 
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
+    shotsRepository,
     sceneletPersistence,
     logger,
     constitutionOptions: {
@@ -216,10 +218,10 @@ async function buildWorkflowDependencies(
     visualDesignTaskOptions: {
       logger,
     },
-    storyboardTaskOptions: {
+    audioDesignTaskOptions: {
       logger,
     },
-    audioDesignTaskOptions: {
+    shotProductionTaskOptions: {
       logger,
     },
   };
@@ -240,17 +242,48 @@ async function buildWorkflowDependencies(
         await loadVisualDesignResponse(),
       ]),
     };
-    const storyboardResponse = await loadStoryboardResponse();
-    workflowOptions.storyboardTaskOptions = {
-      logger,
-      promptLoader: async () => 'Stub storyboard system prompt',
-      geminiClient: new FixtureGeminiClient([storyboardResponse]),
-    };
     const audioResponse = await loadAudioDesignResponse();
     workflowOptions.audioDesignTaskOptions = {
       logger,
       promptLoader: async () => 'Stub audio design system prompt',
       geminiClient: new FixtureGeminiClient([audioResponse]),
+    };
+    const shotProductionResponse = JSON.stringify({
+      scenelet_id: 'scenelet-1',
+      shots: [
+        {
+          shot_index: 1,
+          storyboard_entry: {
+            framing_and_angle: 'Extended framing description exceeding eighty characters to satisfy validation requirements.',
+            composition_and_content: 'Comprehensive composition details outlining subjects, props, and background to exceed limits.',
+            character_action_and_emotion: 'Character actions and emotions articulated with sufficient depth beyond the threshold length.',
+            dialogue: [],
+            camera_dynamics: 'Camera glides slowly across the scene with descriptive pacing beyond the minimum requirement.',
+            lighting_and_atmosphere: 'Lighting notes covering warmth, contrast, and volumetric effects in lengthy prose.',
+            continuity_notes: 'Continuity guidance capturing prop placement and performer marks surpassing eighty characters.',
+          },
+          generation_prompts: {
+            first_frame_prompt: 'First frame prompt elaborating on palette, mood, and staging across a richly detailed description.',
+            key_frame_storyboard_prompt: 'Storyboard prompt covering blocking, motion beats, and environment cues in exhaustive prose.',
+            video_clip_prompt: 'Video clip prompt describing pacing, transitions, and tone with clarity. No background music.',
+          },
+        },
+      ],
+    });
+    const shotProductionGeminiClient: GeminiJsonClient = {
+      async generateJson(request) {
+        const content = (request as { userContent?: string } | undefined)?.userContent ?? '';
+        const match = content.match(/- scenelet_id:\s*(\S+)/);
+        const sceneletId = match?.[1] ?? 'scenelet-1';
+        const parsed = JSON.parse(shotProductionResponse) as { scenelet_id: string };
+        parsed.scenelet_id = sceneletId;
+        return JSON.stringify(parsed);
+      },
+    };
+    workflowOptions.shotProductionTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub shot production system prompt',
+      geminiClient: shotProductionGeminiClient,
     };
   }
 
@@ -431,10 +464,6 @@ async function loadInteractiveResponses(): Promise<string[]> {
     }
     throw new CliParseError(`Interactive story fixture entry at index ${index} is invalid.`);
   });
-}
-
-async function loadStoryboardResponse(): Promise<string> {
-  return loadJsonFixture(STORYBOARD_FIXTURE, 'Storyboard fixture must not be empty.', 'Storyboard fixture must contain valid JSON.');
 }
 
 async function loadVisualDesignResponse(): Promise<string> {
