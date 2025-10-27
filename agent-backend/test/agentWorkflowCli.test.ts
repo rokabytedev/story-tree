@@ -34,6 +34,7 @@ interface StubStory {
   displayName: string;
   initialPrompt: string;
   storyConstitution: unknown | null;
+  visualDesignDocument: unknown | null;
 }
 
 function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
@@ -44,7 +45,10 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
   };
   stories: StubStory[];
 } {
-  const stories = [...initialStories];
+  const stories = initialStories.map((story) => ({
+    visualDesignDocument: null,
+    ...story,
+  }));
 
   const repository = {
     createStory: vi.fn(async ({ displayName, initialPrompt }: { displayName: string; initialPrompt: string }) => {
@@ -53,6 +57,7 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
         displayName,
         initialPrompt,
         storyConstitution: null,
+        visualDesignDocument: null,
       };
       stories.push(story);
       return story;
@@ -68,6 +73,9 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
       if (patch.storyConstitution !== undefined) {
         story.storyConstitution = patch.storyConstitution;
       }
+      if ((patch as { visualDesignDocument?: unknown }).visualDesignDocument !== undefined) {
+        story.visualDesignDocument = (patch as { visualDesignDocument?: unknown }).visualDesignDocument;
+      }
       return story;
     }),
     getStoryById: vi.fn(async (storyId: string) => stories.find((row) => row.id === storyId) ?? null),
@@ -76,36 +84,82 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
   return { repository, stories };
 }
 
+type SceneletStubRecord = {
+  id: string;
+  storyId: string;
+  parentId: string | null;
+  choiceLabelFromParent: string | null;
+  choicePrompt: string | null;
+  content: unknown;
+  isBranchPoint: boolean;
+  isTerminalNode: boolean;
+  createdAt: string;
+};
+
 function createSceneletsRepositoryStub(): {
   repository: {
     createScenelet: ReturnType<typeof vi.fn>;
     markSceneletAsBranchPoint: ReturnType<typeof vi.fn>;
     markSceneletAsTerminal: ReturnType<typeof vi.fn>;
     hasSceneletsForStory: ReturnType<typeof vi.fn>;
+    listSceneletsByStory: ReturnType<typeof vi.fn>;
   };
-  scenelets: Array<{ storyId: string }>;
+  scenelets: SceneletStubRecord[];
 } {
-  const scenelets: Array<{ storyId: string }> = [];
+  const scenelets: SceneletStubRecord[] = [];
 
   const repository = {
-    createScenelet: vi.fn(async ({ storyId }: { storyId: string }) => {
-      const record = { storyId };
-      scenelets.push(record);
-      return {
-        id: `scenelet-${scenelets.length}`,
-        storyId,
-        parentId: null,
-        choiceLabelFromParent: null,
+    createScenelet: vi.fn(async (input: {
+      storyId: string;
+      parentId?: string | null;
+      choiceLabelFromParent?: string | null;
+      content?: unknown;
+    }) => {
+      const record: SceneletStubRecord = {
+        id: `scenelet-${scenelets.length + 1}`,
+        storyId: input.storyId,
+        parentId: input.parentId ?? null,
+        choiceLabelFromParent: input.choiceLabelFromParent ?? null,
         choicePrompt: null,
-        content: {},
+        content: input.content ?? {},
         isBranchPoint: false,
         isTerminalNode: false,
         createdAt: new Date().toISOString(),
       };
+      scenelets.push(record);
+      return {
+        ...record,
+      };
     }),
-    markSceneletAsBranchPoint: vi.fn(async () => undefined),
-    markSceneletAsTerminal: vi.fn(async () => undefined),
+    markSceneletAsBranchPoint: vi.fn(async (sceneletId: string, choicePrompt: string) => {
+      const target = scenelets.find((row) => row.id === sceneletId);
+      if (target) {
+        target.isBranchPoint = true;
+        target.choicePrompt = choicePrompt;
+      }
+    }),
+    markSceneletAsTerminal: vi.fn(async (sceneletId: string) => {
+      const target = scenelets.find((row) => row.id === sceneletId);
+      if (target) {
+        target.isTerminalNode = true;
+      }
+    }),
     hasSceneletsForStory: vi.fn(async (storyId: string) => scenelets.some((row) => row.storyId === storyId)),
+    listSceneletsByStory: vi.fn(async (storyId: string) =>
+      scenelets
+        .filter((row) => row.storyId === storyId)
+        .map((row) => ({
+          id: row.id,
+          storyId: row.storyId,
+          parentId: row.parentId,
+          choiceLabelFromParent: row.choiceLabelFromParent,
+          choicePrompt: row.choicePrompt,
+          content: row.content,
+          isBranchPoint: row.isBranchPoint,
+          isTerminalNode: row.isTerminalNode,
+          createdAt: row.createdAt,
+        }))
+    ),
   };
 
   return { repository, scenelets };
@@ -183,6 +237,7 @@ describe('agentWorkflow CLI', () => {
     expect(output.storyConstitutionMarkdown).toContain('Hybrid voyage');
     expect(stories[0]?.storyConstitution).not.toBeNull();
     expect(scenelets.length).toBeGreaterThan(0);
+    expect(stories[0]?.visualDesignDocument).not.toBeNull();
   });
 
   it('fails gracefully when story missing for run-task', async () => {
@@ -233,5 +288,6 @@ describe('agentWorkflow CLI', () => {
     const combinedErrors = errors.join(' ');
     expect(combinedErrors).toContain('CREATE_CONSTITUTION');
     expect(combinedErrors).toContain('CREATE_INTERACTIVE_SCRIPT');
+    expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
   });
 });

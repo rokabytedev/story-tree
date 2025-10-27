@@ -25,6 +25,13 @@ export async function generateStoryConstitution(
     throw new StoryConstitutionError('Story constitution system prompt is empty.');
   }
 
+  options.logger?.debug?.('Story constitution Gemini request', {
+    geminiRequest: {
+      systemInstruction,
+      userContent: trimmedBrief,
+    },
+  });
+
   const rawResponse = await client.generateJson({
     systemInstruction,
     userContent: trimmedBrief,

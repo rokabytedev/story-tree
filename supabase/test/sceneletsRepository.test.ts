@@ -30,6 +30,7 @@ interface FakeResponses {
   markBranch?: FakeResponse<SceneletRow>;
   markTerminal?: FakeResponse<SceneletRow>;
   hasScenelets?: FakeResponse<SceneletRow[]>;
+  listScenelets?: FakeResponse<SceneletRow[]>;
 }
 
 type InsertArgs = Partial<SceneletRow>;
@@ -73,9 +74,11 @@ class FakeSceneletsTable {
     return {
       eq: (column: string, value: string) => {
         this.filters.push({ column, value });
-        const response = this.responses.hasScenelets ?? { data: [], error: null };
+        const hasSceneletsResponse = this.responses.hasScenelets ?? { data: [], error: null };
+        const listResponse = this.responses.listScenelets ?? { data: [], error: null };
         return {
-          limit: async () => response,
+          limit: async () => hasSceneletsResponse,
+          order: async () => listResponse,
         };
       },
     };
@@ -298,6 +301,48 @@ describe('sceneletsRepository.markSceneletAsTerminal', () => {
     });
 
     await expect(repo.markSceneletAsTerminal('scenelet-id')).rejects.toBeInstanceOf(
+      SceneletsRepositoryError
+    );
+  });
+});
+
+describe('sceneletsRepository.listSceneletsByStory', () => {
+  it('returns mapped scenelets ordered by created_at', async () => {
+    const rows = [
+      makeSceneletRow({ id: 'scenelet-1', created_at: '2025-01-01T00:00:00.000Z' }),
+      makeSceneletRow({ id: 'scenelet-2', created_at: '2025-01-02T00:00:00.000Z' }),
+    ];
+    const { repo, table } = makeRepository({
+      listScenelets: { data: rows, error: null },
+    });
+
+    const results = await repo.listSceneletsByStory('story-id');
+
+    expect(results.map((row) => row.id)).toEqual(['scenelet-1', 'scenelet-2']);
+    expect(table.filters).toContainEqual({ column: 'story_id', value: 'story-id' });
+  });
+
+  it('returns empty list when Supabase provides no data', async () => {
+    const { repo } = makeRepository({
+      listScenelets: { data: [], error: null },
+    });
+
+    const results = await repo.listSceneletsByStory('story-id');
+    expect(results).toEqual([]);
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.listSceneletsByStory('  ')).rejects.toBeInstanceOf(SceneletsRepositoryError);
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      listScenelets: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.listSceneletsByStory('story-id')).rejects.toBeInstanceOf(
       SceneletsRepositoryError
     );
   });

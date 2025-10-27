@@ -66,7 +66,10 @@ export async function generateInteractiveStoryTree(
       parentSceneletId: task.parentSceneletId,
       isRoot,
       pathContextLength: task.pathContext.length,
-      userContent,
+      geminiRequest: {
+        systemInstruction,
+        userContent,
+      },
     });
 
     const rawResponse = await geminiClient.generateJson(

@@ -38,6 +38,7 @@ export interface SceneletsRepository {
   markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<SceneletRecord>;
   markSceneletAsTerminal(sceneletId: string): Promise<SceneletRecord>;
   hasSceneletsForStory(storyId: string): Promise<boolean>;
+  listSceneletsByStory(storyId: string): Promise<SceneletRecord[]>;
 }
 
 export class SceneletsRepositoryError extends Error {
@@ -168,6 +169,29 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       return Array.isArray(data) && data.length > 0;
+    },
+
+    async listSceneletsByStory(storyId: string): Promise<SceneletRecord[]> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new SceneletsRepositoryError('Story id must be provided to list scenelets.');
+      }
+
+      const { data, error } = await client
+        .from<SceneletRow>(SCENELETS_TABLE)
+        .select()
+        .eq('story_id', trimmedStoryId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        throw new SceneletsRepositoryError('Failed to list scenelets for story.', error);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+
+      return data.map(mapRowToRecord);
     },
   } satisfies SceneletsRepository;
 }

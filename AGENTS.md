@@ -22,9 +22,6 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ## General Guidance
 - **Proactively Manage Your Context Window**
     - Compact your context window after major milestones, especially when working on large-scope tasks
-- **Dependency Versions**
-    - **MOST CRITICAL OVERRIDES ALL OTHER CONFLICTING RULES**
-    - Specifying specific version for language, package, library, framework, SDK, API, etc in any documentation (e.g. tasks.md, plan.md, research.md) based on your internal knowledge, which can be out of date, is **STRICTLY FORBIDDEN**. **MUST** leave the version to the package management software to pick the latest LTS / stable / compatible version.
 
 ## Tool Use Guidance
 ### Search Tools
