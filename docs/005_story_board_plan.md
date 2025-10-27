@@ -19,7 +19,7 @@ the gemini response should be parsed, validated, and saved to db with proper col
 the workflow cli should be extended to support this new task CREATE_STORYBOARD. follow the cli convention. support both stub and real mode, local / remote db etc. Should create and use a proper gemini stub response for --stub mode. Refer to agent-backend/fixtures.
 (note that the previous visual design task didn't add proper gemini stub. you can fix it along the way if you have enough capacity / context window left, but low priority).
 
-`scenelet_id` should refer to the value used in the story tree snapshot YAML instead of the supabase db uuid.
+`scenelet_id` should refer to the value used in the story tree snapshot YAML (e.g. "scenelet-3") instead of the supabase db uuid.
 
 your task:
 - read this document carefully to understand the intent
