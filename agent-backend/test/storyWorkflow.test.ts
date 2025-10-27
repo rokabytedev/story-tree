@@ -16,6 +16,7 @@ import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 import type { StoryboardTaskRunner } from '../src/storyboard/types.js';
+import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
 
 function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>): AgentWorkflowStoriesRepository & {
   records: AgentWorkflowStoryRecord[];
@@ -27,6 +28,7 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
     storyConstitution: null,
     visualDesignDocument: null,
     storyboardBreakdown: null,
+    audioDesignDocument: null,
   };
 
   const records: AgentWorkflowStoryRecord[] = [{ ...baseRecord, ...(initial ?? {}) }];
@@ -41,6 +43,7 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
         storyConstitution: null,
         visualDesignDocument: null,
         storyboardBreakdown: null,
+        audioDesignDocument: null,
       };
       records.push(record);
       return record;
@@ -61,6 +64,9 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
       }
       if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
         record.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
+      }
+      if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
+        record.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument ?? null;
       }
       return record;
     },
@@ -152,6 +158,21 @@ function createStoryboardTaskStub(): {
   return { runner, calls };
 }
 
+function createAudioDesignTaskStub(): {
+  runner: AudioDesignTaskRunner;
+  calls: Array<{ storyId: string }>;
+} {
+  const calls: Array<{ storyId: string }> = [];
+  const runner: AudioDesignTaskRunner = async (storyId) => {
+    calls.push({ storyId });
+    return {
+      storyId,
+      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    };
+  };
+  return { runner, calls };
+}
+
 describe('StoryWorkflow factories', () => {
   it('creates a workflow from prompt and persists story', async () => {
     const repository = createTestStoriesRepository();
@@ -227,6 +248,7 @@ describe('StoryWorkflow tasks', () => {
   const taskInteractive: StoryWorkflowTask = 'CREATE_INTERACTIVE_SCRIPT';
   const taskVisual: StoryWorkflowTask = 'CREATE_VISUAL_DESIGN';
   const taskStoryboard: StoryWorkflowTask = 'CREATE_STORYBOARD';
+  const taskAudio: StoryWorkflowTask = 'CREATE_AUDIO_DESIGN';
 
   it('runs constitution task and prevents reruns', async () => {
     const repository = createTestStoriesRepository({
@@ -360,6 +382,7 @@ describe('StoryWorkflow tasks', () => {
     const treeLoader = createStoryTreeLoaderStub();
     const visualDesign = createVisualDesignTaskStub();
     const storyboard = createStoryboardTaskStub();
+    const audio = createAudioDesignTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-4', {
       storiesRepository: repository,
@@ -378,6 +401,7 @@ describe('StoryWorkflow tasks', () => {
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
       runStoryboardTask: storyboard.runner,
+      runAudioDesignTask: audio.runner,
     });
 
     const result = await workflow.runAllTasks();
@@ -390,6 +414,7 @@ describe('StoryWorkflow tasks', () => {
     expect(sceneletPersistence.createCalls.length).toBeGreaterThan(0);
     expect(visualDesign.calls).toEqual([{ storyId: 'story-4' }]);
     expect(storyboard.calls).toEqual([{ storyId: 'story-4' }]);
+    expect(audio.calls).toEqual([{ storyId: 'story-4' }]);
   });
 
   it('runs visual design task using injected runner', async () => {
@@ -544,5 +569,114 @@ describe('StoryWorkflow tasks', () => {
     });
 
     await expect(workflow.runTask(taskStoryboard)).rejects.toThrow('already has a storyboard breakdown');
+  });
+
+  it('runs audio design task using injected runner', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-audio',
+      displayName: 'Draft',
+      initialPrompt: 'Lab heist',
+      storyConstitution: {
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: { character_designs: [{ character_name: 'Rhea' }] },
+      storyboardBreakdown: { storyboard_breakdown: [] },
+      audioDesignDocument: null,
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const audioCalls: Array<{ storyId: string }> = [];
+    const audioRunner: AudioDesignTaskRunner = async (storyId) => {
+      audioCalls.push({ storyId });
+      repository.records[0]!.audioDesignDocument = { audio_design_document: { sonic_identity: {} } };
+      return {
+        storyId,
+        audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+      };
+    };
+
+    const workflow = await resumeWorkflowFromStoryId('story-audio', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+      runStoryboardTask: createStoryboardTaskStub().runner,
+      runAudioDesignTask: audioRunner,
+    });
+
+    await workflow.runTask(taskAudio);
+
+    expect(audioCalls).toEqual([{ storyId: 'story-audio' }]);
+    expect(repository.records[0]?.audioDesignDocument).toEqual({
+      audio_design_document: { sonic_identity: {} },
+    });
+  });
+
+  it('requires visual design before audio design task', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-missing-audio-prereq',
+      displayName: 'Draft',
+      initialPrompt: 'Lab heist',
+      storyConstitution: {
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: null,
+      storyboardBreakdown: null,
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+
+    const workflow = await resumeWorkflowFromStoryId('story-missing-audio-prereq', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+    });
+
+    await expect(workflow.runTask(taskAudio)).rejects.toThrow('visual design document');
+  });
+
+  it('rejects audio design task when audio document already exists', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-has-audio',
+      displayName: 'Draft',
+      initialPrompt: 'Lab heist',
+      storyConstitution: {
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: { character_designs: [{ character_name: 'Rhea' }] },
+      storyboardBreakdown: { storyboard_breakdown: [] },
+      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+
+    const workflow = await resumeWorkflowFromStoryId('story-has-audio', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Lab Heist',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+      runStoryboardTask: createStoryboardTaskStub().runner,
+    });
+
+    await expect(workflow.runTask(taskAudio)).rejects.toThrow('already has an audio design document');
   });
 });

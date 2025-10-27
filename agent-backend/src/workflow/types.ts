@@ -8,10 +8,8 @@ import type {
   VisualDesignTaskDependencies,
   VisualDesignTaskRunner,
 } from '../visual-design/types.js';
-import type {
-  StoryboardTaskDependencies,
-  StoryboardTaskRunner,
-} from '../storyboard/types.js';
+import type { StoryboardTaskDependencies, StoryboardTaskRunner } from '../storyboard/types.js';
+import type { AudioDesignTaskDependencies, AudioDesignTaskRunner } from '../audio-design/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -20,6 +18,7 @@ export interface AgentWorkflowStoryRecord {
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
   storyboardBreakdown: unknown | null;
+  audioDesignDocument: unknown | null;
 }
 
 export interface AgentWorkflowStoryCreateInput {
@@ -32,6 +31,7 @@ export interface AgentWorkflowStoryUpdatePatch {
   storyConstitution?: unknown;
   visualDesignDocument?: unknown;
   storyboardBreakdown?: unknown;
+  audioDesignDocument?: unknown;
 }
 
 export interface AgentWorkflowStoriesRepository {
@@ -69,6 +69,8 @@ export interface AgentWorkflowOptions {
   runVisualDesignTask?: VisualDesignTaskRunner;
   storyboardTaskOptions?: StoryboardTaskOptions;
   runStoryboardTask?: StoryboardTaskRunner;
+  audioDesignTaskOptions?: AudioDesignTaskOptions;
+  runAudioDesignTask?: AudioDesignTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -81,7 +83,8 @@ export type StoryWorkflowTask =
   | 'CREATE_CONSTITUTION'
   | 'CREATE_INTERACTIVE_SCRIPT'
   | 'CREATE_VISUAL_DESIGN'
-  | 'CREATE_STORYBOARD';
+  | 'CREATE_STORYBOARD'
+  | 'CREATE_AUDIO_DESIGN';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -95,4 +98,8 @@ export type VisualDesignTaskOptions = Partial<
 
 export type StoryboardTaskOptions = Partial<
   Omit<StoryboardTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;
+
+export type AudioDesignTaskOptions = Partial<
+  Omit<AudioDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
 >;

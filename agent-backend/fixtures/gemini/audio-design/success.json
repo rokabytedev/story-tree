@@ -1,0 +1,45 @@
+{
+  "audio_design_document": {
+    "sonic_identity": {
+      "musical_direction": "A hybrid electronic-orchestral palette that blends shimmering synth pads with expressive strings to mirror the story's evolving tension and wonder across branching paths.",
+      "sound_effect_philosophy": "Sound effects should feel tactile yet playful: UI pings are glassy and precise, branch activations pulse with airy whooshes, and ambient room tones hug the listener without ever overpowering dialogue."
+    },
+    "character_voice_profiles": [
+      {
+        "character_name": "Rhea",
+        "voice_description": "Rhea speaks with vibrant mid-range energy, confident yet warm. She has a quick cadence when brainstorming and softens her tone when encouraging collaborators, always carrying a hint of playful competitiveness.",
+        "tts_generation_prompt": "Generate a confident adult female voice with a tech-savvy, adventurous attitude. Maintain a bright mid-range tone, polished diction, and agile pacing that accelerates slightly when excited but never becomes frantic."
+      },
+      {
+        "character_name": "Narrator",
+        "voice_description": "The Narrator is a calm, inspired guide with a resonant alto timbre. Each line lands with supportive authority, as though inviting the audience into the creative lab with curiosity and care.",
+        "tts_generation_prompt": "Generate a warm, neutral-accent narrator voice with slow, deliberate pacing. Deliver lines with gentle uplift at the end of sentences, maintaining clarity and inspirational poise throughout."
+      },
+      {
+        "character_name": "Testing Agent",
+        "voice_description": "Testing Agent speaks with crisp, synthesized clarity layered over a friendly youthful tone. Their speech is rhythmic and precise, but each sentence closes with a hint of enthusiasm as if proud to assist.",
+        "tts_generation_prompt": "Generate an affable androgynous assistant voice with a slight synthetic sheen. Keep consonants tight, pacing measured, and infuse subtle optimism that peaks on key action verbs."
+      }
+    ],
+    "music_and_ambience_cues": [
+      {
+        "cue_name": "Simulator Awakens",
+        "associated_scenelet_ids": ["scenelet-1"],
+        "cue_description": "Soft arpeggiated synths bloom alongside delicate chimes as the lab powers up, underscoring the sense of discovery while keeping space for narration.",
+        "music_generation_prompt": "Create a 70 BPM ambient-electronic cue in D major featuring layered glassy pads, gentle arpeggios, and evolving harmonic swells that signal wonder and readiness."
+      },
+      {
+        "cue_name": "Collaborative Flow",
+        "associated_scenelet_ids": ["scenelet-2", "scenelet-3"],
+        "cue_description": "Light percussion clicks and playful marimba motifs mingle with brushed strings to emphasize creative teamwork and quick idea exchange.",
+        "music_generation_prompt": "Compose a 100 BPM cue blending mallet percussion, pizzicato strings, and subtle lo-fi beats. Keep the arrangement buoyant, leaving pauses for dialogue while spotlighting moments of shared insight."
+      },
+      {
+        "cue_name": "High-Stakes Remix",
+        "associated_scenelet_ids": ["scenelet-4", "scenelet-5"],
+        "cue_description": "Driving drums, pulsing bass, and glitchy risers elevate the competitive branch, matching Rhea's daring strategy and the testers' energized sprint.",
+        "music_generation_prompt": "Produce an energetic 118 BPM hybrid track with punchy drums, distorted synth bass, and rhythmic string stabs. Introduce brief filtered drops to highlight tension peaks before triumphant resolutions."
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 import type { StoryboardTaskRunner } from '../src/storyboard/types.js';
+import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
 
 function createStoriesRepository(): AgentWorkflowStoriesRepository & {
   record: AgentWorkflowStoryRecord | null;
@@ -28,6 +29,7 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
         storyConstitution: null,
         visualDesignDocument: null,
         storyboardBreakdown: null,
+        audioDesignDocument: null,
       };
       return repository.record;
     },
@@ -46,6 +48,9 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
       }
       if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
         repository.record.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
+      }
+      if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
+        repository.record.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument ?? null;
       }
       return repository.record;
     },
@@ -113,6 +118,15 @@ describe('runAgentWorkflow', () => {
         storyboardBreakdown: { storyboard_breakdown: [] },
       };
     };
+    const audioRunner: AudioDesignTaskRunner = async (storyId) => {
+      storiesRepository.record!.audioDesignDocument = {
+        audio_design_document: { sonic_identity: {} },
+      };
+      return {
+        storyId,
+        audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+      };
+    };
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (prompt) => {
       expect(prompt).toBe('Galactic explorers');
@@ -139,6 +153,7 @@ describe('runAgentWorkflow', () => {
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
       runStoryboardTask: storyboardRunner,
+      runAudioDesignTask: audioRunner,
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -153,6 +168,9 @@ describe('runAgentWorkflow', () => {
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
     expect(storiesRepository.record?.storyboardBreakdown).toEqual({ storyboard_breakdown: [] });
+    expect(storiesRepository.record?.audioDesignDocument).toEqual({
+      audio_design_document: { sonic_identity: {} },
+    });
   });
 
   it('uses default display name when no factory provided', async () => {
@@ -166,6 +184,10 @@ describe('runAgentWorkflow', () => {
     const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
       storyId,
       storyboardBreakdown: { storyboard_breakdown: [] },
+    });
+    const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => ({
+      storyId,
+      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
     });
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
@@ -183,6 +205,7 @@ describe('runAgentWorkflow', () => {
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
       runStoryboardTask: storyboardRunner,
+      runAudioDesignTask: audioRunnerStub,
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -199,6 +222,10 @@ describe('runAgentWorkflow', () => {
     const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
       storyId,
       storyboardBreakdown: { storyboard_breakdown: [] },
+    });
+    const audioRunner: AudioDesignTaskRunner = async (storyId) => ({
+      storyId,
+      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
     });
 
     await expect(
@@ -264,6 +291,10 @@ describe('runAgentWorkflow', () => {
       storyId,
       storyboardBreakdown: { storyboard_breakdown: [] },
     });
+    const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => ({
+      storyId,
+      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+    });
 
     let receivedOptions: unknown;
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (_prompt, options) => {
@@ -285,6 +316,7 @@ describe('runAgentWorkflow', () => {
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
       runStoryboardTask: storyboardRunner,
+      runAudioDesignTask: audioRunnerForOptions,
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);

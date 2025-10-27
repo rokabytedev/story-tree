@@ -19,6 +19,7 @@ function createStory(): AgentWorkflowStoryRecord {
       character_designs: [{ character_name: 'Rhea' }],
     },
     storyboardBreakdown: null,
+    audioDesignDocument: null,
   };
 }
 
@@ -36,6 +37,9 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): AgentWorkflow
       updates.push({ storyId, patch });
       if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
         story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
+      }
+      if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
+        story.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument ?? null;
       }
       return story;
     },

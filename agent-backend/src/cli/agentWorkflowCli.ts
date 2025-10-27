@@ -30,11 +30,16 @@ const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stu
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
 const STORYBOARD_FIXTURE = resolve(REPO_ROOT, 'fixtures/storyboard/stub-gemini-response.json');
+const AUDIO_DESIGN_FIXTURE = resolve(
+  REPO_ROOT,
+  'fixtures/gemini/audio-design/success.json'
+);
 const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_STORYBOARD',
+  'CREATE_AUDIO_DESIGN',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -214,6 +219,9 @@ async function buildWorkflowDependencies(
     storyboardTaskOptions: {
       logger,
     },
+    audioDesignTaskOptions: {
+      logger,
+    },
   };
 
   if (mode === 'stub') {
@@ -237,6 +245,12 @@ async function buildWorkflowDependencies(
       logger,
       promptLoader: async () => 'Stub storyboard system prompt',
       geminiClient: new FixtureGeminiClient([storyboardResponse]),
+    };
+    const audioResponse = await loadAudioDesignResponse();
+    workflowOptions.audioDesignTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub audio design system prompt',
+      geminiClient: new FixtureGeminiClient([audioResponse]),
     };
   }
 
@@ -428,6 +442,14 @@ async function loadVisualDesignResponse(): Promise<string> {
     VISUAL_DESIGN_FIXTURE,
     'Visual design fixture must not be empty.',
     'Visual design fixture must contain valid JSON.'
+  );
+}
+
+async function loadAudioDesignResponse(): Promise<string> {
+  return loadJsonFixture(
+    AUDIO_DESIGN_FIXTURE,
+    'Audio design fixture must not be empty.',
+    'Audio design fixture must contain valid JSON.'
   );
 }
 

@@ -60,13 +60,13 @@ Your entire output must be a single, valid JSON object. Do not include any text 
     "music_and_ambience_cues": [
       {
         "cue_name": "e.g., The Home Anemone Theme",
-        "associated_scenelet_ids": ["scenelet_001", "scenelet_002"],
+        "associated_scenelet_ids": ["scenelet-1", "scenelet-2"],
         "cue_description": "This music should evoke a sense of safety, warmth, and home. It's a gentle, slow melody that plays as we are introduced to Finn's world.",
         "music_generation_prompt": "A gentle, slow-tempo (60 BPM) orchestral lullaby. Key of C Major. Lead instrument: solo flute playing a simple, memorable melody. Accompaniment: soft, sustained strings (violins, cello) and gentle harp arpeggios. Mood: peaceful, safe, warm, loving."
       },
       {
         "cue_name": "e.g., Exploring the Kelp Forest",
-        "associated_scenelet_ids": ["scenelet_005", "scenelet_006", "scenelet_007"],
+        "associated_scenelet_ids": ["scenelet-5", "scenelet-6", "scenelet-7"],
         "cue_description": "This cue is for moments of exploration and discovery. The music should be curious and slightly mysterious, but not dangerous. It should propel the story forward.",
         "music_generation_prompt": "A medium-tempo (110 BPM) orchestral piece. Key of G Major. Lead melody played by pizzicato strings, creating a sense of tiptoeing and curiosity. Light percussion using triangle and woodblocks. Low, sustained clarinet notes provide a hint of mystery. Mood: inquisitive, adventurous, wondrous, slightly mysterious."
       }

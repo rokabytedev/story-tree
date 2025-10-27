@@ -36,6 +36,7 @@ interface StubStory {
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
   storyboardBreakdown: unknown | null;
+  audioDesignDocument: unknown | null;
 }
 
 function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
@@ -49,22 +50,32 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
   const stories = initialStories.map((story) => ({
     visualDesignDocument: null,
     storyboardBreakdown: null,
+    audioDesignDocument: null,
     ...story,
   }));
 
   const repository = {
-    createStory: vi.fn(async ({ displayName, initialPrompt }: { displayName: string; initialPrompt: string }) => {
-      const story: StubStory = {
-        id: `story-${stories.length + 1}`,
+    createStory: vi.fn(
+      async ({
         displayName,
         initialPrompt,
-        storyConstitution: null,
-        visualDesignDocument: null,
-        storyboardBreakdown: null,
-      };
-      stories.push(story);
-      return story;
-    }),
+      }: {
+        displayName: string;
+        initialPrompt: string;
+      }) => {
+        const story: StubStory = {
+          id: `story-${stories.length + 1}`,
+          displayName,
+          initialPrompt,
+          storyConstitution: null,
+          visualDesignDocument: null,
+          storyboardBreakdown: null,
+          audioDesignDocument: null,
+        };
+        stories.push(story);
+        return story;
+      }
+    ),
     updateStoryArtifacts: vi.fn(async (storyId: string, patch: { displayName?: string; storyConstitution?: unknown }) => {
       const story = stories.find((row) => row.id === storyId);
       if (!story) {
@@ -81,6 +92,9 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
       }
       if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
         story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown;
+      }
+      if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
+        story.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument;
       }
       return story;
     }),
@@ -247,6 +261,7 @@ describe('agentWorkflow CLI', () => {
     expect(scenelets.length).toBeGreaterThan(0);
     expect(stories[0]?.visualDesignDocument).not.toBeNull();
     expect(stories[0]?.storyboardBreakdown).not.toBeNull();
+    expect(stories[0]?.audioDesignDocument).not.toBeNull();
   });
 
   it('fails gracefully when story missing for run-task', async () => {
@@ -299,5 +314,6 @@ describe('agentWorkflow CLI', () => {
     expect(combinedErrors).toContain('CREATE_INTERACTIVE_SCRIPT');
     expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
     expect(combinedErrors).toContain('CREATE_STORYBOARD');
+    expect(combinedErrors).toContain('CREATE_AUDIO_DESIGN');
   });
 });
