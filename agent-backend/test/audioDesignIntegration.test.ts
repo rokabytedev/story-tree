@@ -21,7 +21,6 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
         { character_name: 'Narrator' },
       ],
     },
-    storyboardBreakdown: { storyboard_breakdown: [] },
     audioDesignDocument: null,
   };
 }

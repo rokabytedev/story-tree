@@ -12,7 +12,7 @@ Add a `CREATE_AUDIO_DESIGN` workflow task that converts the completed pre-produc
 The task intentionally does **not** require the shot production artifact, but in the default pipeline it executes immediately before `CREATE_SHOT_PRODUCTION` so downstream cinematics inherit the finalized sonic canon.
 
 ## Gemini Prompt Assembly
-Audio design reuses the same deterministic prompt assembly style as the storyboard task with audio-specific framing. The request format is:
+Audio design reuses the same deterministic prompt assembly style as the shot production task with audio-specific framing. The request format is:
 
 1. **System Prompt** — supply `system_prompts/audio_director.md` verbatim. Preserve whitespace and headings to avoid mismatched expectations.
 2. **User Prompt** — a single markdown document assembled in this order:
@@ -63,7 +63,7 @@ Persist the validated object to `stories.audio_design_document` via the stories 
 - Add `CREATE_AUDIO_DESIGN` to CLI task enums, help text, and validation.
 - Ensure `run-all` schedules the task after visual design and before shot production.
 - Stub mode:
-  - Create deterministic Gemini fixtures under `agent-backend/fixtures/gemini/audio-design/` (e.g., `success.json`, `invalid-character.json`). The primary `success.json` must align with existing storyboard and visual design fixtures so `run-all --mode stub` completes without triggering validation errors.
+  - Create deterministic Gemini fixtures under `agent-backend/fixtures/gemini/audio-design/` (e.g., `success.json`, `invalid-character.json`). The primary `success.json` must align with existing shot production and visual design fixtures so `run-all --mode stub` completes without triggering validation errors.
   - Extend stub loader to return audio design fixtures when the system prompt path matches `audio_director.md`.
 - Real mode should expose Gemini failures and validation errors without masking stack traces in debug logs. Include human-friendly summaries for referential integrity violations.
 
