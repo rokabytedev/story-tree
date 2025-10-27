@@ -8,6 +8,10 @@ import type {
   VisualDesignTaskDependencies,
   VisualDesignTaskRunner,
 } from '../visual-design/types.js';
+import type {
+  StoryboardTaskDependencies,
+  StoryboardTaskRunner,
+} from '../storyboard/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -15,6 +19,7 @@ export interface AgentWorkflowStoryRecord {
   initialPrompt: string;
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
+  storyboardBreakdown: unknown | null;
 }
 
 export interface AgentWorkflowStoryCreateInput {
@@ -26,6 +31,7 @@ export interface AgentWorkflowStoryUpdatePatch {
   displayName?: string;
   storyConstitution?: unknown;
   visualDesignDocument?: unknown;
+  storyboardBreakdown?: unknown;
 }
 
 export interface AgentWorkflowStoriesRepository {
@@ -61,6 +67,8 @@ export interface AgentWorkflowOptions {
   storyTreeLoader?: (storyId: string) => Promise<StoryTreeSnapshot>;
   visualDesignTaskOptions?: VisualDesignTaskOptions;
   runVisualDesignTask?: VisualDesignTaskRunner;
+  storyboardTaskOptions?: StoryboardTaskOptions;
+  runStoryboardTask?: StoryboardTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -72,7 +80,8 @@ export interface AgentWorkflowResult {
 export type StoryWorkflowTask =
   | 'CREATE_CONSTITUTION'
   | 'CREATE_INTERACTIVE_SCRIPT'
-  | 'CREATE_VISUAL_DESIGN';
+  | 'CREATE_VISUAL_DESIGN'
+  | 'CREATE_STORYBOARD';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -82,4 +91,8 @@ export interface StoryWorkflow {
 
 export type VisualDesignTaskOptions = Partial<
   Omit<VisualDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;
+
+export type StoryboardTaskOptions = Partial<
+  Omit<StoryboardTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
 >;

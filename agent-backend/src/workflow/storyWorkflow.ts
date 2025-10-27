@@ -8,6 +8,12 @@ import type {
   VisualDesignTaskRunner,
   VisualDesignTaskDependencies,
 } from '../visual-design/types.js';
+import { runStoryboardTask } from '../storyboard/storyboardTask.js';
+import type {
+  StoryboardTaskOptions,
+  StoryboardTaskRunner,
+  StoryboardTaskDependencies,
+} from '../storyboard/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -26,6 +32,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
+  'CREATE_STORYBOARD',
 ];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
@@ -89,6 +96,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly storyTreeLoader: NonNullable<AgentWorkflowOptions['storyTreeLoader']>;
   private readonly visualDesignTaskRunner: VisualDesignTaskRunner;
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
+  private readonly storyboardTaskRunner: StoryboardTaskRunner;
+  private readonly storyboardOptions?: StoryboardTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -110,6 +119,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.visualDesignOptions = dependencies.visualDesignTaskOptions
       ? { ...dependencies.visualDesignTaskOptions }
       : undefined;
+    this.storyboardTaskRunner =
+      dependencies.runStoryboardTask ?? runStoryboardTask;
+    this.storyboardOptions = dependencies.storyboardTaskOptions
+      ? { ...dependencies.storyboardTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -123,6 +137,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_VISUAL_DESIGN':
         await this.runVisualDesignTask();
+        return;
+      case 'CREATE_STORYBOARD':
+        await this.runStoryboardTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -142,6 +159,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_VISUAL_DESIGN':
           await this.runVisualDesignTask();
+          break;
+        case 'CREATE_STORYBOARD':
+          await this.runStoryboardTask();
           break;
         default:
           break;
@@ -249,9 +269,41 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.visualDesignTaskRunner(this.storyId, dependencies);
   }
 
+  private async runStoryboardTask(): Promise<void> {
+    const dependencies = this.buildStoryboardDependencies();
+    await this.storyboardTaskRunner(this.storyId, dependencies);
+  }
+
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
     const overrides = this.visualDesignOptions;
     const dependencies: VisualDesignTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      storyTreeLoader: this.storyTreeLoader,
+    };
+
+    if (overrides?.promptLoader) {
+      dependencies.promptLoader = overrides.promptLoader;
+    }
+
+    if (overrides?.geminiClient) {
+      dependencies.geminiClient = overrides.geminiClient;
+    }
+
+    if (overrides?.geminiOptions) {
+      dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildStoryboardDependencies(): StoryboardTaskDependencies {
+    const overrides = this.storyboardOptions;
+    const dependencies: StoryboardTaskDependencies = {
       storiesRepository: this.storiesRepository,
       storyTreeLoader: this.storyTreeLoader,
     };

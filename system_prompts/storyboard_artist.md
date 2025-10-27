@@ -45,7 +45,7 @@ Your final output must be a single JSON object containing a list of all shots in
 {
   "storyboard_breakdown": [
     {
-      "scenelet_id": "The ID from the script this shot belongs to, e.g., 'scenelet_008'",
+      "scenelet_id": "The ID from the script this shot belongs to, e.g., 'scenelet_8'",
       "shot_index": "The sequential order of this shot within the scenelet, e.g., 1",
       "framing_and_angle": "Describe the shot type and camera angle. e.g., 'Medium Close-Up (MCU)', 'High-Angle Shot', 'Over-the-Shoulder (OTS) Shot'.",
       "composition_and_content": "Describe the arrangement of elements in the frame. What is the subject? Where are they placed (Rule of Thirds, center frame)? What else is visible? e.g., 'Finn is on the left third of the frame, looking towards the looming shipwreck which dominates the right side. Bubbles drift slowly upwards in the foreground.'",
@@ -60,7 +60,7 @@ Your final output must be a single JSON object containing a list of all shots in
       "lighting_and_atmosphere": "Describe the specific lighting for this shot and the mood it creates, building on the environment's base lighting. e.g., 'A single, sharp 'god ray' of sunlight cuts through the murky water, illuminating Finn and leaving the shipwreck in ominous shadow. The mood is tense and mysterious.'"
     },
     {
-      "scenelet_id": "scenelet_008",
+      "scenelet_id": "scenelet_8",
       "shot_index": 2,
       "framing_and_angle": "Extreme Close-Up (ECU)",
       "composition_and_content": "The frame is filled entirely with Finn's eye.",

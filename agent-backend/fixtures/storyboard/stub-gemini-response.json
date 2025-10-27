@@ -1,0 +1,154 @@
+{
+  "storyboard_breakdown": [
+    {
+      "scenelet_id": "scenelet-1",
+      "shot_index": 1,
+      "framing_and_angle": "Wide Establishing Shot",
+      "composition_and_content": "Rhea stands amid the glowing sandbox studio with holographic branches orbiting her console.",
+      "character_action_and_emotion": "Rhea surveys the simulated story tree with focused anticipation while the studio hums to life.",
+      "dialogue": [
+        {
+          "character": "Narrator",
+          "line": "Rhea powers up the story simulator, ready to stress-test the new constitution."
+        }
+      ],
+      "camera_dynamics": "Slow dolly in toward Rhea and the central console.",
+      "lighting_and_atmosphere": "Cool teal light washes over the room, accented by warm highlights from the console UI."
+    },
+    {
+      "scenelet_id": "scenelet-1",
+      "shot_index": 2,
+      "framing_and_angle": "Medium Close-Up",
+      "composition_and_content": "Rhea leans over the interface, the branching tree reflecting in her visor.",
+      "character_action_and_emotion": "She smirks with competitive energy as she inputs the first command.",
+      "dialogue": [
+        {
+          "character": "Rhea",
+          "line": "Let's see if this scriptwriter mode can keep up with our testers."
+        }
+      ],
+      "camera_dynamics": "Static with subtle handheld sway to keep the moment alive.",
+      "lighting_and_atmosphere": "Console light intensifies, casting dynamic highlights across Rhea's features."
+    },
+    {
+      "scenelet_id": "scenelet-2",
+      "shot_index": 1,
+      "framing_and_angle": "Over-the-Shoulder Shot",
+      "composition_and_content": "Rhea sketches playful icons across a holographic branch labeled with the tutorial path.",
+      "character_action_and_emotion": "Her gestures are loose and inviting, relaxed shoulders signaling a friendly tone.",
+      "dialogue": [
+        {
+          "character": "Rhea",
+          "line": "We'll lead with a welcoming tutorial, keep things breezy."
+        }
+      ],
+      "camera_dynamics": "Gentle arc around Rhea to reveal the icons forming.",
+      "lighting_and_atmosphere": "Warm amber accents bloom as the tutorial branch takes shape."
+    },
+    {
+      "scenelet_id": "scenelet-2",
+      "shot_index": 2,
+      "framing_and_angle": "Insert Shot",
+      "composition_and_content": "Testing Agent's HUD fills frame with safety metrics spiking green.",
+      "character_action_and_emotion": "The orb companion pulses confidently as data logs scroll in sync with Rhea's plan.",
+      "dialogue": [
+        {
+          "character": "Testing Agent",
+          "line": "Logging: tutorial tone, comedic beats, zero peril."
+        }
+      ],
+      "camera_dynamics": "Static with UI elements animating forward toward lens.",
+      "lighting_and_atmosphere": "Soft diffusion keeps the HUD legible while ambient glow links back to Rhea's console."
+    },
+    {
+      "scenelet_id": "scenelet-3",
+      "shot_index": 1,
+      "framing_and_angle": "Montage Panel",
+      "composition_and_content": "Split frame of testers laughing as tutorial scenes loop around them.",
+      "character_action_and_emotion": "Participants high-five and remix assets with carefree joy.",
+      "dialogue": [
+        {
+          "character": "Narrator",
+          "line": "Minutes later, testers confidently remix the tutorial scenelets."
+        }
+      ],
+      "camera_dynamics": "Graphic montage transitions with quick wipes between panels.",
+      "lighting_and_atmosphere": "Uplifting daylight tones with sparkles accenting successful choices."
+    },
+    {
+      "scenelet_id": "scenelet-3",
+      "shot_index": 2,
+      "framing_and_angle": "Medium Two-Shot",
+      "composition_and_content": "Rhea watches the testers from a mezzanine, Testing Agent hovering beside her.",
+      "character_action_and_emotion": "Rhea relaxes, arms folded with satisfied relief.",
+      "dialogue": [
+        {
+          "character": "Rhea",
+          "line": "Perfect. Friendly tone achieved, and they're already riffing."
+        }
+      ],
+      "camera_dynamics": "Subtle push-in to emphasize Rhea's pride.",
+      "lighting_and_atmosphere": "Warm motivational lighting bathes the mezzanine, echoing the positive outcome."
+    },
+    {
+      "scenelet_id": "scenelet-4",
+      "shot_index": 1,
+      "framing_and_angle": "Tracking Shot",
+      "composition_and_content": "Camera follows a charged branch streaking across the studio as Rhea sketches sharper angles.",
+      "character_action_and_emotion": "Rhea's expression sharpens with excitement, movements precise and accelerated.",
+      "dialogue": [
+        {
+          "character": "Rhea",
+          "line": "Or we launch with a challenge to jolt them awake."
+        }
+      ],
+      "camera_dynamics": "Fast lateral move matching the branch's momentum.",
+      "lighting_and_atmosphere": "Warning reds and electric violets flash across the environment."
+    },
+    {
+      "scenelet_id": "scenelet-4",
+      "shot_index": 2,
+      "framing_and_angle": "HUD Close-Up",
+      "composition_and_content": "Testing Agent's diagnostics display timers and intensity gauges spiking.",
+      "character_action_and_emotion": "The companion steadies itself, projecting crisp metrics with analytical calm.",
+      "dialogue": [
+        {
+          "character": "Testing Agent",
+          "line": "Noted. Tracking elevated tension and time pressure cues."
+        }
+      ],
+      "camera_dynamics": "Static with rapid HUD cascading animations.",
+      "lighting_and_atmosphere": "High-contrast highlights carve through the air, underscoring urgency."
+    },
+    {
+      "scenelet_id": "scenelet-5",
+      "shot_index": 1,
+      "framing_and_angle": "Handheld Medium Shot",
+      "composition_and_content": "Camera weaves through players sprinting across holographic puzzles.",
+      "character_action_and_emotion": "Participants move with intense focus, faces flushed with adrenaline.",
+      "dialogue": [
+        {
+          "character": "Narrator",
+          "line": "The room hums as players sprint through puzzles, breathless but exhilarated."
+        }
+      ],
+      "camera_dynamics": "Energetic handheld movement mirroring the chaotic gameplay.",
+      "lighting_and_atmosphere": "Deep shadows slice between neon puzzle elements, heightening the rush."
+    },
+    {
+      "scenelet_id": "scenelet-5",
+      "shot_index": 2,
+      "framing_and_angle": "Close-Up",
+      "composition_and_content": "Rhea records notes on a holoboard while puzzles rewind behind her.",
+      "character_action_and_emotion": "She grins with determined resolve, already planning refinements.",
+      "dialogue": [
+        {
+          "character": "Rhea",
+          "line": "We kept them on their toes. Let's capture this momentum for iteration two."
+        }
+      ],
+      "camera_dynamics": "Slow push toward the holoboard as annotations update in real time.",
+      "lighting_and_atmosphere": "Pulses of saturated magenta sync with each note she records, signaling energetic debrief."
+    }
+  ]
+}
