@@ -1,0 +1,6 @@
+- [ ] Ship Supabase migration introducing `shots` table (per-story, per-scenelet ordering, storyboard JSON, prompt text columns) and remove obsolete `storyboard_breakdown`/`generation_prompts` columns from `stories`; extend repository tests accordingly.
+- [ ] Implement shot storage repository with fetch/save helpers, duplicate protection, and fixture-backed unit tests.
+- [ ] Build combined shot prompt builder + validator modules that assemble inputs, enforce the new scenelet-scoped JSON contract, and ship exhaustive tests.
+- [ ] Create the `CREATE_SHOT_PRODUCTION` workflow task that iterates scenelets, calls Gemini once per scenelet to produce the ordered shot list, and persists validated results to `shots` storage; update sequencing and error handling tests.
+- [ ] Refresh CLI wiring, stub fixtures, and integration tests (`run-task`, `run-all`) to target the new task and schema.
+- [ ] Rewrite developer docs (shot production plan, workflow overview) and system prompt assets; ensure validation snapshots match the new contract.
