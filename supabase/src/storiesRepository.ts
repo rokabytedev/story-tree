@@ -13,8 +13,6 @@ type StoryRow = {
   visual_design_document: unknown | null;
   audio_design_document: unknown | null;
   visual_reference_package: unknown | null;
-  storyboard_breakdown: unknown | null;
-  generation_prompts: unknown | null;
 };
 
 export interface StoryRecord {
@@ -28,8 +26,6 @@ export interface StoryRecord {
   visualDesignDocument: unknown | null;
   audioDesignDocument: unknown | null;
   visualReferencePackage: unknown | null;
-  storyboardBreakdown: unknown | null;
-  generationPrompts: unknown | null;
 }
 
 export interface CreateStoryInput {
@@ -39,8 +35,6 @@ export interface CreateStoryInput {
   visualDesignDocument?: unknown;
   audioDesignDocument?: unknown;
   visualReferencePackage?: unknown;
-  storyboardBreakdown?: unknown;
-  generationPrompts?: unknown;
 }
 
 export interface StoryArtifactPatch {
@@ -49,8 +43,6 @@ export interface StoryArtifactPatch {
   visualDesignDocument?: unknown;
   audioDesignDocument?: unknown;
   visualReferencePackage?: unknown;
-  storyboardBreakdown?: unknown;
-  generationPrompts?: unknown;
 }
 
 export interface StoriesRepository {
@@ -217,12 +209,6 @@ function buildInsertPayload(input: CreateStoryInput): Partial<StoryRow> {
   if (input.visualReferencePackage !== undefined) {
     payload.visual_reference_package = input.visualReferencePackage;
   }
-  if (input.storyboardBreakdown !== undefined) {
-    payload.storyboard_breakdown = input.storyboardBreakdown;
-  }
-  if (input.generationPrompts !== undefined) {
-    payload.generation_prompts = input.generationPrompts;
-  }
 
   return payload;
 }
@@ -249,12 +235,6 @@ function buildUpdatePayload(patch: StoryArtifactPatch): Partial<StoryRow> {
   if (patch.visualReferencePackage !== undefined) {
     payload.visual_reference_package = patch.visualReferencePackage;
   }
-  if (patch.storyboardBreakdown !== undefined) {
-    payload.storyboard_breakdown = patch.storyboardBreakdown;
-  }
-  if (patch.generationPrompts !== undefined) {
-    payload.generation_prompts = patch.generationPrompts;
-  }
 
   return payload;
 }
@@ -271,7 +251,5 @@ function mapRowToRecord(row: StoryRow): StoryRecord {
     visualDesignDocument: row.visual_design_document,
     audioDesignDocument: row.audio_design_document,
     visualReferencePackage: row.visual_reference_package,
-    storyboardBreakdown: row.storyboard_breakdown,
-    generationPrompts: row.generation_prompts,
   };
 }
