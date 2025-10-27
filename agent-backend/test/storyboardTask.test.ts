@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { StoryTreeAssemblyError } from '../src/story-storage/errors.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
-import { runVisualDesignTask } from '../src/visual-design/visualDesignTask.js';
-import { VisualDesignTaskError } from '../src/visual-design/errors.js';
+import { runStoryboardTask } from '../src/storyboard/storyboardTask.js';
+import { StoryboardTaskError } from '../src/storyboard/errors.js';
 import type { AgentWorkflowStoriesRepository, AgentWorkflowStoryRecord } from '../src/workflow/types.js';
 
 function createStory(): AgentWorkflowStoryRecord {
@@ -15,7 +15,9 @@ function createStory(): AgentWorkflowStoryRecord {
       proposedStoryTitle: 'Stub Story',
       storyConstitutionMarkdown: '# Constitution',
     },
-    visualDesignDocument: null,
+    visualDesignDocument: {
+      character_designs: [{ character_name: 'Rhea' }],
+    },
     storyboardBreakdown: null,
   };
 }
@@ -32,9 +34,6 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): AgentWorkflow
     },
     async updateStoryArtifacts(storyId, patch) {
       updates.push({ storyId, patch });
-      if ((patch as { visualDesignDocument?: unknown }).visualDesignDocument !== undefined) {
-        story.visualDesignDocument = (patch as { visualDesignDocument?: unknown }).visualDesignDocument ?? null;
-      }
       if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
         story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
       }
@@ -46,59 +45,103 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): AgentWorkflow
   } satisfies AgentWorkflowStoriesRepository & { updates: Array<{ storyId: string; patch: unknown }> };
 }
 
-const snapshot: StoryTreeSnapshot = {
-  entries: [],
-  yaml: `- scenelet-1:\n  role: root\n  description: "Opening"\n  dialogue: []\n  shot_suggestions: []`,
+const SNAPSHOT: StoryTreeSnapshot = {
+  entries: [
+    {
+      kind: 'scenelet',
+      data: {
+        id: 'scenelet-1',
+        parentId: null,
+        role: 'root',
+        description: 'Intro',
+        dialogue: [
+          { character: 'Rhea', line: 'Hello there.' },
+        ],
+        shotSuggestions: [],
+      },
+    },
+  ],
+  yaml: '- scenelet-1:\n  role: root\n  description: "Intro"\n  dialogue:\n    - character: "Rhea"\n      line: "Hello there."\n  shot_suggestions: []',
 };
 
-describe('runVisualDesignTask', () => {
-  it('generates visual design document and persists response', async () => {
+const VALID_RESPONSE = JSON.stringify({
+  storyboard_breakdown: [
+    {
+      scenelet_id: 'scenelet-1',
+      shot_index: 1,
+      framing_and_angle: 'Medium',
+      composition_and_content: 'Frame description',
+      character_action_and_emotion: 'Action description',
+      dialogue: [
+        { character: 'Rhea', line: 'Hello there.' },
+      ],
+      camera_dynamics: 'Static',
+      lighting_and_atmosphere: 'Bright',
+    },
+  ],
+});
+
+describe('runStoryboardTask', () => {
+  it('generates storyboard breakdown and persists response', async () => {
     const story = createStory();
     const repository = createStoriesRepository(story);
     const geminiClient = {
-      generateJson: vi.fn(async () => JSON.stringify({ visual_design_document: { beats: [] } })),
+      generateJson: vi.fn(async () => VALID_RESPONSE),
     };
 
-    const result = await runVisualDesignTask('story-1', {
+    const result = await runStoryboardTask('story-1', {
       storiesRepository: repository,
-      storyTreeLoader: async () => snapshot,
+      storyTreeLoader: async () => SNAPSHOT,
       promptLoader: async () => 'System prompt text',
       geminiClient: geminiClient as any,
     });
 
-    expect(result.visualDesignDocument).toEqual({ beats: [] });
+    expect(result.storyboardBreakdown).toEqual({
+      storyboard_breakdown: [
+        expect.objectContaining({
+          scenelet_id: 'scenelet-1',
+          shot_index: 1,
+        }),
+      ],
+    });
     expect(repository.updates[0]).toMatchObject({
       storyId: 'story-1',
-      patch: { visualDesignDocument: { beats: [] } },
+      patch: {
+        storyboardBreakdown: {
+          storyboard_breakdown: expect.any(Array),
+        },
+      },
     });
     expect(geminiClient.generateJson).toHaveBeenCalledWith(
       expect.objectContaining({
         systemInstruction: 'System prompt text',
-        userContent: expect.stringContaining('Interactive Script Story Tree (YAML)'),
+        userContent: expect.stringContaining('# Visual Design Document'),
       }),
       undefined
     );
-    expect(story.visualDesignDocument).toEqual({ beats: [] });
+    expect(story.storyboardBreakdown).toEqual({
+      storyboard_breakdown: expect.any(Array),
+    });
   });
 
-  it('logs Gemini request payload when logger is provided', async () => {
+  it('logs Gemini request payload when logger provided', async () => {
     const story = createStory();
     const repository = createStoriesRepository(story);
     const geminiClient = {
-      generateJson: vi.fn(async () => JSON.stringify({ visual_design_document: { beats: [] } })),
+      generateJson: vi.fn(async () => VALID_RESPONSE),
     };
     const logger = { debug: vi.fn() };
 
-    await runVisualDesignTask('story-1', {
+    await runStoryboardTask('story-1', {
       storiesRepository: repository,
-      storyTreeLoader: async () => snapshot,
+      storyTreeLoader: async () => SNAPSHOT,
       promptLoader: async () => 'Verbose system prompt',
       geminiClient: geminiClient as any,
       logger: logger as any,
     });
 
     expect(logger.debug).toHaveBeenCalledWith(
-      'Invoking Gemini for visual design task',
+      'Invoking Gemini for storyboard task',
       expect.objectContaining({
         storyId: 'story-1',
         geminiRequest: expect.objectContaining({
@@ -109,35 +152,50 @@ describe('runVisualDesignTask', () => {
     );
   });
 
-  it('throws when story lacks constitution', async () => {
+  it('throws when visual design document missing', async () => {
+    const story = createStory();
+    story.visualDesignDocument = null;
+    const repository = createStoriesRepository(story);
+
+    await expect(
+      runStoryboardTask('story-1', {
+        storiesRepository: repository,
+        storyTreeLoader: async () => SNAPSHOT,
+        promptLoader: async () => 'System prompt text',
+        geminiClient: { generateJson: vi.fn() } as any,
+      })
+    ).rejects.toBeInstanceOf(StoryboardTaskError);
+  });
+
+  it('throws when constitution missing', async () => {
     const story = createStory();
     story.storyConstitution = null;
     const repository = createStoriesRepository(story);
 
     await expect(
-      runVisualDesignTask('story-1', {
+      runStoryboardTask('story-1', {
         storiesRepository: repository,
-        storyTreeLoader: async () => snapshot,
+        storyTreeLoader: async () => SNAPSHOT,
         promptLoader: async () => 'System prompt text',
         geminiClient: { generateJson: vi.fn() } as any,
       })
-    ).rejects.toBeInstanceOf(VisualDesignTaskError);
+    ).rejects.toBeInstanceOf(StoryboardTaskError);
   });
 
-  it('throws when interactive script data missing', async () => {
+  it('throws when story tree missing', async () => {
     const story = createStory();
     const repository = createStoriesRepository(story);
 
     await expect(
-      runVisualDesignTask('story-1', {
+      runStoryboardTask('story-1', {
         storiesRepository: repository,
         storyTreeLoader: async () => {
-          throw new StoryTreeAssemblyError('Story tree requires at least one scenelet.');
+          throw new StoryTreeAssemblyError('No scenelets');
         },
         promptLoader: async () => 'System prompt text',
         geminiClient: { generateJson: vi.fn() } as any,
       })
-    ).rejects.toBeInstanceOf(VisualDesignTaskError);
+    ).rejects.toBeInstanceOf(StoryboardTaskError);
   });
 
   it('throws when Gemini returns invalid JSON', async () => {
@@ -148,27 +206,27 @@ describe('runVisualDesignTask', () => {
     };
 
     await expect(
-      runVisualDesignTask('story-1', {
+      runStoryboardTask('story-1', {
         storiesRepository: repository,
-        storyTreeLoader: async () => snapshot,
+        storyTreeLoader: async () => SNAPSHOT,
         promptLoader: async () => 'System prompt text',
         geminiClient: geminiClient as any,
       })
-    ).rejects.toBeInstanceOf(VisualDesignTaskError);
+    ).rejects.toBeInstanceOf(StoryboardTaskError);
   });
 
-  it('throws when visual design document already exists', async () => {
+  it('throws when storyboard already exists', async () => {
     const story = createStory();
-    story.visualDesignDocument = { existing: true };
+    story.storyboardBreakdown = { storyboard_breakdown: [] };
     const repository = createStoriesRepository(story);
 
     await expect(
-      runVisualDesignTask('story-1', {
+      runStoryboardTask('story-1', {
         storiesRepository: repository,
-        storyTreeLoader: async () => snapshot,
+        storyTreeLoader: async () => SNAPSHOT,
         promptLoader: async () => 'System prompt text',
         geminiClient: { generateJson: vi.fn() } as any,
       })
-    ).rejects.toBeInstanceOf(VisualDesignTaskError);
+    ).rejects.toBeInstanceOf(StoryboardTaskError);
   });
 });

@@ -1,0 +1,45 @@
+{
+  "visual_design_document": {
+    "project_overview": "Stub visual design document for testing storyboard integration.",
+    "character_designs": [
+      {
+        "character_name": "Rhea",
+        "role": "Explorer",
+        "detailed_description": {
+          "silhouette": "Athletic frame with confident posture.",
+          "color_palette": ["#2F4F4F", "#F5DEB3"],
+          "notable_features": "Glowing wristband that pulses when a choice occurs."
+        }
+      },
+      {
+        "character_name": "Narrator",
+        "role": "Voice of System",
+        "detailed_description": {
+          "silhouette": "Disembodied light ribbon forming abstract face when speaking.",
+          "color_palette": ["#FFD700"],
+          "notable_features": "Voice visualized as waves rippling through the environment."
+        }
+      },
+      {
+        "character_name": "Testing Agent",
+        "role": "Guide",
+        "detailed_description": {
+          "silhouette": "Compact floating orb companion.",
+          "color_palette": ["#1E90FF", "#FFFFFF"],
+          "notable_features": "Projector lens that emits holographic UI widgets."
+        }
+      }
+    ],
+    "environment_designs": [
+      {
+        "environment_name": "Choice Clearing",
+        "associated_scenelet_ids": ["scenelet-1", "scenelet-2"],
+        "detailed_description": {
+          "overview": "A clearing illuminated by suspended light threads.",
+          "key_props": ["Ancient decision obelisk", "Floating choice glyphs"],
+          "lighting": "Soft teal ambience with responsive highlights per choice."
+        }
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AgentWorkflowError } from '../src/workflow/errors.js';
 import {
@@ -15,6 +15,7 @@ import type {
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
+import type { StoryboardTaskRunner } from '../src/storyboard/types.js';
 
 function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>): AgentWorkflowStoriesRepository & {
   records: AgentWorkflowStoryRecord[];
@@ -25,6 +26,7 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
     initialPrompt: 'Existing prompt',
     storyConstitution: null,
     visualDesignDocument: null,
+    storyboardBreakdown: null,
   };
 
   const records: AgentWorkflowStoryRecord[] = [{ ...baseRecord, ...(initial ?? {}) }];
@@ -38,6 +40,7 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
         initialPrompt: input.initialPrompt,
         storyConstitution: null,
         visualDesignDocument: null,
+        storyboardBreakdown: null,
       };
       records.push(record);
       return record;
@@ -55,6 +58,9 @@ function createTestStoriesRepository(initial?: Partial<AgentWorkflowStoryRecord>
       }
       if (patch.visualDesignDocument !== undefined) {
         record.visualDesignDocument = patch.visualDesignDocument;
+      }
+      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
+        record.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
       }
       return record;
     },
@@ -126,6 +132,21 @@ function createVisualDesignTaskStub(): {
     return {
       storyId,
       visualDesignDocument: { stub: true },
+    };
+  };
+  return { runner, calls };
+}
+
+function createStoryboardTaskStub(): {
+  runner: StoryboardTaskRunner;
+  calls: Array<{ storyId: string }>;
+} {
+  const calls: Array<{ storyId: string }> = [];
+  const runner: StoryboardTaskRunner = async (storyId) => {
+    calls.push({ storyId });
+    return {
+      storyId,
+      storyboardBreakdown: { storyboard_breakdown: [] },
     };
   };
   return { runner, calls };
@@ -204,6 +225,8 @@ describe('StoryWorkflow factories', () => {
 describe('StoryWorkflow tasks', () => {
   const taskConstitution: StoryWorkflowTask = 'CREATE_CONSTITUTION';
   const taskInteractive: StoryWorkflowTask = 'CREATE_INTERACTIVE_SCRIPT';
+  const taskVisual: StoryWorkflowTask = 'CREATE_VISUAL_DESIGN';
+  const taskStoryboard: StoryWorkflowTask = 'CREATE_STORYBOARD';
 
   it('runs constitution task and prevents reruns', async () => {
     const repository = createTestStoriesRepository({
@@ -215,6 +238,7 @@ describe('StoryWorkflow tasks', () => {
     const sceneletPersistence = createSceneletPersistence();
     const treeLoader = createStoryTreeLoaderStub();
     const visualDesign = createVisualDesignTaskStub();
+    const storyboard = createStoryboardTaskStub();
 
     let constitutionCalls = 0;
     const generateStoryConstitution: AgentWorkflowConstitutionGenerator = async () => {
@@ -232,6 +256,7 @@ describe('StoryWorkflow tasks', () => {
       generateInteractiveStoryTree: async () => {},
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runStoryboardTask: storyboard.runner,
     });
 
     await workflow.runTask(taskConstitution);
@@ -257,6 +282,7 @@ describe('StoryWorkflow tasks', () => {
     const sceneletPersistence = createSceneletPersistence();
     const treeLoader = createStoryTreeLoaderStub();
     const visualDesign = createVisualDesignTaskStub();
+    const storyboard = createStoryboardTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-2', {
       storiesRepository: repository,
@@ -268,6 +294,7 @@ describe('StoryWorkflow tasks', () => {
       generateInteractiveStoryTree: async () => {},
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runStoryboardTask: storyboard.runner,
     });
 
     await expect(workflow.runTask(taskInteractive)).rejects.toThrow(
@@ -288,6 +315,7 @@ describe('StoryWorkflow tasks', () => {
     const sceneletPersistence = createSceneletPersistence();
     const treeLoader = createStoryTreeLoaderStub();
     const visualDesign = createVisualDesignTaskStub();
+    const storyboard = createStoryboardTaskStub();
 
     let interactiveCalls = 0;
     const generateInteractiveStoryTree: AgentWorkflowInteractiveGenerator = async () => {
@@ -309,6 +337,7 @@ describe('StoryWorkflow tasks', () => {
       generateInteractiveStoryTree,
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runStoryboardTask: storyboard.runner,
     });
 
     await workflow.runTask(taskInteractive);
@@ -330,6 +359,7 @@ describe('StoryWorkflow tasks', () => {
     sceneletPersistence.hasScenelets.clear(); // ensure clean slate
     const treeLoader = createStoryTreeLoaderStub();
     const visualDesign = createVisualDesignTaskStub();
+    const storyboard = createStoryboardTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-4', {
       storiesRepository: repository,
@@ -347,6 +377,7 @@ describe('StoryWorkflow tasks', () => {
       },
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runStoryboardTask: storyboard.runner,
     });
 
     const result = await workflow.runAllTasks();
@@ -358,6 +389,7 @@ describe('StoryWorkflow tasks', () => {
     });
     expect(sceneletPersistence.createCalls.length).toBeGreaterThan(0);
     expect(visualDesign.calls).toEqual([{ storyId: 'story-4' }]);
+    expect(storyboard.calls).toEqual([{ storyId: 'story-4' }]);
   });
 
   it('runs visual design task using injected runner', async () => {
@@ -382,6 +414,7 @@ describe('StoryWorkflow tasks', () => {
         visualDesignDocument: { stub: true },
       };
     };
+    const storyboard = createStoryboardTaskStub();
 
     const workflow = await resumeWorkflowFromStoryId('story-visual', {
       storiesRepository: repository,
@@ -393,11 +426,123 @@ describe('StoryWorkflow tasks', () => {
       generateInteractiveStoryTree: async () => {},
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesignRunner,
+      runStoryboardTask: storyboard.runner,
     });
 
-    await workflow.runTask('CREATE_VISUAL_DESIGN');
+    await workflow.runTask(taskVisual);
 
     expect(runnerCalls).toEqual([{ storyId: 'story-visual' }]);
     expect(repository.records[0]?.visualDesignDocument).toEqual({ stub: true });
+  });
+
+  it('runs storyboard task using injected runner', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-storyboard',
+      displayName: 'Draft',
+      initialPrompt: 'Mountain tale',
+      storyConstitution: {
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: { character_designs: [{ character_name: 'Rhea' }] },
+      storyboardBreakdown: null,
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+    const storyboardCalls: Array<{ storyId: string }> = [];
+    const storyboardRunner: StoryboardTaskRunner = async (storyId) => {
+      storyboardCalls.push({ storyId });
+      repository.records[0]!.storyboardBreakdown = { storyboard_breakdown: [] };
+      return {
+        storyId,
+        storyboardBreakdown: { storyboard_breakdown: [] },
+      };
+    };
+
+    const workflow = await resumeWorkflowFromStoryId('story-storyboard', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+      runStoryboardTask: storyboardRunner,
+    });
+
+    await workflow.runTask(taskStoryboard);
+
+    expect(storyboardCalls).toEqual([{ storyId: 'story-storyboard' }]);
+    expect(repository.records[0]?.storyboardBreakdown).toEqual({ storyboard_breakdown: [] });
+  });
+
+  it('requires visual design before storyboard task', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-missing-visual',
+      displayName: 'Draft',
+      initialPrompt: 'Mountain tale',
+      storyConstitution: {
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: null,
+      storyboardBreakdown: null,
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+
+    const workflow = await resumeWorkflowFromStoryId('story-missing-visual', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+      storyboardTaskOptions: {
+        promptLoader: async () => 'Storyboard prompt',
+        geminiClient: { generateJson: vi.fn() },
+      },
+    });
+
+    await expect(workflow.runTask(taskStoryboard)).rejects.toThrow('visual design document');
+  });
+
+  it('rejects storyboard task when storyboard already exists', async () => {
+    const repository = createTestStoriesRepository({
+      id: 'story-has-storyboard',
+      displayName: 'Draft',
+      initialPrompt: 'Mountain tale',
+      storyConstitution: {
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      },
+      visualDesignDocument: { character_designs: [{ character_name: 'Rhea' }] },
+      storyboardBreakdown: { storyboard_breakdown: [] },
+    });
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoaderStub();
+
+    const workflow = await resumeWorkflowFromStoryId('story-has-storyboard', {
+      storiesRepository: repository,
+      sceneletPersistence,
+      generateStoryConstitution: async () => ({
+        proposedStoryTitle: 'Mountain Tale',
+        storyConstitutionMarkdown: '# Constitution',
+      }),
+      generateInteractiveStoryTree: async () => {},
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: createVisualDesignTaskStub().runner,
+      storyboardTaskOptions: {
+        promptLoader: async () => 'Storyboard prompt',
+        geminiClient: { generateJson: vi.fn() },
+      },
+    });
+
+    await expect(workflow.runTask(taskStoryboard)).rejects.toThrow('already has a storyboard breakdown');
   });
 });

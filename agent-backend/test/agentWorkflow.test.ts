@@ -11,6 +11,7 @@ import type {
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
+import type { StoryboardTaskRunner } from '../src/storyboard/types.js';
 
 function createStoriesRepository(): AgentWorkflowStoriesRepository & {
   record: AgentWorkflowStoryRecord | null;
@@ -26,6 +27,7 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
         initialPrompt,
         storyConstitution: null,
         visualDesignDocument: null,
+        storyboardBreakdown: null,
       };
       return repository.record;
     },
@@ -41,6 +43,9 @@ function createStoriesRepository(): AgentWorkflowStoriesRepository & {
       }
       if (patch.visualDesignDocument !== undefined) {
         repository.record.visualDesignDocument = patch.visualDesignDocument;
+      }
+      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
+        repository.record.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
       }
       return repository.record;
     },
@@ -101,6 +106,13 @@ describe('runAgentWorkflow', () => {
         visualDesignDocument: { stub: true },
       };
     };
+    const storyboardRunner: StoryboardTaskRunner = async (storyId) => {
+      storiesRepository.record!.storyboardBreakdown = { storyboard_breakdown: [] };
+      return {
+        storyId,
+        storyboardBreakdown: { storyboard_breakdown: [] },
+      };
+    };
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (prompt) => {
       expect(prompt).toBe('Galactic explorers');
@@ -126,6 +138,7 @@ describe('runAgentWorkflow', () => {
       interactiveStoryOptions: { timeoutMs: 60_000 },
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runStoryboardTask: storyboardRunner,
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -139,6 +152,7 @@ describe('runAgentWorkflow', () => {
       storyConstitutionMarkdown: '## Constitution',
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
+    expect(storiesRepository.record?.storyboardBreakdown).toEqual({ storyboard_breakdown: [] });
   });
 
   it('uses default display name when no factory provided', async () => {
@@ -148,6 +162,10 @@ describe('runAgentWorkflow', () => {
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
+    });
+    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
+      storyId,
+      storyboardBreakdown: { storyboard_breakdown: [] },
     });
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
@@ -164,6 +182,7 @@ describe('runAgentWorkflow', () => {
       generateInteractiveStoryTree: interactiveGenerator,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runStoryboardTask: storyboardRunner,
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -176,6 +195,10 @@ describe('runAgentWorkflow', () => {
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
+    });
+    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
+      storyId,
+      storyboardBreakdown: { storyboard_breakdown: [] },
     });
 
     await expect(
@@ -191,6 +214,7 @@ describe('runAgentWorkflow', () => {
         },
         storyTreeLoader,
         runVisualDesignTask: visualDesignRunner,
+        runStoryboardTask: storyboardRunner,
       })
     ).rejects.toThrow('Interactive generator failed');
   });
@@ -236,6 +260,10 @@ describe('runAgentWorkflow', () => {
       storyId,
       visualDesignDocument: {},
     });
+    const storyboardRunner: StoryboardTaskRunner = async (storyId) => ({
+      storyId,
+      storyboardBreakdown: { storyboard_breakdown: [] },
+    });
 
     let receivedOptions: unknown;
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async (_prompt, options) => {
@@ -256,6 +284,7 @@ describe('runAgentWorkflow', () => {
       constitutionOptions,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runStoryboardTask: storyboardRunner,
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);

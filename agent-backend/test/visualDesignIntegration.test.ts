@@ -16,6 +16,7 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
       storyConstitutionMarkdown: '# Constitution',
     },
     visualDesignDocument: null,
+    storyboardBreakdown: null,
   };
 }
 
@@ -33,6 +34,9 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): AgentWorkflow
       updates.push({ storyId, patch });
       if ((patch as { visualDesignDocument?: unknown }).visualDesignDocument !== undefined) {
         story.visualDesignDocument = (patch as { visualDesignDocument?: unknown }).visualDesignDocument ?? null;
+      }
+      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
+        story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown ?? null;
       }
       return story;
     },

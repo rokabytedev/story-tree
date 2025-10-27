@@ -35,6 +35,7 @@ interface StubStory {
   initialPrompt: string;
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
+  storyboardBreakdown: unknown | null;
 }
 
 function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
@@ -47,6 +48,7 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
 } {
   const stories = initialStories.map((story) => ({
     visualDesignDocument: null,
+    storyboardBreakdown: null,
     ...story,
   }));
 
@@ -58,6 +60,7 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
         initialPrompt,
         storyConstitution: null,
         visualDesignDocument: null,
+        storyboardBreakdown: null,
       };
       stories.push(story);
       return story;
@@ -75,6 +78,9 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
       }
       if ((patch as { visualDesignDocument?: unknown }).visualDesignDocument !== undefined) {
         story.visualDesignDocument = (patch as { visualDesignDocument?: unknown }).visualDesignDocument;
+      }
+      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
+        story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown;
       }
       return story;
     }),
@@ -107,6 +113,7 @@ function createSceneletsRepositoryStub(): {
   scenelets: SceneletStubRecord[];
 } {
   const scenelets: SceneletStubRecord[] = [];
+  let createdAtSeed = Date.now();
 
   const repository = {
     createScenelet: vi.fn(async (input: {
@@ -115,6 +122,7 @@ function createSceneletsRepositoryStub(): {
       choiceLabelFromParent?: string | null;
       content?: unknown;
     }) => {
+      createdAtSeed += 1;
       const record: SceneletStubRecord = {
         id: `scenelet-${scenelets.length + 1}`,
         storyId: input.storyId,
@@ -124,7 +132,7 @@ function createSceneletsRepositoryStub(): {
         content: input.content ?? {},
         isBranchPoint: false,
         isTerminalNode: false,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(createdAtSeed).toISOString(),
       };
       scenelets.push(record);
       return {
@@ -238,6 +246,7 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.storyConstitution).not.toBeNull();
     expect(scenelets.length).toBeGreaterThan(0);
     expect(stories[0]?.visualDesignDocument).not.toBeNull();
+    expect(stories[0]?.storyboardBreakdown).not.toBeNull();
   });
 
   it('fails gracefully when story missing for run-task', async () => {
@@ -289,5 +298,6 @@ describe('agentWorkflow CLI', () => {
     expect(combinedErrors).toContain('CREATE_CONSTITUTION');
     expect(combinedErrors).toContain('CREATE_INTERACTIVE_SCRIPT');
     expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
+    expect(combinedErrors).toContain('CREATE_STORYBOARD');
   });
 });

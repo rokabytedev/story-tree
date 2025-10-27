@@ -28,10 +28,13 @@ const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
+const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
+const STORYBOARD_FIXTURE = resolve(REPO_ROOT, 'fixtures/storyboard/stub-gemini-response.json');
 const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
+  'CREATE_STORYBOARD',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -208,6 +211,9 @@ async function buildWorkflowDependencies(
     visualDesignTaskOptions: {
       logger,
     },
+    storyboardTaskOptions: {
+      logger,
+    },
   };
 
   if (mode === 'stub') {
@@ -223,8 +229,14 @@ async function buildWorkflowDependencies(
       logger,
       promptLoader: async () => 'Stub visual design system prompt',
       geminiClient: new FixtureGeminiClient([
-        JSON.stringify({ visual_design_document: { stub: true } }),
+        await loadVisualDesignResponse(),
       ]),
+    };
+    const storyboardResponse = await loadStoryboardResponse();
+    workflowOptions.storyboardTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub storyboard system prompt',
+      geminiClient: new FixtureGeminiClient([storyboardResponse]),
     };
   }
 
@@ -405,6 +417,31 @@ async function loadInteractiveResponses(): Promise<string[]> {
     }
     throw new CliParseError(`Interactive story fixture entry at index ${index} is invalid.`);
   });
+}
+
+async function loadStoryboardResponse(): Promise<string> {
+  return loadJsonFixture(STORYBOARD_FIXTURE, 'Storyboard fixture must not be empty.', 'Storyboard fixture must contain valid JSON.');
+}
+
+async function loadVisualDesignResponse(): Promise<string> {
+  return loadJsonFixture(
+    VISUAL_DESIGN_FIXTURE,
+    'Visual design fixture must not be empty.',
+    'Visual design fixture must contain valid JSON.'
+  );
+}
+
+async function loadJsonFixture(path: string, emptyMessage: string, invalidMessage: string): Promise<string> {
+  const raw = await readFile(path, 'utf8');
+  if (!raw.trim()) {
+    throw new CliParseError(emptyMessage);
+  }
+  try {
+    JSON.parse(raw);
+  } catch {
+    throw new CliParseError(invalidMessage);
+  }
+  return raw;
 }
 
 function resolveSupabaseCredentials(
