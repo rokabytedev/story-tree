@@ -32,13 +32,18 @@
 interface StoryWorkflow {
   storyId: string;
   runTask(task: WorkflowTask): Promise<void>;
-  runAllTasks(): Promise<void>; // convenience wrapper sequencing supported tasks
+  runAllTasks(): Promise<void>; // convenience wrapper sequencing the full pipeline
 }
 
-type WorkflowTask = 'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT';
+type WorkflowTask =
+  | 'CREATE_CONSTITUTION'
+  | 'CREATE_INTERACTIVE_SCRIPT'
+  | 'CREATE_VISUAL_DESIGN'
+  | 'CREATE_AUDIO_DESIGN'
+  | 'CREATE_SHOT_PRODUCTION';
 ```
-- `runTask` validates prerequisites and idempotency. Repeat invocations of a completed task throw `AgentWorkflowError` for now.
-- `runAllTasks` mirrors the current behaviour: sequentially invoke the two tasks and surface the final constitution metadata for compatibility.
+- `runTask` validates prerequisites and idempotency for every supported task. Repeat invocations of a completed task throw `AgentWorkflowError` until reset tooling exists.
+- `runAllTasks` now executes the complete five-stage pipeline (constitution → interactive script → visual design → audio design → shot production) and returns the persisted constitution summary for UI compatibility.
 - Factory helpers (`createWorkflowFromPrompt`, `resumeWorkflowFromStoryId`) live in `agent-backend/src/workflow`.
 
 ## Task Catalogue
@@ -62,11 +67,44 @@ type WorkflowTask = 'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT';
   1. Load constitution markdown from DB.  
   2. Invoke `generateInteractiveStoryTree`, injecting `sceneletPersistence`.  
   3. Persist scenelets through the provided adapter.  
-  4. Flag completion (e.g., new `interactive_script_generated_at` timestamp on stories).
-- Postconditions: Scenelets exist for story; completion flag prevents reruns until reset tooling exists.
+  4. Flag completion by relying on scenelet presence (duplicate runs throw until reset tooling exists).
+- Postconditions: Scenelets exist for story; reruns are prevented while rows remain in the `scenelets` table.
 
-### Future Tasks
-- Leave extension point for `CREATE_VISUAL_DESIGN`, `CREATE_AUDIO_DESIGN`, etc. Each new task should declare prerequisites and completion signals.
+### Task: Create Visual Design (`CREATE_VISUAL_DESIGN`)
+- Preconditions:
+  - Constitution persisted.  
+  - Interactive script generated (scenelets available via repository).
+- Steps:
+  1. Load constitution markdown and story summary for tonal guidance.  
+  2. Optionally load interactive tree snapshot to provide branch coverage.  
+  3. Execute `runVisualDesignTask` (Gemini prompt + validator).  
+  4. Persist the returned `visualDesignDocument` (JSON payload) on the story record.
+- Postconditions: `stories.visualDesignDocument` populated. Reruns blocked until a future reset flow clears the column.
+
+### Task: Create Audio Design (`CREATE_AUDIO_DESIGN`)
+- Preconditions:
+  - Constitution and visual design artifacts exist (audio prompt references visual canon).  
+- Steps:
+  1. Load story record including constitution + visual design snippets.  
+  2. Run `runAudioDesignTask` to generate the audio design bible.  
+  3. Persist `audioDesignDocument` JSON back to the story.  
+  4. Log summary metadata (e.g., cue counts) for operators.
+- Postconditions: Audio design stored on the story; repeat invocations throw until reset support arrives.
+
+### Task: Create Shot Production (`CREATE_SHOT_PRODUCTION`)
+- Preconditions:
+  - Constitution, visual design, and audio design all exist.  
+  - Interactive scenelets are present and the `shots` table has no rows for the story (idempotency guard).
+- Steps:
+  1. Load the story tree snapshot to obtain ordered scenelets and branch context.  
+  2. For each scenelet, assemble the combined shot director prompt (constitution + tree YAML + visual + audio + scenelet package).  
+  3. Call Gemini once per scenelet, parse the JSON response, and validate structure (sequential indices, ≥80 character prompts, required phrase `"No background music."`, dialogue integrity).  
+  4. Persist each scenelet’s shots into the `public.shots` table via the repository (`createSceneletShots` enforces exclusivity).  
+  5. Emit structured logs summarizing shot counts and latency.
+- Postconditions: All shots stored in `public.shots`; reruns rejected until the rows are cleared explicitly.
+
+### Extensibility
+- The workflow intentionally keeps tasks composable so future capabilities (e.g., visual reference packages, localization passes) can add new `WorkflowTask` values following the same prerequisite pattern.
 
 ## CLI Simplification
 - Collapse modes into:
@@ -74,9 +112,19 @@ type WorkflowTask = 'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT';
   2. `real` – real Supabase + Gemini.  
 - Remove stub-DB logic; rely on repositories used by both modes.
 - CLI commands:
-  - `agent-workflow run-all --prompt "..."` → creates new workflow and runs `runAllTasks`.
+  - `agent-workflow run-all --prompt "..."` → creates a story and runs the full five-task pipeline.
   - `agent-workflow run-task --task CREATE_CONSTITUTION --story-id ...`
+  - `agent-workflow run-task --task CREATE_INTERACTIVE_SCRIPT --story-id ...`
+  - `agent-workflow run-task --task CREATE_VISUAL_DESIGN --story-id ...`
+  - `agent-workflow run-task --task CREATE_AUDIO_DESIGN --story-id ...`
+  - `agent-workflow run-task --task CREATE_SHOT_PRODUCTION --story-id ...`
   - `agent-workflow create --prompt "..."` → returns story ID without running tasks.
+- Stub mode pulls fixtures from:
+  - `agent-backend/fixtures/story-constitution/stub-gemini-responses.json`
+  - `agent-backend/fixtures/interactive-story/stub-gemini-responses.json`
+  - `agent-backend/fixtures/visual-design/stub-gemini-response.json`
+  - `agent-backend/fixtures/gemini/audio-design/success.json`
+  - `agent-backend/fixtures/gemini/shot-production/scenelet-<id>.json`
 - Provide verbose logging flag and surface validation errors cleanly.
 
 ## Testing Strategy

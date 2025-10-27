@@ -96,4 +96,6 @@ Validation expectations:
 
 ## Open Questions
 - Should reruns always replace the entire scenelet or support merge behaviour? Current plan replaces the full set to guarantee deterministic ordering.
+  A: always replace the entire scenelet for now. scenelet is minimal unit of update
 - Do we need CLI flags to target a single scenelet, or is full-scenelet sweep acceptable for now?
+  A: should support both.

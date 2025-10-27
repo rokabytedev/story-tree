@@ -2,5 +2,5 @@
 - [x] Implement shot storage repository with fetch/save helpers, duplicate protection, and fixture-backed unit tests.
 - [x] Build combined shot prompt builder + validator modules that assemble inputs, enforce the new scenelet-scoped JSON contract, and ship exhaustive tests.
 - [x] Create the `CREATE_SHOT_PRODUCTION` workflow task that iterates scenelets, calls Gemini once per scenelet to produce the ordered shot list, and persists validated results to `shots` storage; update sequencing and error handling tests.
-- [ ] Refresh CLI wiring, stub fixtures, and integration tests (`run-task`, `run-all`) to target the new task and schema.
-- [ ] Rewrite developer docs (shot production plan, workflow overview) and system prompt assets; ensure validation snapshots match the new contract.
+- [x] Refresh CLI wiring, stub fixtures, and integration tests (`run-task`, `run-all`) to target the new task and schema.
+- [x] Rewrite developer docs (shot production plan, workflow overview) and system prompt assets; ensure validation snapshots match the new contract.

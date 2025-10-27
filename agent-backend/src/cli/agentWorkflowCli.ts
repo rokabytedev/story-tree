@@ -34,6 +34,10 @@ const AUDIO_DESIGN_FIXTURE = resolve(
   REPO_ROOT,
   'fixtures/gemini/audio-design/success.json'
 );
+const SHOT_PRODUCTION_FIXTURE_DIRECTORY = resolve(
+  REPO_ROOT,
+  'fixtures/gemini/shot-production'
+);
 const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
@@ -248,36 +252,12 @@ async function buildWorkflowDependencies(
       promptLoader: async () => 'Stub audio design system prompt',
       geminiClient: new FixtureGeminiClient([audioResponse]),
     };
-    const shotProductionResponse = JSON.stringify({
-      scenelet_id: 'scenelet-1',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: 'Extended framing description exceeding eighty characters to satisfy validation requirements.',
-            composition_and_content: 'Comprehensive composition details outlining subjects, props, and background to exceed limits.',
-            character_action_and_emotion: 'Character actions and emotions articulated with sufficient depth beyond the threshold length.',
-            dialogue: [],
-            camera_dynamics: 'Camera glides slowly across the scene with descriptive pacing beyond the minimum requirement.',
-            lighting_and_atmosphere: 'Lighting notes covering warmth, contrast, and volumetric effects in lengthy prose.',
-            continuity_notes: 'Continuity guidance capturing prop placement and performer marks surpassing eighty characters.',
-          },
-          generation_prompts: {
-            first_frame_prompt: 'First frame prompt elaborating on palette, mood, and staging across a richly detailed description.',
-            key_frame_storyboard_prompt: 'Storyboard prompt covering blocking, motion beats, and environment cues in exhaustive prose.',
-            video_clip_prompt: 'Video clip prompt describing pacing, transitions, and tone with clarity. No background music.',
-          },
-        },
-      ],
-    });
     const shotProductionGeminiClient: GeminiJsonClient = {
       async generateJson(request) {
         const content = (request as { userContent?: string } | undefined)?.userContent ?? '';
-        const match = content.match(/- scenelet_id:\s*(\S+)/);
+        const match = content.match(/- scenelet_id:\s*["']?([A-Za-z0-9_-]+)/);
         const sceneletId = match?.[1] ?? 'scenelet-1';
-        const parsed = JSON.parse(shotProductionResponse) as { scenelet_id: string };
-        parsed.scenelet_id = sceneletId;
-        return JSON.stringify(parsed);
+        return loadShotProductionFixture(sceneletId);
       },
     };
     workflowOptions.shotProductionTaskOptions = {
@@ -482,6 +462,20 @@ async function loadAudioDesignResponse(): Promise<string> {
   );
 }
 
+async function loadShotProductionFixture(sceneletId: string): Promise<string> {
+  const normalized = normalizeSceneletId(sceneletId);
+  const filePath = resolve(SHOT_PRODUCTION_FIXTURE_DIRECTORY, `${normalized}.json`);
+  if (!existsSync(filePath)) {
+    throw new CliParseError(`Missing stub shot production fixture for ${normalized}.`);
+  }
+
+  return loadJsonFixture(
+    filePath,
+    `Shot production fixture ${normalized}.json must not be empty.`,
+    `Shot production fixture ${normalized}.json must contain valid JSON.`
+  );
+}
+
 async function loadJsonFixture(path: string, emptyMessage: string, invalidMessage: string): Promise<string> {
   const raw = await readFile(path, 'utf8');
   if (!raw.trim()) {
@@ -493,6 +487,19 @@ async function loadJsonFixture(path: string, emptyMessage: string, invalidMessag
     throw new CliParseError(invalidMessage);
   }
   return raw;
+}
+
+function normalizeSceneletId(sceneletId: string): string {
+  const trimmed = sceneletId?.trim?.() ?? '';
+  if (!trimmed) {
+    throw new CliParseError('Shot production fixture lookup received an empty scenelet id.');
+  }
+
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+    throw new CliParseError(`Shot production fixture scenelet id contains unsupported characters: ${sceneletId}`);
+  }
+
+  return trimmed;
 }
 
 function resolveSupabaseCredentials(
