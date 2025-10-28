@@ -82,7 +82,7 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       };
 
       const { data, error } = await client
-        .from<SceneletRow>(SCENELETS_TABLE)
+        .from(SCENELETS_TABLE)
         .insert(payload)
         .select()
         .single();
@@ -106,7 +106,7 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       const { data, error } = await client
-        .from<SceneletRow>(SCENELETS_TABLE)
+        .from(SCENELETS_TABLE)
         .update({
           is_branch_point: true,
           choice_prompt: prompt,
@@ -133,7 +133,7 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       const { data, error } = await client
-        .from<SceneletRow>(SCENELETS_TABLE)
+        .from(SCENELETS_TABLE)
         .update({
           is_terminal_node: true,
         })
@@ -159,7 +159,7 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       const { data, error } = await client
-        .from<SceneletRow>(SCENELETS_TABLE)
+        .from(SCENELETS_TABLE)
         .select('id')
         .eq('story_id', trimmedStoryId)
         .limit(1);
@@ -178,7 +178,7 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       }
 
       const { data, error } = await client
-        .from<SceneletRow>(SCENELETS_TABLE)
+        .from(SCENELETS_TABLE)
         .select()
         .eq('story_id', trimmedStoryId)
         .order('created_at', { ascending: true });

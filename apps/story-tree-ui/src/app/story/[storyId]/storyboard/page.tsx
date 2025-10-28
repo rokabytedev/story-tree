@@ -1,10 +1,11 @@
 import { EmptyState } from "@/components/emptyState";
 
-export default function StoryboardTab({
+export default async function StoryboardTab({
   params,
 }: {
-  params: { storyId: string };
+  params: Promise<{ storyId: string }>;
 }) {
+  const { storyId } = await params;
   return (
     <div className="space-y-6">
       <header className="space-y-2">
@@ -17,7 +18,7 @@ export default function StoryboardTab({
       </header>
       <EmptyState
         title="Storyboard preview coming soon"
-        message={`We are designing an interactive tree canvas for ${params.storyId}. Follow the UI bootstrap tasks to stay notified when the visualization ships.`}
+        message={`We are designing an interactive tree canvas for ${storyId}. Follow the UI bootstrap tasks to stay notified when the visualization ships.`}
       />
       <p className="text-xs text-text-muted/70">
         Curious about the upcoming experience? Review{" "}

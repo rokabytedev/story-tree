@@ -77,7 +77,7 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
 
   return {
     async listStories(): Promise<StoryRecord[]> {
-      const { data, error } = await client.from<StoryRow>(STORIES_TABLE).select();
+      const { data, error } = await client.from(STORIES_TABLE).select();
 
       if (error) {
         throw new StoriesRepositoryError('Failed to list stories.', error);
@@ -103,7 +103,7 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
 
       const payload = buildInsertPayload(input);
       const { data, error } = await client
-        .from<StoryRow>(STORIES_TABLE)
+        .from(STORIES_TABLE)
         .insert(payload)
         .select()
         .single();
@@ -127,7 +127,7 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
       }
 
       const { data, error } = await client
-        .from<StoryRow>(STORIES_TABLE)
+        .from(STORIES_TABLE)
         .update(payload)
         .eq('id', trimmedId)
         .select()
@@ -151,7 +151,7 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
       }
 
       const { data, error } = await client
-        .from<StoryRow>(STORIES_TABLE)
+        .from(STORIES_TABLE)
         .select()
         .eq('id', trimmedId)
         .maybeSingle();
@@ -174,7 +174,7 @@ export function createStoriesRepository(client: SupabaseClient): StoriesReposito
       }
 
       const { data, error } = await client
-        .from<StoryRow>(STORIES_TABLE)
+        .from(STORIES_TABLE)
         .delete()
         .eq('id', trimmedId)
         .select()

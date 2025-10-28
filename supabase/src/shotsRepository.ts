@@ -76,7 +76,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       }
 
       const { data, error } = await client
-        .from<ShotRow>(SHOTS_TABLE)
+        .from(SHOTS_TABLE)
         .select()
         .eq('story_id', trimmedStoryId)
         .order('scenelet_sequence', { ascending: true })
@@ -139,7 +139,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       }
 
       const { data: existing, error: checkError } = await client
-        .from<Pick<ShotRow, 'id'>>(SHOTS_TABLE)
+        .from(SHOTS_TABLE)
         .select('id')
         .eq('story_id', trimmedStoryId)
         .eq('scenelet_id', trimmedSceneletId)
@@ -186,7 +186,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
         };
       });
 
-      const { error: insertError } = await client.from<ShotRow>(SHOTS_TABLE).insert(rows);
+      const { error: insertError } = await client.from(SHOTS_TABLE).insert(rows);
 
       if (insertError) {
         throw new ShotsRepositoryError('Failed to persist scenelet shots.', insertError);
@@ -215,7 +215,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       }
 
       const { data, error } = await client
-        .from<Pick<ShotRow, 'scenelet_id'>>(SHOTS_TABLE)
+        .from(SHOTS_TABLE)
         .select('scenelet_id')
         .eq('story_id', trimmedStoryId)
         .in('scenelet_id', normalizedSceneletIds);
