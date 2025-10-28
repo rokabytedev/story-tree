@@ -30,6 +30,10 @@ const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
+const VISUAL_REFERENCE_FIXTURE = resolve(
+  REPO_ROOT,
+  'fixtures/gemini/visual-reference/success.json'
+);
 const AUDIO_DESIGN_FIXTURE = resolve(
   REPO_ROOT,
   'fixtures/gemini/audio-design/success.json'
@@ -42,6 +46,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
+  'CREATE_VISUAL_REFERENCE',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
 ];
@@ -222,6 +227,9 @@ async function buildWorkflowDependencies(
     visualDesignTaskOptions: {
       logger,
     },
+    visualReferenceTaskOptions: {
+      logger,
+    },
     audioDesignTaskOptions: {
       logger,
     },
@@ -245,6 +253,12 @@ async function buildWorkflowDependencies(
       geminiClient: new FixtureGeminiClient([
         await loadVisualDesignResponse(),
       ]),
+    };
+    const visualReferenceResponse = await loadVisualReferenceResponse();
+    workflowOptions.visualReferenceTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub visual reference system prompt',
+      geminiClient: new FixtureGeminiClient([visualReferenceResponse]),
     };
     const audioResponse = await loadAudioDesignResponse();
     workflowOptions.audioDesignTaskOptions = {
@@ -451,6 +465,14 @@ async function loadVisualDesignResponse(): Promise<string> {
     VISUAL_DESIGN_FIXTURE,
     'Visual design fixture must not be empty.',
     'Visual design fixture must contain valid JSON.'
+  );
+}
+
+async function loadVisualReferenceResponse(): Promise<string> {
+  return loadJsonFixture(
+    VISUAL_REFERENCE_FIXTURE,
+    'Visual reference fixture must not be empty.',
+    'Visual reference fixture must contain valid JSON.'
   );
 }
 

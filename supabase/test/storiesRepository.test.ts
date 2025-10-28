@@ -201,6 +201,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
       story_constitution: { title: 'Alpha' },
       visual_design_document: { characters: ['Hero'] },
       audio_design_document: { voices: [] },
+      visual_reference_package: { character_model_sheets: [] },
     });
     const { repo, table } = makeRepository({
       update: { data: updatedRow, error: null },
@@ -210,6 +211,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
       storyConstitution: { title: 'Alpha' },
       visualDesignDocument: { characters: ['Hero'] },
       audioDesignDocument: { voices: [] },
+      visualReferencePackage: { character_model_sheets: [] },
     });
 
     expect(table.updated).toHaveLength(1);
@@ -217,6 +219,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
       story_constitution: { title: 'Alpha' },
       visual_design_document: { characters: ['Hero'] },
       audio_design_document: { voices: [] },
+      visual_reference_package: { character_model_sheets: [] },
     });
     expect(table.updateFilters).toEqual([
       { column: 'id', value: updatedRow.id },
@@ -225,6 +228,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
     expect(result.storyConstitution).toEqual({ title: 'Alpha' });
     expect(result.visualDesignDocument).toEqual({ characters: ['Hero'] });
     expect(result.audioDesignDocument).toEqual({ voices: [] });
+    expect(result.visualReferencePackage).toEqual({ character_model_sheets: [] });
   });
 
   it('updates display name when provided', async () => {

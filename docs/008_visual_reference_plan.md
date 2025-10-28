@@ -7,7 +7,7 @@ Introduce a `CREATE_VISUAL_REFERENCE` workflow task that consumes the story cons
 - Constitution markdown stored on the story record (`stories.story_constitution`).
 - Interactive script scenelets persisted in Supabase and exposed through the existing story tree snapshot serializer, providing deterministic `scenelet-#` and `branching-point-#` identifiers.
 - Visual design document stored in `stories.visual_design_document` with complete character and environment definitions.
-- System prompt content found in `system_prompts/generative_art_director.md`. We will surface this asset under the clearer filename `system_prompts/visual_reference_director.md` without changing the prompt text.
+- System prompt content found in `system_prompts/visual_reference_director.md` (identical to the previous Generative Art Director prompt).
 
 The task may only execute once all three artifacts exist and `stories.visual_reference_package` is empty.
 

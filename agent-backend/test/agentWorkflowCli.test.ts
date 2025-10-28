@@ -300,6 +300,7 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.storyConstitution).not.toBeNull();
     expect(scenelets.length).toBeGreaterThan(0);
     expect(stories[0]?.visualDesignDocument).not.toBeNull();
+    expect(stories[0]?.visualReferencePackage).not.toBeNull();
     expect(stories[0]?.audioDesignDocument).not.toBeNull();
     expect(shotsRepository.created).toEqual([
       { storyId: stories[0]!.id, sceneletId: 'scenelet-1', sceneletSequence: 1, shotIndices: [1, 2] },
@@ -331,10 +332,13 @@ describe('agentWorkflow CLI', () => {
     const storyId = createdStory.storyId;
     logs.length = 0;
 
-    const prerequisiteTasks: Array<'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT' | 'CREATE_VISUAL_DESIGN' | 'CREATE_AUDIO_DESIGN'> = [
+    const prerequisiteTasks: Array<
+      'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT' | 'CREATE_VISUAL_DESIGN' | 'CREATE_VISUAL_REFERENCE' | 'CREATE_AUDIO_DESIGN'
+    > = [
       'CREATE_CONSTITUTION',
       'CREATE_INTERACTIVE_SCRIPT',
       'CREATE_VISUAL_DESIGN',
+      'CREATE_VISUAL_REFERENCE',
       'CREATE_AUDIO_DESIGN',
     ];
 

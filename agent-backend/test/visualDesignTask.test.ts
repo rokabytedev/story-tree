@@ -17,6 +17,7 @@ function createStory(): AgentWorkflowStoryRecord {
     },
     visualDesignDocument: null,
     audioDesignDocument: null,
+    visualReferencePackage: null,
   };
 }
 

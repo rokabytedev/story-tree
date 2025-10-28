@@ -14,6 +14,12 @@ import type {
   AudioDesignTaskRunner,
   AudioDesignTaskDependencies,
 } from '../audio-design/types.js';
+import { runVisualReferenceTask as runVisualReferenceTaskImpl } from '../visual-reference/visualReferenceTask.js';
+import type {
+  VisualReferenceTaskOptions,
+  VisualReferenceTaskRunner,
+  VisualReferenceTaskDependencies,
+} from '../visual-reference/types.js';
 import { runShotProductionTask } from '../shot-production/shotProductionTask.js';
 import type {
   ShotProductionTaskOptions,
@@ -39,6 +45,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
+  'CREATE_VISUAL_REFERENCE',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
 ];
@@ -106,6 +113,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly shotsRepository: ShotProductionShotsRepository;
   private readonly visualDesignTaskRunner: VisualDesignTaskRunner;
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
+  private readonly visualReferenceTaskRunner: VisualReferenceTaskRunner;
+  private readonly visualReferenceOptions?: VisualReferenceTaskOptions;
   private readonly audioDesignTaskRunner: AudioDesignTaskRunner;
   private readonly audioDesignOptions?: AudioDesignTaskOptions;
   private readonly shotProductionTaskRunner: ShotProductionTaskRunner;
@@ -132,6 +141,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.visualDesignOptions = dependencies.visualDesignTaskOptions
       ? { ...dependencies.visualDesignTaskOptions }
       : undefined;
+    this.visualReferenceTaskRunner =
+      dependencies.runVisualReferenceTask ?? runVisualReferenceTaskImpl;
+    this.visualReferenceOptions = dependencies.visualReferenceTaskOptions
+      ? { ...dependencies.visualReferenceTaskOptions }
+      : undefined;
     this.audioDesignTaskRunner =
       dependencies.runAudioDesignTask ?? runAudioDesignTask;
     this.audioDesignOptions = dependencies.audioDesignTaskOptions
@@ -155,6 +169,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_VISUAL_DESIGN':
         await this.runVisualDesignTask();
+        return;
+      case 'CREATE_VISUAL_REFERENCE':
+        await this.runVisualReferenceTask();
         return;
       case 'CREATE_AUDIO_DESIGN':
         await this.runAudioDesignTask();
@@ -180,6 +197,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_VISUAL_DESIGN':
           await this.runVisualDesignTask();
+          break;
+        case 'CREATE_VISUAL_REFERENCE':
+          await this.runVisualReferenceTask();
           break;
         case 'CREATE_AUDIO_DESIGN':
           await this.runAudioDesignTask();
@@ -293,6 +313,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.visualDesignTaskRunner(this.storyId, dependencies);
   }
 
+  private async runVisualReferenceTask(): Promise<void> {
+    const dependencies = this.buildVisualReferenceDependencies();
+    await this.visualReferenceTaskRunner(this.storyId, dependencies);
+  }
+
   private async runAudioDesignTask(): Promise<void> {
     const dependencies = this.buildAudioDesignDependencies();
     await this.audioDesignTaskRunner(this.storyId, dependencies);
@@ -320,6 +345,37 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.geminiOptions) {
       dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildVisualReferenceDependencies(): VisualReferenceTaskDependencies {
+    const overrides = this.visualReferenceOptions;
+    const dependencies: VisualReferenceTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      storyTreeLoader: this.storyTreeLoader,
+    };
+
+    if (overrides?.promptLoader) {
+      dependencies.promptLoader = overrides.promptLoader;
+    }
+
+    if (overrides?.geminiClient) {
+      dependencies.geminiClient = overrides.geminiClient;
+    }
+
+    if (overrides?.geminiOptions) {
+      dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    if (typeof overrides?.minimumPromptLength === 'number') {
+      dependencies.minimumPromptLength = overrides.minimumPromptLength;
     }
 
     const logger = overrides?.logger ?? this.logger;
