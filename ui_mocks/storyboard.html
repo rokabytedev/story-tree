@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Storybook Workspace Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#4FD1C5",
+                        "background-light": "#F9FAFB",
+                        "background-dark": "#1A202C",
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#2D3748",
+                        "text-light": "#2D3748",
+                        "text-dark": "#E2E8F0",
+                        "subtext-light": "#718096",
+                        "subtext-dark": "#A0AEC0",
+                        "border-light": "#E2E8F0",
+                        "border-dark": "#4A5568",
+                    },
+                    fontFamily: {
+                        "display": ["Work Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Work Sans', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark">
+    <div class="flex h-screen w-full">
+        <aside
+            class="flex h-full w-64 flex-col border-r border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-4 shrink-0">
+            <div class="flex flex-col justify-between h-full">
+                <div class="flex flex-col gap-6">
+                    <div class="flex items-center gap-3 px-2">
+                        <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-10"
+                            data-alt="A whimsical, colorful tree logo"
+                            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXk3igDQBDzBl1irsIHlLFvYQMYa4w97n9oQf1t_xaZMikzBJ41jSfh-tZn7tMiOES3yL9XKoQarfLe2b-yr0XLOSr-1CkvibZY4Xh1E_V2xJ4QqXya_BAFdn7vJ5YZlqJIAZGVtN2NuaNTe36THiyRCKuYvSOW_hj6jpdokavHz0Xb0WcnG8zLj9MMppuSrmVJ4wSwSB8oEUPjcdt4e6uE_HJVeiOsN0bs04URf9RGTG5C0Y9AA1HjnbgHA_vVSAd0PZ52nI9VHk_");'>
+                        </div>
+                        <div class="flex flex-col">
+                            <h1 class="text-text-light dark:text-text-dark text-base font-semibold leading-normal">The
+                                Magical Forest</h1>
+                            <p class="text-subtext-light dark:text-subtext-dark text-sm font-normal leading-normal">
+                                Storybook Project</p>
+                        </div>
+                    </div>
+                    <nav class="flex flex-col gap-2">
+                        <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                            href="#">
+                            <span
+                                class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">description</span>
+                            <p
+                                class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                                Constitution</p>
+                        </a>
+                        <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                            href="#">
+                            <span
+                                class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">data_object</span>
+                            <p
+                                class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                                Script</p>
+                        </a>
+                        <a class="group flex items-center gap-3 rounded-lg px-3 py-2 bg-primary/10 transition-colors duration-200"
+                            href="#">
+                            <span class="material-symbols-outlined text-primary">account_tree</span>
+                            <p class="text-primary text-sm font-semibold leading-normal">Storyboard</p>
+                        </a>
+                        <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                            href="#">
+                            <span
+                                class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">photo_library</span>
+                            <p
+                                class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                                Visual</p>
+                        </a>
+                        <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                            href="#">
+                            <span
+                                class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">music_note</span>
+                            <p
+                                class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                                Audio</p>
+                        </a>
+                    </nav>
+                </div>
+                <div class="flex flex-col gap-1 border-t border-border-light dark:border-border-dark pt-4">
+                    <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                        href="#">
+                        <span
+                            class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">settings</span>
+                        <p
+                            class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                            Settings</p>
+                    </a>
+                    <a class="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-primary/10"
+                        href="#">
+                        <span
+                            class="material-symbols-outlined text-subtext-light dark:text-subtext-dark group-hover:text-primary">account_circle</span>
+                        <p
+                            class="text-text-light dark:text-text-dark text-sm font-medium leading-normal group-hover:text-primary">
+                            Profile</p>
+                    </a>
+                </div>
+            </div>
+        </aside>
+        <main class="flex-1 overflow-auto p-8">
+            <div class="mx-auto max-w-7xl">
+                <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-text-light dark:text-text-dark">Storyboard</h1>
+                    <p class="text-subtext-light dark:text-subtext-dark mt-1">Visualize the narrative flow as a binary
+                        tree.</p>
+                </header>
+                <div
+                    class="flex overflow-x-auto pb-8 [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+                    <div class="inline-flex items-start gap-12">
+                        <div class="flex flex-col items-center">
+                            <div
+                                class="flex flex-col gap-3 rounded-xl min-w-80 w-80 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-md z-10">
+                                <div>
+                                    <p
+                                        class="text-text-light dark:text-text-dark text-base font-semibold leading-normal">
+                                        Scenelet-1</p>
+                                    <p class="text-subtext-light dark:text-subtext-dark text-xs font-normal">Lila and
+                                        Pip enter the magical forest.</p>
+                                </div>
+                                <div class="relative">
+                                    <div
+                                        class="flex overflow-x-auto gap-2 pb-2 [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+                                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                            data-alt="Shot 1: A sunlit meadow with tall grass."
+                                            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC8eofyYSQlBuXdev-oLb1ttwxx7hgnMno0Be88eMpBgX20TJigqqXOHuEXoio0ANiG6nA6lEdeYFu7f4dmmmL3voNhUm6qIpGihokciWWq9mJFnkFPEFbREixHBzstTKTRdOIsbp1lEJ_cXbfqdx0yfVU_KgtvIEcWUpjBI5bmxQVQk9TMw0nFblQP92zODXue3riyTawMzJVLHVrJS0XpHm5Agpl8Cj_3grL83I9Ma202m9avUc7C3CqKuAzZw96cui0_5lroX75b");'>
+                                        </div>
+                                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                            data-alt="Shot 2: Close up on Lila's amazed face."
+                                            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCqdthEgD1yNKg-h3fmRwf64__Z8fBukwaSxs0b3hs2lO_rflrrf95puwno03lGo5aUvJCct-YZ7p5DevLkoroBGkdlrGwvcTSTOnFvD3FPsIaZ1xMv7rgRkWyxqyicPJQcDiAbybQEomGG17BHNhYrwULP6DRpy0CaVRYNe_lACIpKXA6K1iEK6GZRXBwo-i3uFReMwKWnxBgEvIrts9dC8zmmXfuNWDVQZmpPiiyomHgemuJWSpS8fOBjUNDWgOT9tRvj-GTxLbsj");'>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    class="text-sm space-y-2 border-t border-border-light dark:border-border-dark pt-3">
+                                    <p class="text-subtext-light dark:text-subtext-dark"><span
+                                            class="font-medium text-text-light dark:text-text-dark">Lila:</span> "Wow,
+                                        this forest is huge!"</p>
+                                    <p class="text-subtext-light dark:text-subtext-dark"><span
+                                            class="font-medium text-text-light dark:text-text-dark">Pip:</span> "It's
+                                        not just big, it's magical!"</p>
+                                </div>
+                            </div>
+                            <div class="w-0.5 h-12 bg-border-light dark:bg-border-dark"></div>
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="flex flex-col gap-3 rounded-xl min-w-80 w-80 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-md z-10">
+                                    <div>
+                                        <p
+                                            class="text-text-light dark:text-text-dark text-base font-semibold leading-normal">
+                                            Scenelet-2</p>
+                                        <p class="text-subtext-light dark:text-subtext-dark text-xs font-normal">They
+                                            discover a hidden, mossy path.</p>
+                                    </div>
+                                    <div class="relative">
+                                        <div
+                                            class="flex overflow-x-auto gap-2 pb-2 [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+                                            <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                                data-alt="Shot 1: A mossy, hidden path winding through trees."
+                                                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDB9w04zQnmvPw2m7ZmPw1P0UwqL1CF77vrg2gd-FNIfocfp-7gOhCUvsrW73K8iCvGeNfUKFI8BNOHsLoCcMRxSPvxOrkClmGjbgKFb_gABC4Qcl2KZ97FyXgSz6D8-a3ndoHShxeIug2H62V2k2M4IEoPR18xjbMGylR0qsGGPENyDjwRa99tcQqGeNc4BXo9hzy4zMgdkmqS4he408Kp1fWdj28eA79D3ON_av41LSPsSvVGsLbetOqGMrcEQGzlR1CfpVH9bOuK");'>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="text-sm space-y-2 border-t border-border-light dark:border-border-dark pt-3">
+                                        <p class="text-subtext-light dark:text-subtext-dark"><span
+                                                class="font-medium text-text-light dark:text-text-dark">Lila:</span> "I
+                                            wonder where this leads?"</p>
+                                    </div>
+                                </div>
+                                <div class="w-0.5 h-8 bg-border-light dark:bg-border-dark"></div>
+                                <div class="h-0.5 w-80 bg-border-light dark:bg-border-dark relative">
+                                    <div
+                                        class="absolute -top-4 -left-0.5 w-0.5 h-4 bg-border-light dark:bg-border-dark transform rotate-45">
+                                    </div>
+                                    <div
+                                        class="absolute -top-4 -right-0.5 w-0.5 h-4 bg-border-light dark:bg-border-dark transform -rotate-45">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-start pt-[572px]">
+                            <div class="flex items-start gap-16 relative">
+                                <div class="flex flex-col items-center">
+                                    <div
+                                        class="flex flex-col gap-3 rounded-xl min-w-80 w-80 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-md z-10">
+                                        <div>
+                                            <p
+                                                class="text-text-light dark:text-text-dark text-base font-semibold leading-normal">
+                                                Scenelet-3</p>
+                                            <p class="text-subtext-light dark:text-subtext-dark text-xs font-normal">
+                                                They meet a new friend, Flicker.</p>
+                                        </div>
+                                        <div class="relative">
+                                            <div
+                                                class="flex overflow-x-auto gap-2 pb-2 [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+                                                <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                                    data-alt="Shot 1: A glowing creature peeks from a mushroom."
+                                                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCQjyEpQ39F_SRfm9OcD6b-X6X75NteZX3ZQTNLsa5qmKftHMhIN759Rzmj_N1vHFkDfnDyGtJvTn5f2wF7XCVrXs1ABCzKxi6kgfKpA1cNY7HKc8UMBpx3wmFtd0ilaG6vsRG0Aos3HBtgY1hFodATVDXhn-xtxwTyWBD3ZN3PgC6Yhj82IRzMHr8Ey_-REtY40in215VxVj9gk9FLeMntCgEwKUKyE1PzbcijiiRWC_wC6bl0yv9INTmiH-zHCi3KGMWiuVZ-OhEG");'>
+                                                </div>
+                                                <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                                    data-alt="Shot 2: Close up on Flicker's friendly face."
+                                                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBvtVp6OUdMmI2NiG9PhXJde3kAcrtf0Re5wirlaTCTv21UuSeyfvmFxxZeugYXcSN9NbrBKo-1PXD1LtxcNcaKyIIyXziJQ6Kn0lAJFTWPZUTzwb6c1-t-HmF1p6qWMAE1Ixi3kimQv7xbSEbAc_aMVyWKd0yf8fNDK_avW6CXQZRWvUM7aMvkoJAKRTyiyow09TZPzs-mqZlIyMqhsy35Jr0EYvsDFZpTBlUaOzAIJwpyDbdc4_tS3JHFMIp1_e3MSlexgJSEsaH6");'>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="text-sm space-y-2 border-t border-border-light dark:border-border-dark pt-3">
+                                            <p class="text-subtext-light dark:text-subtext-dark"><span
+                                                    class="font-medium text-text-light dark:text-text-dark">Flicker:</span>
+                                                "Hello there! Who might you be?"</p>
+                                            <p class="text-subtext-light dark:text-subtext-dark"><span
+                                                    class="font-medium text-text-light dark:text-text-dark">Lila:</span>
+                                                "I'm Lila! Are you a firefly?"</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div
+                                        class="flex flex-col gap-3 rounded-xl min-w-80 w-80 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-md z-10">
+                                        <div>
+                                            <p
+                                                class="text-text-light dark:text-text-dark text-base font-semibold leading-normal">
+                                                Scenelet-4</p>
+                                            <p class="text-subtext-light dark:text-subtext-dark text-xs font-normal">
+                                                They discover a magical, sparkling river.</p>
+                                        </div>
+                                        <div class="relative">
+                                            <div
+                                                class="flex overflow-x-auto gap-2 pb-2 [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+                                                <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-md shrink-0"
+                                                    data-alt="Shot 1: A river with sparkling, magical water."
+                                                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCpUcoZ0eCW2UnUil0u5BDqbJe4F8tu6j9WB2D5hafhJXytcjvpet38Nd6Yi3uvUKiw5PPDSVYFOy7snKWOV7AmhSAPbk7QoFisxFHBg2kfhAkZeVBMouNM6Drxii0fvVZcmKKH9n2NATC8UDEy8cdpkYOqOdrOg3mVLuCHaobUxy2Zv_i7LZ37-4sHUtWLYzmR0c6cBMwGPcIWrXxrssb6b9qBMx-wRJvhor3tUuYvTIfK1GFu-rNqOOPZobjSht-PYu6ghaJODFmZ");'>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="text-sm space-y-2 border-t border-border-light dark:border-border-dark pt-3">
+                                            <p class="text-subtext-light dark:text-subtext-dark"><span
+                                                    class="font-medium text-text-light dark:text-text-dark">Lila:</span>
+                                                "The water is sparkling with magic!"</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

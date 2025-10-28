@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-page: #0b1120;
+  --color-surface: #121a2c;
+  --color-surface-muted: #1c253a;
+  --color-border: #25314b;
+  --color-highlight: #f59e0b;
+  --color-text-primary: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --font-sans-stack: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono-stack: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+body {
+  font-family: var(--font-geist-sans), var(--font-sans-stack);
+  color: var(--color-text-primary);
+  background-color: var(--color-page);
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background-color: rgba(245, 158, 11, 0.25);
+  color: var(--color-text-primary);
+}
