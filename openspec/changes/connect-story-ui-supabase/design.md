@@ -54,4 +54,4 @@ The Story Tree UI currently renders mock data. This change introduces a server-s
 
 ## Stakeholder Alignment
 - **Accepted assumptions:** Scenelets exist for showcased stories (else script tab shows empty state). The UI runs in a trusted environment; no additional authentication handling will be implemented in this change.
-- **Implementation requirements:** All server-only modules reside under `apps/story-tree-ui/server/`, and Supabase access helpers live under `apps/story-tree-ui/server/supabase/` while reusing the shared repository code in `supabase/`—no duplicate data access layers elsewhere.
+- **Implementation requirements:** All server-only modules reside under `apps/story-tree-ui-server/`, and Supabase access helpers live under `apps/story-tree-ui-server/supabase/` while reusing the shared repository code in `supabase/`—no duplicate data access layers elsewhere.
