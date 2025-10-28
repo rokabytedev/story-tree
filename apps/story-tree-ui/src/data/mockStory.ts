@@ -94,3 +94,12 @@ export const mockStories: StorySummary[] = [
     accentColor: "#f97316",
   },
 ];
+
+export function getStoryArtifacts(
+  storyId: string,
+): (StoryArtifact & StorySummary) | null {
+  if (storyId === mockStory.id) {
+    return mockStory;
+  }
+  return null;
+}
