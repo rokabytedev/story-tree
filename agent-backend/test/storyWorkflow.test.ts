@@ -16,6 +16,7 @@ import type {
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
+import type { VisualReferenceTaskRunner } from '../src/visual-reference/types.js';
 import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
 import type { ShotProductionTaskRunner, ShotProductionShotsRepository } from '../src/shot-production/types.js';
 
@@ -154,6 +155,21 @@ function createVisualDesignTask(): {
   return { runner, calls };
 }
 
+function createVisualReferenceTask(): {
+  runner: VisualReferenceTaskRunner;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  const runner: VisualReferenceTaskRunner = async (storyId) => {
+    calls.push(storyId);
+    return {
+      storyId,
+      visualReferencePackage: { character_model_sheets: [] },
+    };
+  };
+  return { runner, calls };
+}
+
 function createAudioDesignTask(): {
   runner: AudioDesignTaskRunner;
   calls: string[];
@@ -275,6 +291,7 @@ describe('storyWorkflow tasks', () => {
   const taskConstitution: StoryWorkflowTask = 'CREATE_CONSTITUTION';
   const taskInteractive: StoryWorkflowTask = 'CREATE_INTERACTIVE_SCRIPT';
   const taskVisual: StoryWorkflowTask = 'CREATE_VISUAL_DESIGN';
+  const taskVisualReference: StoryWorkflowTask = 'CREATE_VISUAL_REFERENCE';
   const taskAudio: StoryWorkflowTask = 'CREATE_AUDIO_DESIGN';
   const taskShots: StoryWorkflowTask = 'CREATE_SHOT_PRODUCTION';
 
@@ -369,6 +386,7 @@ describe('storyWorkflow tasks', () => {
     const sceneletPersistence = createSceneletPersistence();
     const treeLoader = createStoryTreeLoader();
     const visualDesign = createVisualDesignTask();
+    const visualReference = createVisualReferenceTask();
     const shotProduction = createShotProductionTask();
 
     const workflow = await resumeWorkflowFromStoryId('story-visual', buildOptions({
@@ -377,11 +395,41 @@ describe('storyWorkflow tasks', () => {
       sceneletPersistence,
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runVisualReferenceTask: visualReference.runner,
       runShotProductionTask: shotProduction.runner,
     }));
 
     await workflow.runTask(taskVisual);
     expect(visualDesign.calls).toEqual(['story-visual']);
+  });
+
+  it('runs visual reference task after prerequisites', async () => {
+    const storiesRepository = createStoriesRepository(createStoryRecord({
+      id: 'story-visual-ref',
+      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      visualDesignDocument: { characters: [] },
+    }));
+    const shotsRepository = createShotsRepository();
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoader();
+    const visualDesign = createVisualDesignTask();
+    const visualReference = createVisualReferenceTask();
+    const shotProduction = createShotProductionTask();
+
+    const workflow = await resumeWorkflowFromStoryId('story-visual-ref', buildOptions({
+      storiesRepository,
+      shotsRepository,
+      sceneletPersistence,
+      storyTreeLoader: treeLoader.loader,
+      runVisualDesignTask: visualDesign.runner,
+      runVisualReferenceTask: visualReference.runner,
+      runShotProductionTask: shotProduction.runner,
+    }));
+
+    storiesRepository.records[0]!.visualDesignDocument = { characters: [] };
+
+    await workflow.runTask(taskVisualReference);
+    expect(visualReference.calls).toEqual(['story-visual-ref']);
   });
 
   it('requires audio design prerequisites and logs artifacts', async () => {
@@ -401,6 +449,7 @@ describe('storyWorkflow tasks', () => {
       shotsRepository,
       sceneletPersistence,
       storyTreeLoader: treeLoader.loader,
+      runVisualReferenceTask: createVisualReferenceTask().runner,
       runAudioDesignTask: audioDesign.runner,
       runShotProductionTask: shotProduction.runner,
     }));
@@ -426,6 +475,7 @@ describe('storyWorkflow tasks', () => {
       shotsRepository,
       sceneletPersistence,
       storyTreeLoader: treeLoader.loader,
+      runVisualReferenceTask: createVisualReferenceTask().runner,
       runShotProductionTask: shotProduction.runner,
     }));
 
@@ -442,6 +492,7 @@ describe('runAllTasks', () => {
     const sceneletPersistence = createSceneletPersistence();
     const treeLoader = createStoryTreeLoader();
     const visualDesign = createVisualDesignTask();
+    const visualReference = createVisualReferenceTask();
     const audioDesign = createAudioDesignTask();
     const shotProduction = createShotProductionTask();
 
@@ -451,6 +502,7 @@ describe('runAllTasks', () => {
       sceneletPersistence,
       storyTreeLoader: treeLoader.loader,
       runVisualDesignTask: visualDesign.runner,
+      runVisualReferenceTask: visualReference.runner,
       runAudioDesignTask: audioDesign.runner,
       runShotProductionTask: shotProduction.runner,
       generateInteractiveStoryTree: async () => {
@@ -471,6 +523,7 @@ describe('runAllTasks', () => {
     });
     expect(sceneletPersistence.created).toContain('story-run-all');
     expect(visualDesign.calls).toEqual(['story-run-all']);
+    expect(visualReference.calls).toEqual(['story-run-all']);
     expect(audioDesign.calls).toEqual(['story-run-all']);
     expect(shotProduction.calls).toEqual(['story-run-all']);
   });

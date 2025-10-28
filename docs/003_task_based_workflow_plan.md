@@ -39,11 +39,12 @@ type WorkflowTask =
   | 'CREATE_CONSTITUTION'
   | 'CREATE_INTERACTIVE_SCRIPT'
   | 'CREATE_VISUAL_DESIGN'
+  | 'CREATE_VISUAL_REFERENCE'
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION';
 ```
 - `runTask` validates prerequisites and idempotency for every supported task. Repeat invocations of a completed task throw `AgentWorkflowError` until reset tooling exists.
-- `runAllTasks` now executes the complete five-stage pipeline (constitution → interactive script → visual design → audio design → shot production) and returns the persisted constitution summary for UI compatibility.
+- `runAllTasks` now executes the complete six-stage pipeline (constitution → interactive script → visual design → visual reference → audio design → shot production) and returns the persisted constitution summary for UI compatibility.
 - Factory helpers (`createWorkflowFromPrompt`, `resumeWorkflowFromStoryId`) live in `agent-backend/src/workflow`.
 
 ## Task Catalogue
@@ -81,9 +82,22 @@ type WorkflowTask =
   4. Persist the returned `visualDesignDocument` (JSON payload) on the story record.
 - Postconditions: `stories.visualDesignDocument` populated. Reruns blocked until a future reset flow clears the column.
 
+### Task: Create Visual Reference (`CREATE_VISUAL_REFERENCE`)
+- Preconditions:
+  - Constitution persisted.
+  - Interactive script generated (story tree snapshot available).
+  - Visual design document stored on the story record.
+  - No existing `visualReferencePackage`.
+- Steps:
+  1. Load constitution markdown, story tree YAML, and visual design JSON for context.  
+  2. Run `runVisualReferenceTask`, which assembles the prompt using the `visual_reference_director` system prompt and enforces referential integrity plus minimum prompt quality (≥80 characters, explicit name matches, lighting/atmosphere coverage for environments).  
+  3. Persist the validated `visualReferencePackage` JSON on the story record.  
+  4. Log coverage summaries to help operators diagnose validation failures.
+- Postconditions: `stories.visual_reference_package` populated. Reruns rejected until reset tooling clears the artifact.
+
 ### Task: Create Audio Design (`CREATE_AUDIO_DESIGN`)
 - Preconditions:
-  - Constitution and visual design artifacts exist (audio prompt references visual canon).  
+  - Constitution, visual design document, and visual reference package exist (audio prompt references the established canon).  
 - Steps:
   1. Load story record including constitution + visual design snippets.  
   2. Run `runAudioDesignTask` to generate the audio design bible.  
@@ -104,7 +118,7 @@ type WorkflowTask =
 - Postconditions: All shots stored in `public.shots`; reruns rejected until the rows are cleared explicitly.
 
 ### Extensibility
-- The workflow intentionally keeps tasks composable so future capabilities (e.g., visual reference packages, localization passes) can add new `WorkflowTask` values following the same prerequisite pattern.
+- The workflow intentionally keeps tasks composable so future capabilities (e.g., localization passes) can add new `WorkflowTask` values following the same prerequisite pattern; the visual reference task demonstrates how to slot a new stage between design and audio.
 
 ## CLI Simplification
 - Collapse modes into:
@@ -116,6 +130,7 @@ type WorkflowTask =
   - `agent-workflow run-task --task CREATE_CONSTITUTION --story-id ...`
   - `agent-workflow run-task --task CREATE_INTERACTIVE_SCRIPT --story-id ...`
   - `agent-workflow run-task --task CREATE_VISUAL_DESIGN --story-id ...`
+  - `agent-workflow run-task --task CREATE_VISUAL_REFERENCE --story-id ...`
   - `agent-workflow run-task --task CREATE_AUDIO_DESIGN --story-id ...`
   - `agent-workflow run-task --task CREATE_SHOT_PRODUCTION --story-id ...`
   - `agent-workflow create --prompt "..."` → returns story ID without running tasks.
@@ -123,6 +138,7 @@ type WorkflowTask =
   - `agent-backend/fixtures/story-constitution/stub-gemini-responses.json`
   - `agent-backend/fixtures/interactive-story/stub-gemini-responses.json`
   - `agent-backend/fixtures/visual-design/stub-gemini-response.json`
+  - `agent-backend/fixtures/gemini/visual-reference/success.json`
   - `agent-backend/fixtures/gemini/audio-design/success.json`
   - `agent-backend/fixtures/gemini/shot-production/scenelet-<id>.json`
 - Provide verbose logging flag and surface validation errors cleanly.

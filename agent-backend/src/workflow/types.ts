@@ -7,6 +7,10 @@ import type { StoryTreeSnapshot } from '../story-storage/types.js';
 import type { VisualDesignTaskDependencies, VisualDesignTaskRunner } from '../visual-design/types.js';
 import type { AudioDesignTaskDependencies, AudioDesignTaskRunner } from '../audio-design/types.js';
 import type {
+  VisualReferenceTaskDependencies,
+  VisualReferenceTaskRunner,
+} from '../visual-reference/types.js';
+import type {
   ShotProductionTaskDependencies,
   ShotProductionTaskRunner,
   ShotProductionShotsRepository,
@@ -19,7 +23,7 @@ export interface AgentWorkflowStoryRecord {
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
   audioDesignDocument: unknown | null;
-  visualReferencePackage?: unknown | null;
+  visualReferencePackage: unknown | null;
 }
 
 export interface AgentWorkflowStoryCreateInput {
@@ -69,6 +73,8 @@ export interface AgentWorkflowOptions {
   storyTreeLoader?: (storyId: string) => Promise<StoryTreeSnapshot>;
   visualDesignTaskOptions?: VisualDesignTaskOptions;
   runVisualDesignTask?: VisualDesignTaskRunner;
+  visualReferenceTaskOptions?: VisualReferenceTaskOptions;
+  runVisualReferenceTask?: VisualReferenceTaskRunner;
   audioDesignTaskOptions?: AudioDesignTaskOptions;
   runAudioDesignTask?: AudioDesignTaskRunner;
   shotProductionTaskOptions?: ShotProductionTaskOptions;
@@ -85,6 +91,7 @@ export type StoryWorkflowTask =
   | 'CREATE_CONSTITUTION'
   | 'CREATE_INTERACTIVE_SCRIPT'
   | 'CREATE_VISUAL_DESIGN'
+  | 'CREATE_VISUAL_REFERENCE'
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION';
 
@@ -96,6 +103,10 @@ export interface StoryWorkflow {
 
 export type VisualDesignTaskOptions = Partial<
   Omit<VisualDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;
+
+export type VisualReferenceTaskOptions = Partial<
+  Omit<VisualReferenceTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
 >;
 
 export type AudioDesignTaskOptions = Partial<

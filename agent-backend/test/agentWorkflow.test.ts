@@ -11,6 +11,7 @@ import type {
 import type { SceneletPersistence } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
+import type { VisualReferenceTaskRunner } from '../src/visual-reference/types.js';
 import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
 import type { ShotProductionTaskRunner, ShotProductionShotsRepository } from '../src/shot-production/types.js';
 
@@ -134,6 +135,13 @@ describe('runAgentWorkflow', () => {
         visualDesignDocument: { stub: true },
       };
     };
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
+      storiesRepository.record!.visualReferencePackage = { character_model_sheets: [] };
+      return {
+        storyId,
+        visualReferencePackage: { character_model_sheets: [] },
+      };
+    };
     const audioRunner: AudioDesignTaskRunner = async (storyId) => {
       storiesRepository.record!.audioDesignDocument = {
         audio_design_document: { sonic_identity: {} },
@@ -177,6 +185,7 @@ describe('runAgentWorkflow', () => {
       interactiveStoryOptions: { timeoutMs: 60_000 },
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunner,
       runShotProductionTask: shotProductionRunner,
     });
@@ -192,6 +201,7 @@ describe('runAgentWorkflow', () => {
       storyConstitutionMarkdown: '## Constitution',
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
+    expect(storiesRepository.record?.visualReferencePackage).toEqual({ character_model_sheets: [] });
     expect(storiesRepository.record?.audioDesignDocument).toEqual({
       audio_design_document: { sonic_identity: {} },
     });
@@ -206,6 +216,10 @@ describe('runAgentWorkflow', () => {
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
+    });
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
+      storyId,
+      visualReferencePackage: { character_model_sheets: [] },
     });
     const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
@@ -232,6 +246,7 @@ describe('runAgentWorkflow', () => {
       generateInteractiveStoryTree: interactiveGenerator,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunnerStub,
       runShotProductionTask: shotProductionRunner,
     });
@@ -247,6 +262,10 @@ describe('runAgentWorkflow', () => {
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
+    });
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
+      storyId,
+      visualReferencePackage: { character_model_sheets: [] },
     });
     const audioRunner: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
@@ -272,6 +291,7 @@ describe('runAgentWorkflow', () => {
         },
         storyTreeLoader,
         runVisualDesignTask: visualDesignRunner,
+        runVisualReferenceTask: visualReferenceRunner,
         runAudioDesignTask: audioRunner,
         runShotProductionTask: shotProductionRunner,
       })
@@ -288,6 +308,10 @@ describe('runAgentWorkflow', () => {
         runVisualDesignTask: async (storyId) => ({
           storyId,
           visualDesignDocument: {},
+        }),
+        runVisualReferenceTask: async (storyId) => ({
+          storyId,
+          visualReferencePackage: { character_model_sheets: [] },
         }),
       })
     ).rejects.toThrow(AgentWorkflowError);
@@ -308,6 +332,10 @@ describe('runAgentWorkflow', () => {
         sceneletPersistence: undefined,
         storyTreeLoader,
         runVisualDesignTask: visualDesignRunner,
+        runVisualReferenceTask: async (storyId) => ({
+          storyId,
+          visualReferencePackage: { character_model_sheets: [] },
+        }),
       })
     ).rejects.toThrow(AgentWorkflowError);
   });
@@ -321,6 +349,10 @@ describe('runAgentWorkflow', () => {
     const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
       storyId,
       visualDesignDocument: {},
+    });
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
+      storyId,
+      visualReferencePackage: { character_model_sheets: [] },
     });
     const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
@@ -352,6 +384,7 @@ describe('runAgentWorkflow', () => {
       constitutionOptions,
       storyTreeLoader,
       runVisualDesignTask: visualDesignRunner,
+      runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunnerForOptions,
       runShotProductionTask: shotProductionRunner,
     });

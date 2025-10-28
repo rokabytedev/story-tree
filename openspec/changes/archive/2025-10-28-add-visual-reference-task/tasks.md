@@ -1,0 +1,6 @@
+- [x] Introduce a `visual_reference_director` system prompt asset (rename or alias the existing file) and document the intent in developer docs without altering the prompt text.
+- [x] Implement a prompt builder that fetches constitution, story tree YAML, and visual design document from repositories, assembles the Gemini request, and snapshot-test the resulting user prompt.
+- [x] Build a response validator that parses `visual_reference_package`, enforces character/environment coverage, checks prompt presence, and surfaces descriptive errors; cover edge cases with unit tests.
+- [x] Extend the stories repository plus workflow task plumbing so `CREATE_VISUAL_REFERENCE` persists validated packages, enforces prerequisites, and refuses reruns when data already exists.
+- [x] Wire the new task into the agent workflow CLI (task enums, `run-task`, `run-all`) and add stub Gemini fixtures so the pipeline passes in stub mode.
+- [x] Update integration tests and developer documentation (including `docs/008_visual_reference_plan.md`) to reflect the new task, validation expectations, and operator guidance.

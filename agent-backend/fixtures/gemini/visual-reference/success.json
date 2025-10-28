@@ -1,0 +1,56 @@
+{
+  "visual_reference_package": {
+    "character_model_sheets": [
+      {
+        "character_name": "Rhea",
+        "reference_plates": [
+          {
+            "plate_description": "Comprehensive turnaround highlighting Rhea's explorer gear and expressions.",
+            "type": "CHARACTER_MODEL_SHEET",
+            "image_generation_prompt": "Character model sheet of Rhea, the explorer. Present Rhea in a clean layout with front, three-quarter, side profile, and back orthographic views alongside four bust portraits (neutral, focused, joyful, determined). Emphasize Rhea's athletic frame, confident posture, and glowing wristband that pulses with decision energy. Style should match the sleek sci-fi concept art from the visual design document with precise lighting that keeps details crisp under diffused studio illumination."
+          },
+          {
+            "plate_description": "Action shot of Rhea sprinting through the decision grove.",
+            "type": "CHARACTER_ACTION_SHOT",
+            "image_generation_prompt": "Dynamic action illustration of Rhea darting between luminous trees within the Choice Clearing. Rhea's glowing wristband throws turquoise light across her determined face while she slides into a low run, trail of suspended light threads reacting to her motion. Capture cinematic rim lighting and energetic atmosphere with suspended particles shimmering around Rhea."
+          }
+        ]
+      },
+      {
+        "character_name": "Narrator",
+        "reference_plates": [
+          {
+            "plate_description": "Model sheet establishing the Narrator's abstract ribbon form.",
+            "type": "CHARACTER_MODEL_SHEET",
+            "image_generation_prompt": "Character model sheet for the Narrator, an ethereal ribbon of light. Display orthographic views showing the ribbon forming a calm abstract face plus headshot expressions transitioning between neutral, inviting smile, and serious guidance. Maintain consistent luminous gold palette, translucent edges, and soft internal glow described for the Narrator. Lighting should replicate the gentle ambient studio setup used for other plates so the Narrator's energy field remains readable."
+          }
+        ]
+      },
+      {
+        "character_name": "Testing Agent",
+        "reference_plates": [
+          {
+            "plate_description": "Model sheet covering Testing Agent's floating orb chassis.",
+            "type": "CHARACTER_MODEL_SHEET",
+            "image_generation_prompt": "Character model sheet for Testing Agent, the compact floating orb companion. Present front, three-quarter, side, and back views plus three inset headshot crops capturing lens flare variations. Highlight the glossy cobalt shell, bright white interface markings, and projector lens that emits holographic UI widgets. Keep lighting neutral but with soft bounce reflections to show surface materials clearly."
+          }
+        ]
+      }
+    ],
+    "environment_keyframes": [
+      {
+        "environment_name": "Choice Clearing",
+        "keyframes": [
+          {
+            "keyframe_description": "Establishing view of the Choice Clearing during dusk.",
+            "image_generation_prompt": "Environment keyframe for the Choice Clearing at dusk. Show suspended light threads casting turquoise glow over the clearing while the ancient obelisk emits gentle amber highlights. Atmospheric mist diffuses the evening light, mixing warm rim light with cool shadows underneath the canopy."
+          },
+          {
+            "keyframe_description": "Choice Clearing energized during a branching moment.",
+            "image_generation_prompt": "Environment keyframe of the Choice Clearing erupting with decision energy. Vibrant glyphs hover around the obelisk, casting sharp beams of gold light through the clearing. Ambient haze catches the illumination, and sparks create a charged atmosphere against the darkened forest boundary."
+          }
+        ]
+      }
+    ]
+  }
+}
