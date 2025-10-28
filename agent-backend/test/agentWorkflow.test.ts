@@ -70,15 +70,31 @@ function createSceneletPersistence(): SceneletPersistence & {
   created: number;
 } {
   let created = 0;
+  const records: Array<{
+    id: string;
+    storyId: string;
+    parentId: string | null;
+    choiceLabelFromParent: string | null;
+    choicePrompt: string | null;
+    content: unknown;
+    isBranchPoint: boolean;
+    isTerminalNode: boolean;
+    createdAt: string;
+  }> = [];
 
   return {
-    created,
-    async hasSceneletsForStory() {
-      return created > 0;
+    get created() {
+      return created;
+    },
+    async hasSceneletsForStory(storyId: string) {
+      return records.some((record) => record.storyId === storyId);
+    },
+    async listSceneletsByStory(storyId: string) {
+      return records.filter((record) => record.storyId === storyId);
     },
     async createScenelet(input) {
       created += 1;
-      return {
+      const record = {
         id: `scenelet-${created}`,
         storyId: input.storyId,
         parentId: input.parentId ?? null,
@@ -89,6 +105,8 @@ function createSceneletPersistence(): SceneletPersistence & {
         isTerminalNode: false,
         createdAt: new Date().toISOString(),
       };
+      records.push(record);
+      return record;
     },
     async markSceneletAsBranchPoint() {},
     async markSceneletAsTerminal() {},

@@ -7,6 +7,7 @@ import {
   GeminiGenerateJsonRequest,
   GeminiJsonClient,
 } from './types.js';
+import { executeGeminiWithRetry } from './retry.js';
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-pro';
 const DEFAULT_TIMEOUT_MS = parsePositiveInteger(process.env.GEMINI_TIMEOUT_MS) ?? 240_000;
@@ -39,39 +40,49 @@ export function createGeminiJsonClient(
       const timeoutMs = invocationOptions.timeoutMs ?? defaultTimeoutMs;
       const thinkingBudget = invocationOptions.thinkingBudget ?? defaultThinkingBudget;
 
-      try {
-        const response = await transport.generateContent({
-          model,
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: request.userContent }],
-            },
-          ],
-          config: {
-            httpOptions: {
-              timeout: timeoutMs,
-            },
-            systemInstruction: {
-              role: 'system',
-              parts: [{ text: request.systemInstruction }],
-            },
-            responseMimeType: 'application/json',
-            thinkingConfig: {
-              thinkingBudget,
-              includeThoughts: false,
-            },
-          },
-        });
+      return executeGeminiWithRetry(
+        async () => {
+          try {
+            const response = await transport.generateContent({
+              model,
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: request.userContent }],
+                },
+              ],
+              config: {
+                httpOptions: {
+                  timeout: timeoutMs,
+                },
+                systemInstruction: {
+                  role: 'system',
+                  parts: [{ text: request.systemInstruction }],
+                },
+                responseMimeType: 'application/json',
+                thinkingConfig: {
+                  thinkingBudget,
+                  includeThoughts: false,
+                },
+              },
+            });
 
-        if (!response.text) {
-          throw new GeminiApiError('Gemini returned an empty response.');
+            if (!response.text) {
+              throw new GeminiApiError('Gemini returned an empty response.');
+            }
+
+            return response.text;
+          } catch (error) {
+            throw normalizeGeminiError(error);
+          }
+        },
+        {
+          policy: invocationOptions.retry?.policy,
+          logger: invocationOptions.retry?.logger,
+          sleep: invocationOptions.retry?.sleep,
+          random: invocationOptions.retry?.random,
         }
-
-        return response.text;
-      } catch (error) {
-        throw normalizeGeminiError(error);
-      }
+      );
     },
   };
 }
@@ -88,7 +99,7 @@ function normalizeGeminiError(error: unknown): GeminiApiError | GeminiRateLimitE
     const errorPayload =
       typeof err.error === 'object' && err.error !== null ? (err.error as Record<string, unknown>) : err;
 
-    const statusText = String(
+    const statusSummary = String(
       errorPayload.status ?? errorPayload.message ?? error.status ?? 'UNKNOWN_ERROR'
     );
     const message =
@@ -97,7 +108,10 @@ function normalizeGeminiError(error: unknown): GeminiApiError | GeminiRateLimitE
         : `Gemini request failed with status ${error.status}`;
     const retryAfterMs = extractRetryAfter(errorPayload.details);
 
-    if (isRateLimitStatus(error.status, errorPayload.status)) {
+    const statusCode = error.status;
+    const statusTextRaw = typeof errorPayload.status === 'string' ? errorPayload.status : undefined;
+
+    if (isRateLimitStatus(statusCode, errorPayload.status)) {
       return new GeminiRateLimitError(
         `Gemini rate limit exceeded: ${message}`,
         {
@@ -107,12 +121,18 @@ function normalizeGeminiError(error: unknown): GeminiApiError | GeminiRateLimitE
       );
     }
 
-    return new GeminiApiError(`Gemini invocation failed: ${statusText}: ${message}`, {
+    return new GeminiApiError(`Gemini invocation failed: ${statusSummary}: ${message}`, {
       cause: error,
+      statusCode,
+      statusText: statusTextRaw,
+      isRetryable: isRetryableStatus(statusCode, statusTextRaw),
     });
   }
 
-  return new GeminiApiError('Unexpected error while calling Gemini.', { cause: error });
+  return new GeminiApiError('Unexpected error while calling Gemini.', {
+    cause: error,
+    isRetryable: false,
+  });
 }
 
 function resolveTransport(options: GeminiClientFactoryOptions): GeminiModelTransport {
@@ -149,6 +169,21 @@ function isRateLimitStatus(statusCode?: number, statusText?: unknown): boolean {
     typeof statusText === 'string' ? statusText.toUpperCase() : undefined;
 
   return normalizedStatus === 'RESOURCE_EXHAUSTED' || normalizedStatus === 'RATE_LIMIT_EXCEEDED';
+}
+
+function isRetryableStatus(statusCode?: number, statusText?: string): boolean {
+  if (typeof statusCode === 'number' && statusCode >= 500) {
+    return true;
+  }
+
+  if (typeof statusText === 'string') {
+    const normalized = statusText.toUpperCase();
+    if (normalized === 'UNAVAILABLE') {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function extractRetryAfter(details: unknown): number | undefined {

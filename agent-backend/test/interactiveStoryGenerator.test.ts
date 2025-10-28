@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { generateInteractiveStoryTree } from '../src/interactive-story/generateInteractiveStory.js';
 import { InteractiveStoryError } from '../src/interactive-story/errors.js';
-import { ScriptwriterScenelet, SceneletPersistence } from '../src/interactive-story/types.js';
+import {
+  ScriptwriterScenelet,
+  SceneletPersistence,
+  SceneletRecord,
+} from '../src/interactive-story/types.js';
 import type { GeminiJsonClient } from '../src/gemini/types.js';
 
 type GeminiRequest = {
@@ -42,6 +46,7 @@ class StubSceneletPersistence implements SceneletPersistence {
   public readonly creates: RecordedCreate[] = [];
   public readonly branchMarks: Array<{ id: string; prompt: string }> = [];
   public readonly terminalMarks: string[] = [];
+  private readonly records: SceneletRecord[] = [];
   private counter = 0;
 
   async createScenelet(input: {
@@ -61,7 +66,7 @@ class StubSceneletPersistence implements SceneletPersistence {
       },
       recordId,
     });
-    return {
+    const record: SceneletRecord = {
       id: recordId,
       storyId: input.storyId,
       parentId: input.parentId ?? null,
@@ -72,14 +77,33 @@ class StubSceneletPersistence implements SceneletPersistence {
       isTerminalNode: false,
       createdAt: new Date().toISOString(),
     };
+    this.records.push(record);
+    return record;
   }
 
   async markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<void> {
     this.branchMarks.push({ id: sceneletId, prompt: choicePrompt });
+    const record = this.records.find((entry) => entry.id === sceneletId);
+    if (record) {
+      record.isBranchPoint = true;
+      record.choicePrompt = choicePrompt;
+    }
   }
 
   async markSceneletAsTerminal(sceneletId: string): Promise<void> {
     this.terminalMarks.push(sceneletId);
+    const record = this.records.find((entry) => entry.id === sceneletId);
+    if (record) {
+      record.isTerminalNode = true;
+    }
+  }
+
+  async hasSceneletsForStory(storyId: string): Promise<boolean> {
+    return this.records.some((record) => record.storyId === storyId);
+  }
+
+  async listSceneletsByStory(storyId: string): Promise<SceneletRecord[]> {
+    return this.records.filter((record) => record.storyId === storyId);
   }
 }
 
@@ -272,5 +296,69 @@ describe('generateInteractiveStoryTree', () => {
         sceneletPersistence: persistence,
       })
     ).rejects.toBeInstanceOf(InteractiveStoryError);
+  });
+
+  it('resumes generation when resume state is provided', async () => {
+    const responses: GeminiResponseFactory[] = [
+      () =>
+        JSON.stringify({
+          branch_point: false,
+          is_concluding_scene: true,
+          next_scenelets: [
+            {
+              description: 'Resumed finale',
+              dialogue: [],
+              shot_suggestions: ['Final shot'],
+            },
+          ],
+        }),
+    ];
+
+    const geminiClient = new StubGeminiClient(responses);
+    const persistence = new StubSceneletPersistence();
+    const logger = { debug: vi.fn() };
+
+    await generateInteractiveStoryTree('story-resume', '# Constitution', {
+      geminiClient,
+      promptLoader: async () => 'System prompt',
+      sceneletPersistence: persistence,
+      resumeState: {
+        pendingTasks: [
+          {
+            storyId: 'story-resume',
+            parentSceneletId: 'scenelet-existing',
+            pathContext: [
+              {
+                description: 'Existing scenelet',
+                dialogue: [],
+                shot_suggestions: ['Existing shot'],
+              },
+            ],
+          },
+        ],
+      },
+      logger: logger as any,
+      retryOptions: {
+        policy: null,
+      },
+    });
+
+    expect(persistence.creates).toHaveLength(1);
+    expect(persistence.creates[0]?.input.parentId).toBe('scenelet-existing');
+    expect(geminiClient.requests[0]?.userContent).toContain('Existing scenelet');
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Starting interactive story generation',
+      expect.objectContaining({
+        resumeMode: true,
+        pendingTaskCount: 1,
+      })
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Interactive story generation complete',
+      expect.objectContaining({
+        resumeMode: true,
+        createdScenelets: 1,
+      })
+    );
   });
 });

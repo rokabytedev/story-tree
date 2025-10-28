@@ -13,7 +13,7 @@ import type {
   AgentWorkflowStoriesRepository,
   AgentWorkflowOptions,
 } from '../src/workflow/types.js';
-import type { SceneletPersistence } from '../src/interactive-story/types.js';
+import type { SceneletPersistence, SceneletRecord } from '../src/interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 import type { VisualReferenceTaskRunner } from '../src/visual-reference/types.js';
@@ -78,19 +78,23 @@ function createStoriesRepository(initialRecord?: AgentWorkflowStoryRecord): Agen
 
 function createSceneletPersistence(): SceneletPersistence & {
   created: string[];
+  records: SceneletRecord[];
 } {
   const created: string[] = [];
-  const storiesWithScenelets = new Set<string>();
+  const records: SceneletRecord[] = [];
 
   return {
     created,
+    records,
     async hasSceneletsForStory(storyId: string) {
-      return storiesWithScenelets.has(storyId);
+      return records.some((record) => record.storyId === storyId);
+    },
+    async listSceneletsByStory(storyId: string) {
+      return records.filter((record) => record.storyId === storyId);
     },
     async createScenelet(input) {
       created.push(input.storyId);
-      storiesWithScenelets.add(input.storyId);
-      return {
+      const record = {
         id: `scenelet-${created.length}`,
         storyId: input.storyId,
         parentId: input.parentId ?? null,
@@ -101,6 +105,8 @@ function createSceneletPersistence(): SceneletPersistence & {
         isTerminalNode: false,
         createdAt: new Date().toISOString(),
       };
+      records.push(record);
+      return record;
     },
     async markSceneletAsBranchPoint() {},
     async markSceneletAsTerminal() {},
@@ -375,6 +381,108 @@ describe('storyWorkflow tasks', () => {
     await expect(workflow.runTask(taskInteractive)).rejects.toThrow(
       'Interactive script already generated for story story-interactive.'
     );
+  });
+
+  it('resumes interactive script when resume flag enabled and pending tasks exist', async () => {
+    const storyId = 'story-resume';
+    const storiesRepository = createStoriesRepository(createStoryRecord({
+      id: storyId,
+      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+    }));
+    const shotsRepository = createShotsRepository();
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoader();
+
+    sceneletPersistence.records.push(
+      {
+        id: 'scenelet-root',
+        storyId,
+        parentId: null,
+        choiceLabelFromParent: null,
+        choicePrompt: null,
+        content: {
+          description: 'Root scene',
+          dialogue: [],
+          shot_suggestions: ['Root shot'],
+        },
+        isBranchPoint: false,
+        isTerminalNode: false,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'scenelet-leaf',
+        storyId,
+        parentId: 'scenelet-root',
+        choiceLabelFromParent: null,
+        choicePrompt: null,
+        content: {
+          description: 'Leaf scene',
+          dialogue: [],
+          shot_suggestions: ['Leaf shot'],
+        },
+        isBranchPoint: false,
+        isTerminalNode: false,
+        createdAt: new Date().toISOString(),
+      }
+    );
+
+    const interactiveGenerator = vi.fn(async (_storyId, _markdown, options) => {
+      expect(options?.resumeState?.pendingTasks).toHaveLength(1);
+      expect(options?.resumeState?.pendingTasks[0]?.parentSceneletId).toBe('scenelet-leaf');
+    });
+
+    const workflow = await resumeWorkflowFromStoryId(storyId, buildOptions({
+      storiesRepository,
+      shotsRepository,
+      sceneletPersistence,
+      storyTreeLoader: treeLoader.loader,
+      generateInteractiveStoryTree: interactiveGenerator,
+      resumeInteractiveScript: true,
+    }));
+
+    await workflow.runTask(taskInteractive);
+    expect(interactiveGenerator).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips interactive generator when resume flag is enabled but tree is complete', async () => {
+    const storyId = 'story-complete';
+    const storiesRepository = createStoriesRepository(createStoryRecord({
+      id: storyId,
+      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+    }));
+    const shotsRepository = createShotsRepository();
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoader();
+
+    sceneletPersistence.records.push({
+      id: 'scenelet-root',
+      storyId,
+      parentId: null,
+      choiceLabelFromParent: null,
+      choicePrompt: null,
+      content: {
+        description: 'Root scene',
+        dialogue: [],
+        shot_suggestions: ['Root shot'],
+      },
+      isBranchPoint: false,
+      isTerminalNode: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    const interactiveGenerator = vi.fn();
+
+    const workflow = await resumeWorkflowFromStoryId(storyId, buildOptions({
+      storiesRepository,
+      shotsRepository,
+      sceneletPersistence,
+      storyTreeLoader: treeLoader.loader,
+      generateInteractiveStoryTree: interactiveGenerator,
+      resumeInteractiveScript: true,
+    }));
+
+    await workflow.runTask(taskInteractive);
+    expect(interactiveGenerator).not.toHaveBeenCalled();
   });
 
   it('runs visual design task after prerequisites', async () => {

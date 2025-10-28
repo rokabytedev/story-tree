@@ -1,4 +1,4 @@
-import { GeminiJsonClient } from '../gemini/types.js';
+import { GeminiJsonClient, GeminiRetryOptions } from '../gemini/types.js';
 
 export interface DialogueLine {
   character: string;
@@ -66,12 +66,17 @@ export interface SceneletPersistence {
   markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<void>;
   markSceneletAsTerminal(sceneletId: string): Promise<void>;
   hasSceneletsForStory(storyId: string): Promise<boolean>;
+  listSceneletsByStory(storyId: string): Promise<SceneletRecord[]>;
 }
 
 export interface GenerationTask {
   storyId: string;
   parentSceneletId: string | null;
   pathContext: ScriptwriterScenelet[];
+}
+
+export interface InteractiveStoryResumeState {
+  pendingTasks: GenerationTask[];
 }
 
 export interface InteractiveStoryLogger {
@@ -84,4 +89,6 @@ export interface InteractiveStoryGeneratorOptions {
   sceneletPersistence?: SceneletPersistence;
   logger?: InteractiveStoryLogger;
   timeoutMs?: number;
+  resumeState?: InteractiveStoryResumeState | null;
+  retryOptions?: GeminiRetryOptions;
 }

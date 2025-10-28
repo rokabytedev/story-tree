@@ -212,12 +212,14 @@ class FixtureGeminiClient implements GeminiJsonClient {
 
 interface SceneletRecordSummary {
   id: string;
+  storyId: string;
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
   isBranchPoint: boolean;
   isTerminalNode: boolean;
   content: ScriptwriterScenelet;
+  createdAt: string;
 }
 
 class InMemorySceneletPersistence implements SceneletPersistence {
@@ -232,14 +234,17 @@ class InMemorySceneletPersistence implements SceneletPersistence {
   }) {
     this.counter += 1;
     const id = `scenelet-${this.counter}`;
+    const createdAt = new Date().toISOString();
     const record: SceneletRecordSummary = {
       id,
+      storyId: input.storyId,
       parentId: input.parentId ?? null,
       choiceLabelFromParent: input.choiceLabelFromParent ?? null,
       choicePrompt: null,
       isBranchPoint: false,
       isTerminalNode: false,
       content: input.content,
+      createdAt,
     };
 
     this.scenelets.set(id, record);
@@ -253,7 +258,7 @@ class InMemorySceneletPersistence implements SceneletPersistence {
       content: record.content,
       isBranchPoint: record.isBranchPoint,
       isTerminalNode: record.isTerminalNode,
-      createdAt: new Date().toISOString(),
+      createdAt: record.createdAt,
     };
   }
 
@@ -272,6 +277,26 @@ class InMemorySceneletPersistence implements SceneletPersistence {
       throw new CliParseError(`Scenelet ${sceneletId} missing in memory.`);
     }
     record.isTerminalNode = true;
+  }
+
+  async hasSceneletsForStory(_storyId: string): Promise<boolean> {
+    return this.scenelets.size > 0;
+  }
+
+  async listSceneletsByStory(storyId: string) {
+    return Array.from(this.scenelets.values())
+      .filter((record) => record.storyId === storyId)
+      .map((record) => ({
+        id: record.id,
+        storyId: record.storyId,
+        parentId: record.parentId,
+        choiceLabelFromParent: record.choiceLabelFromParent,
+        choicePrompt: record.choicePrompt,
+        content: record.content,
+        isBranchPoint: record.isBranchPoint,
+        isTerminalNode: record.isTerminalNode,
+        createdAt: record.createdAt,
+      }));
   }
 
   getScenelets(): SceneletRecordSummary[] {

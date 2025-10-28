@@ -1,5 +1,5 @@
 import { ApiError } from '@google/genai';
-import type { GenerateContentParameters, GenerateContentResponse } from '@google/genai';
+import type { GenerateContentResponse } from '@google/genai';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createGeminiJsonClient } from '../src/gemini/client.js';
@@ -9,12 +9,25 @@ import { StoryConstitutionParsingError } from '../src/story-constitution/errors.
 
 function makeClient(responseFactory: () => GenerateContentResponse | Promise<GenerateContentResponse>) {
   const transport = {
-    async generateContent(_params: GenerateContentParameters): Promise<GenerateContentResponse> {
+    async generateContent(): Promise<GenerateContentResponse> {
       return await responseFactory();
     },
   };
 
-  return createGeminiJsonClient({ transport });
+  const baseClient = createGeminiJsonClient({ transport });
+
+  return {
+    async generateJson(request: Parameters<typeof baseClient.generateJson>[0], options?: Parameters<typeof baseClient.generateJson>[1]) {
+      return baseClient.generateJson(request, {
+        ...options,
+        retry: {
+          ...(options?.retry ?? {}),
+          policy: null,
+          sleep: async () => {},
+        },
+      });
+    },
+  };
 }
 
 describe('generateStoryConstitution', () => {
@@ -101,6 +114,7 @@ describe('generateStoryConstitution', () => {
       generateStoryConstitution('Idea', {
         geminiClient: client,
         promptLoader: async () => 'system prompt',
+        retryOptions: { policy: null, sleep: async () => {} },
       })
     ).rejects.toBeInstanceOf(GeminiRateLimitError);
   });

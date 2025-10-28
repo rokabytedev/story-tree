@@ -1,7 +1,12 @@
 import { generateStoryConstitution } from '../story-constitution/generateStoryConstitution.js';
 import type { StoryConstitution, StoryConstitutionOptions } from '../story-constitution/types.js';
 import { generateInteractiveStoryTree } from '../interactive-story/generateInteractiveStory.js';
-import type { InteractiveStoryGeneratorOptions, SceneletPersistence } from '../interactive-story/types.js';
+import { buildResumePlanFromScenelets } from '../interactive-story/resumePlanner.js';
+import type {
+  InteractiveStoryGeneratorOptions,
+  InteractiveStoryResumeState,
+  SceneletPersistence,
+} from '../interactive-story/types.js';
 import { runVisualDesignTask } from '../visual-design/visualDesignTask.js';
 import type {
   VisualDesignTaskOptions,
@@ -106,6 +111,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly sceneletPersistence: SceneletPersistence;
   private readonly constitutionGenerator: AgentWorkflowConstitutionGenerator;
   private readonly interactiveGenerator: AgentWorkflowInteractiveGenerator;
+  private readonly resumeInteractiveScript: boolean;
   private readonly constitutionOptions?: StoryConstitutionOptions;
   private readonly interactiveOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
   private readonly logger?: AgentWorkflowLogger;
@@ -128,6 +134,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.generateStoryConstitution ?? generateStoryConstitution;
     this.interactiveGenerator =
       dependencies.generateInteractiveStoryTree ?? generateInteractiveStoryTree;
+    this.resumeInteractiveScript = Boolean(dependencies.resumeInteractiveScript);
     this.constitutionOptions = dependencies.constitutionOptions
       ? { ...dependencies.constitutionOptions }
       : undefined;
@@ -286,19 +293,43 @@ class StoryWorkflowImpl implements StoryWorkflow {
     }
 
     const alreadyGenerated = await this.sceneletPersistence.hasSceneletsForStory(this.storyId);
-    if (alreadyGenerated) {
+    let resumeState: InteractiveStoryResumeState | undefined;
+
+    if (alreadyGenerated && !this.resumeInteractiveScript) {
       throw new AgentWorkflowError(
         `Interactive script already generated for story ${this.storyId}.`
       );
     }
 
-    this.logger?.debug?.('Launching interactive script generation', {
-      storyId: this.storyId,
-    });
+    if (alreadyGenerated && this.resumeInteractiveScript) {
+      const scenelets = await this.sceneletPersistence.listSceneletsByStory(this.storyId);
+      const plan = buildResumePlanFromScenelets(this.storyId, scenelets);
+
+      if (plan.pendingTasks.length === 0) {
+        this.logger?.debug?.('Interactive script resume detected completed tree; skipping task.', {
+          storyId: this.storyId,
+        });
+        return;
+      }
+
+      resumeState = {
+        pendingTasks: plan.pendingTasks,
+      };
+
+      this.logger?.debug?.('Resuming interactive script generation', {
+        storyId: this.storyId,
+        pendingTaskCount: plan.pendingTasks.length,
+      });
+    } else {
+      this.logger?.debug?.('Launching interactive script generation', {
+        storyId: this.storyId,
+      });
+    }
 
     const interactiveOptions: InteractiveStoryGeneratorOptions = {
       ...(this.interactiveOptions ?? {}),
       sceneletPersistence: this.sceneletPersistence,
+      ...(resumeState ? { resumeState } : {}),
     };
 
     await this.interactiveGenerator(
@@ -475,6 +506,12 @@ function normalizeDependencies(options: AgentWorkflowOptions): StoryWorkflowDepe
   if (typeof sceneletPersistence.hasSceneletsForStory !== 'function') {
     throw new AgentWorkflowError(
       'Scenelet persistence must implement hasSceneletsForStory(storyId).'
+    );
+  }
+
+  if (typeof sceneletPersistence.listSceneletsByStory !== 'function') {
+    throw new AgentWorkflowError(
+      'Scenelet persistence must implement listSceneletsByStory(storyId).'
     );
   }
 

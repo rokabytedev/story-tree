@@ -70,6 +70,7 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   command: 'run-task';
   storyId: string;
   task: StoryWorkflowTask;
+  resumeInteractiveScript?: boolean;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -121,6 +122,21 @@ class SceneletPersistenceAdapter implements SceneletPersistence {
 
   async hasSceneletsForStory(storyId: string): Promise<boolean> {
     return this.repository.hasSceneletsForStory(storyId);
+  }
+
+  async listSceneletsByStory(storyId: string) {
+    const records = await this.repository.listSceneletsByStory(storyId);
+    return records.map((record) => ({
+      id: record.id,
+      storyId: record.storyId,
+      parentId: record.parentId,
+      choiceLabelFromParent: record.choiceLabelFromParent,
+      choicePrompt: record.choicePrompt,
+      content: record.content,
+      isBranchPoint: record.isBranchPoint,
+      isTerminalNode: record.isTerminalNode,
+      createdAt: record.createdAt,
+    }));
   }
 }
 
@@ -238,6 +254,10 @@ async function buildWorkflowDependencies(
     },
   };
 
+  if (options.command === 'run-task' && options.resumeInteractiveScript) {
+    workflowOptions.resumeInteractiveScript = true;
+  }
+
   if (mode === 'stub') {
     const interactiveResponses = await loadInteractiveResponses();
     const geminiClient = new FixtureGeminiClient(interactiveResponses);
@@ -300,6 +320,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let prompt: string | undefined;
   let storyId: string | undefined;
   let taskName: string | undefined;
+  let resumeInteractiveScript = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -349,6 +370,9 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '-v':
         modeOptions.verbose = true;
         break;
+      case '--resume-interactive-script':
+        resumeInteractiveScript = true;
+        break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -372,10 +396,14 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         throw new CliParseError('Provide --story-id when running a task.');
       }
       const task = normalizeTask(taskName);
+      if (resumeInteractiveScript && task !== 'CREATE_INTERACTIVE_SCRIPT') {
+        throw new CliParseError('--resume-interactive-script can only be used with CREATE_INTERACTIVE_SCRIPT.');
+      }
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
         task,
+        resumeInteractiveScript,
         ...modeOptions,
       };
     }
