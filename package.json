@@ -1,4 +1,8 @@
 {
+  "private": true,
+  "workspaces": [
+    "apps/story-tree-ui"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
