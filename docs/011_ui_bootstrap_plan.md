@@ -16,6 +16,8 @@ the web app is a single page app with a tab based navigation
     - Visual tab: the json content for the visual design and the visual reference package (ok to be raw json text for now)
     - Audio tab: the json content for the audio design (ok to be raw json text for now)
 
+refer to ui_mocks/storyboard.png and ui_mocks/storyboard.html for the visual design styling for the overall page feel and the side panel (tab bar).
+
 the web app routing should follow url based rule like the following (just my initial thoughts. you design the final scheme):
 - https://domain.com/story/story-id-xxx/constitution -> constitution tab
 - https://domain.com/story/story-id-xxx/storyboard -> storyboard tab
