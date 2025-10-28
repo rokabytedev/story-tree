@@ -108,6 +108,11 @@ The workflow CLI MUST allow operators to run the shot production task explicitly
 - **THEN** it MUST route the call to the workflow `CREATE_SHOT_PRODUCTION` task using the stub Gemini response
 - **AND** it MUST print success output after persisting the generated shots.
 
+#### Scenario: CLI run-all includes shot production
+- **GIVEN** the CLI is invoked with `run-all --mode stub`
+- **WHEN** visual design, audio design, and shot production fixtures are provided
+- **THEN** the pipeline MUST include `CREATE_SHOT_PRODUCTION` after audio design and complete without duplicating stored shots.
+
 ### Requirement: Schedule Audio Design Task
 The workflow MUST expose an audio design task that runs after visual design generation and persists a validated audio design document.
 
@@ -139,3 +144,4 @@ The workflow CLI MUST let operators run the audio design task directly or as par
 - **WHEN** the visual design, audio design, and shot production fixtures are used
 - **THEN** it MUST complete the full task pipeline without validation errors
 - **AND** it MUST persist an audio design document and scenelet shots that match the stub fixture expectations.
+

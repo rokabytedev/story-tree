@@ -126,3 +126,4 @@ The storage layer MUST expose helpers for reading, inserting, and validating sce
 - **GIVEN** the repository receives a story id with stored shots
 - **WHEN** `getShotsByStory` executes
 - **THEN** it MUST fetch rows ordered by `scenelet_sequence` and `shot_index`, group them by scenelet id, and map fields to camel-case properties for callers.
+
