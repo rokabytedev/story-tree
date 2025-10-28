@@ -13,9 +13,12 @@ import type {
   AudioDesignTaskResult,
 } from './types.js';
 
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
+
 interface StoryConstitutionPayload {
   proposedStoryTitle: string;
   storyConstitutionMarkdown: string;
+  targetSceneletsPerPath: number;
 }
 
 export async function runAudioDesignTask(
@@ -161,8 +164,19 @@ function readPersistedConstitution(story: AudioDesignStoryRecord): StoryConstitu
     return null;
   }
 
+  const target =
+    typeof record.targetSceneletsPerPath === 'number'
+      ? Math.trunc(record.targetSceneletsPerPath)
+      : typeof record.target_scenelets_per_path === 'number'
+        ? Math.trunc(record.target_scenelets_per_path)
+        : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
+  const normalizedTarget =
+    Number.isFinite(target) && target >= 1 ? target : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
   return {
     proposedStoryTitle: proposedTitle,
     storyConstitutionMarkdown: markdown,
+    targetSceneletsPerPath: normalizedTarget,
   };
 }

@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 
 const DEFAULT_MINIMUM_PROMPT_LENGTH = 80;
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
 
 export async function runVisualReferenceTask(
   storyId: string,
@@ -132,6 +133,7 @@ function ensureGeminiClient(client?: GeminiJsonClient): GeminiJsonClient {
 interface StoryConstitutionPayload {
   proposedStoryTitle: string;
   storyConstitutionMarkdown: string;
+  targetSceneletsPerPath: number;
 }
 
 function readPersistedConstitution(story: VisualReferenceStoryRecord): StoryConstitutionPayload | null {
@@ -159,8 +161,19 @@ function readPersistedConstitution(story: VisualReferenceStoryRecord): StoryCons
     return null;
   }
 
+  const target =
+    typeof record.targetSceneletsPerPath === 'number'
+      ? Math.trunc(record.targetSceneletsPerPath)
+      : typeof record.target_scenelets_per_path === 'number'
+        ? Math.trunc(record.target_scenelets_per_path)
+        : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
+  const normalizedTarget =
+    Number.isFinite(target) && target >= 1 ? target : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
   return {
     proposedStoryTitle: proposedTitle,
     storyConstitutionMarkdown: markdown,
+    targetSceneletsPerPath: normalizedTarget,
   };
 }

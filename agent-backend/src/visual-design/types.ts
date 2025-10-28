@@ -8,6 +8,7 @@ import type {
 export interface StoryConstitutionPayload {
   proposedStoryTitle: string;
   storyConstitutionMarkdown: string;
+  targetSceneletsPerPath: number;
 }
 
 export interface VisualDesignTaskLogger {

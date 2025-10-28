@@ -72,6 +72,7 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
         : {
             proposedStoryTitle: 'Stub Story',
             storyConstitutionMarkdown: '# Constitution',
+            targetSceneletsPerPath: 12,
           },
     visualDesignDocument:
       Object.prototype.hasOwnProperty.call(overrides, 'visualDesignDocument')

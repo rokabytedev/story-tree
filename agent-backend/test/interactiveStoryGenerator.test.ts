@@ -175,6 +175,7 @@ describe('generateInteractiveStoryTree', () => {
       geminiClient,
       promptLoader: async () => 'System prompt',
       sceneletPersistence: persistence,
+      targetSceneletsPerPath: 12,
     });
 
     expect(persistence.creates).toHaveLength(5);
@@ -188,7 +189,13 @@ describe('generateInteractiveStoryTree', () => {
     ]);
     expect(persistence.terminalMarks).toEqual(['scenelet-4', 'scenelet-5']);
 
+    expect(geminiClient.requests[0].userContent).toContain('Target scenelets per path: 12');
+    expect(geminiClient.requests[0].userContent).toContain('Current scenelets in this path: 0');
+    expect(geminiClient.requests[0].userContent).toContain('Reminder: Aim to conclude this path within 12 scenelets.');
     expect(geminiClient.requests[1].userContent).toContain('## Current Narrative Path');
+    expect(geminiClient.requests[1].userContent).toContain('Target scenelets per path: 12');
+    expect(geminiClient.requests[1].userContent).toContain('Current scenelets in this path: 1');
+    expect(geminiClient.requests[1].userContent).toContain('Reminder: Aim to conclude this path within 12 scenelets.');
   });
 
   it('logs Gemini request payload when logger is provided', async () => {
@@ -213,6 +220,7 @@ describe('generateInteractiveStoryTree', () => {
       geminiClient,
       promptLoader: async () => 'interactive system prompt',
       sceneletPersistence: persistence,
+      targetSceneletsPerPath: 12,
       logger: logger as any,
     });
 

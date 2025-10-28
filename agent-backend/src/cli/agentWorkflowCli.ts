@@ -459,14 +459,26 @@ async function loadStubConstitution(prompt: string): Promise<StoryConstitution> 
       : typeof parsed.storyConstitutionMarkdown === 'string'
         ? parsed.storyConstitutionMarkdown
         : null;
+  const targetRaw =
+    typeof parsed.target_scenelets_per_path === 'number'
+      ? parsed.target_scenelets_per_path
+      : typeof parsed.targetSceneletsPerPath === 'number'
+        ? parsed.targetSceneletsPerPath
+        : null;
 
   if (!title || !markdownRaw) {
     throw new CliParseError('Stub constitution fixture must include title and markdown fields.');
   }
 
+  const target =
+    typeof targetRaw === 'number' && Number.isFinite(targetRaw) && targetRaw >= 1
+      ? Math.trunc(targetRaw)
+      : 12;
+
   return {
     proposedStoryTitle: title,
     storyConstitutionMarkdown: markdownRaw.replace('{{BRIEF}}', prompt),
+    targetSceneletsPerPath: target,
   };
 }
 

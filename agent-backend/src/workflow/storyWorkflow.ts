@@ -46,6 +46,7 @@ import type {
 import { AgentWorkflowError } from './errors.js';
 
 const DEFAULT_DISPLAY_NAME = 'Untitled Story';
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
 const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
@@ -230,6 +231,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
       constitutionOutcome = {
         proposedStoryTitle: persisted.proposedStoryTitle,
         storyConstitutionMarkdown: persisted.storyConstitutionMarkdown,
+        targetSceneletsPerPath: persisted.targetSceneletsPerPath,
       };
     }
 
@@ -264,6 +266,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     const constitutionPayload = {
       proposedStoryTitle: displayName,
       storyConstitutionMarkdown: constitution.storyConstitutionMarkdown,
+      targetSceneletsPerPath: constitution.targetSceneletsPerPath,
     };
 
     this.logger?.debug?.('Persisting constitution', {
@@ -279,6 +282,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     return {
       proposedStoryTitle: displayName,
       storyConstitutionMarkdown: constitution.storyConstitutionMarkdown,
+      targetSceneletsPerPath: constitution.targetSceneletsPerPath,
     };
   }
 
@@ -329,6 +333,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     const interactiveOptions: InteractiveStoryGeneratorOptions = {
       ...(this.interactiveOptions ?? {}),
       sceneletPersistence: this.sceneletPersistence,
+      targetSceneletsPerPath: constitution.targetSceneletsPerPath,
       ...(resumeState ? { resumeState } : {}),
     };
 
@@ -538,7 +543,7 @@ function normalizeDisplayName(value: string): string {
 
 function readPersistedConstitution(
   story: AgentWorkflowStoryRecord
-): { proposedStoryTitle: string; storyConstitutionMarkdown: string } | null {
+): { proposedStoryTitle: string; storyConstitutionMarkdown: string; targetSceneletsPerPath: number } | null {
   const raw = story.storyConstitution;
   if (!raw || typeof raw !== 'object') {
     return null;
@@ -558,6 +563,10 @@ function readPersistedConstitution(
         ? (raw as Record<string, unknown>).story_constitution_markdown
         : null;
 
+  const targetRaw =
+    (raw as Record<string, unknown>).targetSceneletsPerPath ??
+    (raw as Record<string, unknown>).target_scenelets_per_path;
+
   if (!proposed || !markdown) {
     return null;
   }
@@ -565,5 +574,9 @@ function readPersistedConstitution(
   return {
     proposedStoryTitle: proposed,
     storyConstitutionMarkdown: markdown,
+    targetSceneletsPerPath:
+      typeof targetRaw === 'number' && Number.isFinite(targetRaw) && targetRaw >= 1
+        ? Math.trunc(targetRaw)
+        : DEFAULT_TARGET_SCENELETS_PER_PATH,
   };
 }
