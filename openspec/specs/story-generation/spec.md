@@ -6,11 +6,12 @@ TBD - created by archiving change add-interactive-story-generation. Update Purpo
 ### Requirement: Depth-First Interactive Story Generation
 The backend MUST expose a pure orchestration function that expands a story tree by exploring Gemini-generated scenelets depth-first using a stack of pending generation tasks.
 
-#### Scenario: DFS stack advances story paths
-- **GIVEN** a story id, story constitution, and empty scenelet repository
-- **WHEN** the orchestrator runs
-- **THEN** it MUST push the root task onto a stack, repeatedly pop tasks, and append new tasks for each generated child so that one branch is explored to completion before backtracking
-- **AND** it MUST persist each scenelet through the storage layer with the resolved parent id before scheduling follow-up tasks.
+#### Scenario: Resume seeds pending stack from stored scenelets
+- **GIVEN** stored scenelets already describe part of the story tree
+- **AND** the persistence layer reports additional branches are unfinished
+- **WHEN** the generator runs in resume mode
+- **THEN** it MUST seed the DFS stack with tasks derived from the stored scenelets so only missing branches are explored
+- **AND** it MUST avoid recreating scenelets that already exist.
 
 ### Requirement: Branch and Conclusion Handling
 The generator MUST interpret Gemini responses to continue linearly, branch into choices, or conclude a path, and persist corresponding metadata.
@@ -44,4 +45,19 @@ The generator MUST validate Gemini JSON before attempting persistence and surfac
 - **GIVEN** Gemini returns text that cannot be parsed as the expected JSON schema
 - **WHEN** the orchestrator attempts to process it
 - **THEN** it MUST throw an error that identifies the interactive script generation operation and includes the raw response text for debugging (with secrets redacted).
+
+### Requirement: Gemini Invocation Resilience
+The interactive story generator MUST retry Gemini JSON invocations with exponential backoff so transient failures do not terminate the task.
+
+#### Scenario: Retry handles transient Gemini error
+- **GIVEN** Gemini returns a retryable error (e.g., 429 with retry-after metadata)
+- **WHEN** the generator calls the retry helper
+- **THEN** it MUST schedule the next attempt using exponential backoff capped by the configured maximum delay
+- **AND** it MUST honour the retry-after window when it exceeds the computed delay
+- **AND** it MUST stop retrying once the maximum attempts are exhausted and surface a descriptive error.
+
+#### Scenario: Non-retryable Gemini error surfaces immediately
+- **GIVEN** Gemini responds with a client-side validation error
+- **WHEN** the generator processes the failure
+- **THEN** it MUST skip retries and throw the error so operators can address the underlying issue.
 
