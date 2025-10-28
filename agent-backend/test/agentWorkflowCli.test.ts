@@ -4,12 +4,14 @@ const {
   createSupabaseServiceClientMock,
   createStoriesRepositoryMock,
   createSceneletsRepositoryMock,
+  createShotsRepositoryMock,
   MockSupabaseConfigurationError,
 } = vi.hoisted(() => {
   return {
     createSupabaseServiceClientMock: vi.fn(),
     createStoriesRepositoryMock: vi.fn(),
     createSceneletsRepositoryMock: vi.fn(),
+    createShotsRepositoryMock: vi.fn(),
     MockSupabaseConfigurationError: class MockSupabaseConfigurationError extends Error {},
   };
 });
@@ -27,7 +29,12 @@ vi.mock(new URL('../../supabase/src/sceneletsRepository.js', import.meta.url).pa
   createSceneletsRepository: createSceneletsRepositoryMock,
 }));
 
+vi.mock(new URL('../../supabase/src/shotsRepository.js', import.meta.url).pathname, () => ({
+  createShotsRepository: createShotsRepositoryMock,
+}));
+
 import { runCli } from '../src/cli/agentWorkflowCli.js';
+import type { ShotCreationInput, ShotProductionShotsRepository } from '../src/shot-production/types.js';
 
 interface StubStory {
   id: string;
@@ -35,8 +42,8 @@ interface StubStory {
   initialPrompt: string;
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
-  storyboardBreakdown: unknown | null;
   audioDesignDocument: unknown | null;
+  visualReferencePackage: unknown | null;
 }
 
 function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
@@ -49,8 +56,8 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
 } {
   const stories = initialStories.map((story) => ({
     visualDesignDocument: null,
-    storyboardBreakdown: null,
     audioDesignDocument: null,
+    visualReferencePackage: null,
     ...story,
   }));
 
@@ -69,8 +76,8 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
           initialPrompt,
           storyConstitution: null,
           visualDesignDocument: null,
-          storyboardBreakdown: null,
           audioDesignDocument: null,
+          visualReferencePackage: null,
         };
         stories.push(story);
         return story;
@@ -90,11 +97,11 @@ function createStoriesRepositoryStub(initialStories: StubStory[] = []): {
       if ((patch as { visualDesignDocument?: unknown }).visualDesignDocument !== undefined) {
         story.visualDesignDocument = (patch as { visualDesignDocument?: unknown }).visualDesignDocument;
       }
-      if ((patch as { storyboardBreakdown?: unknown }).storyboardBreakdown !== undefined) {
-        story.storyboardBreakdown = (patch as { storyboardBreakdown?: unknown }).storyboardBreakdown;
-      }
       if ((patch as { audioDesignDocument?: unknown }).audioDesignDocument !== undefined) {
         story.audioDesignDocument = (patch as { audioDesignDocument?: unknown }).audioDesignDocument;
+      }
+      if ((patch as { visualReferencePackage?: unknown }).visualReferencePackage !== undefined) {
+        story.visualReferencePackage = (patch as { visualReferencePackage?: unknown }).visualReferencePackage;
       }
       return story;
     }),
@@ -187,6 +194,34 @@ function createSceneletsRepositoryStub(): {
   return { repository, scenelets };
 }
 
+function createShotsRepositoryStub() {
+  const created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }> = [];
+  const repository = {
+    createSceneletShots: vi.fn(async (
+      storyId: string,
+      sceneletId: string,
+      sceneletSequence: number,
+      shots: ShotCreationInput[]
+    ) => {
+      created.push({
+        storyId,
+        sceneletId,
+        sceneletSequence,
+        shotIndices: shots.map((shot) => shot.shotIndex),
+      });
+    }),
+    findSceneletIdsMissingShots: vi.fn(async (_storyId: string, sceneletIds: string[]) => sceneletIds),
+  } satisfies ShotProductionShotsRepository & {
+    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+  };
+  (repository as typeof repository & {
+    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+  }).created = created;
+  return repository as typeof repository & {
+    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+  };
+}
+
 describe('agentWorkflow CLI', () => {
   const logs: string[] = [];
   const errors: string[] = [];
@@ -195,6 +230,7 @@ describe('agentWorkflow CLI', () => {
     createSupabaseServiceClientMock.mockReset();
     createStoriesRepositoryMock.mockReset();
     createSceneletsRepositoryMock.mockReset();
+    createShotsRepositoryMock.mockReset();
 
     vi.spyOn(console, 'log').mockImplementation((value?: unknown) => {
       logs.push(String(value ?? ''));
@@ -216,10 +252,12 @@ describe('agentWorkflow CLI', () => {
   it('creates a story workflow in stub mode', async () => {
     const { repository } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
 
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue(repository);
     createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
 
     await runCli(['create', '--prompt', 'Stub adventure'], {
       SUPABASE_URL: 'http://localhost:54321',
@@ -243,10 +281,12 @@ describe('agentWorkflow CLI', () => {
   it('runs all tasks with stub generators', async () => {
     const { repository, stories } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository, scenelets } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
 
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue(repository);
     createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
 
     await runCli(['run-all', '--prompt', 'Hybrid voyage', '--mode', 'stub'], {
       SUPABASE_URL: 'http://localhost:54321',
@@ -260,17 +300,78 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.storyConstitution).not.toBeNull();
     expect(scenelets.length).toBeGreaterThan(0);
     expect(stories[0]?.visualDesignDocument).not.toBeNull();
-    expect(stories[0]?.storyboardBreakdown).not.toBeNull();
+    expect(stories[0]?.audioDesignDocument).not.toBeNull();
+    expect(shotsRepository.created).toEqual([
+      { storyId: stories[0]!.id, sceneletId: 'scenelet-1', sceneletSequence: 1, shotIndices: [1, 2] },
+      { storyId: stories[0]!.id, sceneletId: 'scenelet-2', sceneletSequence: 2, shotIndices: [1, 2] },
+      { storyId: stories[0]!.id, sceneletId: 'scenelet-3', sceneletSequence: 3, shotIndices: [1, 2] },
+      { storyId: stories[0]!.id, sceneletId: 'scenelet-4', sceneletSequence: 4, shotIndices: [1, 2] },
+      { storyId: stories[0]!.id, sceneletId: 'scenelet-5', sceneletSequence: 5, shotIndices: [1, 2] },
+    ]);
+  });
+
+  it('runs shot production task through run-task with stub fixtures', async () => {
+    const { repository, stories } = createStoriesRepositoryStub();
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    const env = {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+    };
+
+    await runCli(['create', '--prompt', 'Shot production workflow', '--mode', 'stub'], env);
+    expect(errors).toEqual([]);
+    const createdStory = JSON.parse(logs[0]);
+    const storyId = createdStory.storyId;
+    logs.length = 0;
+
+    const prerequisiteTasks: Array<'CREATE_CONSTITUTION' | 'CREATE_INTERACTIVE_SCRIPT' | 'CREATE_VISUAL_DESIGN' | 'CREATE_AUDIO_DESIGN'> = [
+      'CREATE_CONSTITUTION',
+      'CREATE_INTERACTIVE_SCRIPT',
+      'CREATE_VISUAL_DESIGN',
+      'CREATE_AUDIO_DESIGN',
+    ];
+
+    for (const task of prerequisiteTasks) {
+      await runCli(['run-task', '--task', task, '--story-id', storyId, '--mode', 'stub'], env);
+      expect(process.exitCode).toBeUndefined();
+      expect(errors).toEqual([]);
+      expect(shotsRepository.created).toEqual([]);
+      logs.length = 0;
+    }
+
+    await runCli(['run-task', '--task', 'CREATE_SHOT_PRODUCTION', '--story-id', storyId, '--mode', 'stub'], env);
+
+    expect(process.exitCode).toBeUndefined();
+    expect(errors).toEqual([]);
+    const result = JSON.parse(logs[0]);
+    expect(result).toEqual({ storyId, task: 'CREATE_SHOT_PRODUCTION', status: 'completed' });
+    expect(shotsRepository.created).toEqual([
+      { storyId, sceneletId: 'scenelet-1', sceneletSequence: 1, shotIndices: [1, 2] },
+      { storyId, sceneletId: 'scenelet-2', sceneletSequence: 2, shotIndices: [1, 2] },
+      { storyId, sceneletId: 'scenelet-3', sceneletSequence: 3, shotIndices: [1, 2] },
+      { storyId, sceneletId: 'scenelet-4', sceneletSequence: 4, shotIndices: [1, 2] },
+      { storyId, sceneletId: 'scenelet-5', sceneletSequence: 5, shotIndices: [1, 2] },
+    ]);
+    expect(stories[0]?.visualDesignDocument).not.toBeNull();
     expect(stories[0]?.audioDesignDocument).not.toBeNull();
   });
 
   it('fails gracefully when story missing for run-task', async () => {
     const { repository } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
 
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue(repository);
     createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
 
     await runCli(['run-task', '--task', 'CREATE_CONSTITUTION', '--story-id', 'story-missing'], {
       SUPABASE_URL: 'http://localhost:54321',
@@ -284,10 +385,12 @@ describe('agentWorkflow CLI', () => {
   it('uses remote Supabase credentials when --remote flag provided', async () => {
     const { repository } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
 
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue(repository);
     createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
 
     await runCli(['create', '--prompt', 'Remote workflow', '--remote'], {
       SUPABASE_REMOTE_URL: 'https://remote.example',
@@ -313,7 +416,7 @@ describe('agentWorkflow CLI', () => {
     expect(combinedErrors).toContain('CREATE_CONSTITUTION');
     expect(combinedErrors).toContain('CREATE_INTERACTIVE_SCRIPT');
     expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
-    expect(combinedErrors).toContain('CREATE_STORYBOARD');
+    expect(combinedErrors).toContain('CREATE_SHOT_PRODUCTION');
     expect(combinedErrors).toContain('CREATE_AUDIO_DESIGN');
   });
 });

@@ -1,0 +1,49 @@
+{
+  "scenelet_id": "scenelet-1",
+  "shots": [
+    {
+      "shot_index": 1,
+      "storyboard_entry": {
+        "framing_and_angle": "Wide Establishing Shot",
+        "composition_and_content": "Rhea stands amid the glowing sandbox studio with holographic branches orbiting her console, anchoring the viewer in the collaborative lab.",
+        "character_action_and_emotion": "Rhea surveys the simulated story tree with focused anticipation while the studio hums to life around her hands-on controls.",
+        "dialogue": [
+          {
+            "character": "Narrator",
+            "line": "Rhea powers up the story simulator, ready to stress-test the new constitution."
+          }
+        ],
+        "camera_dynamics": "Slow dolly in toward Rhea and the central console while the holographic branches drift in parallax.",
+        "lighting_and_atmosphere": "Cool teal light washes over the room, accented by warm highlights from the responsive console UI and floating glyphs.",
+        "continuity_notes": "Maintain the orbiting branch layout and console telemetry readouts for seamless connection into subsequent tutorial and challenge paths."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Wide studio view with translucent narrative branches circling Rhea's console, cinematic volumetric lighting, confidently composed technology lab energy in 4K detail.",
+        "key_frame_storyboard_prompt": "Storyboard frame of Rhea initiating the simulator as holographic nodes orbit in disciplined arcs, focusing on anticipation, UI glow, and layered reflections across the glass workstation.",
+        "video_clip_prompt": "Tracking dolly toward Rhea as the simulator charges, highlighting glimmering holograms, controlled breathing, subtle motion in the branches, and the studio's rising hum. No background music."
+      }
+    },
+    {
+      "shot_index": 2,
+      "storyboard_entry": {
+        "framing_and_angle": "Dynamic Medium Close-Up",
+        "composition_and_content": "Rhea leans over the interface, the branching tree reflecting in her visor while controls flicker with responsive UI states.",
+        "character_action_and_emotion": "She smirks with competitive energy as she inputs the first command, shoulders squared with playful determination.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "Let's see if this scriptwriter mode can keep up with our testers."
+          }
+        ],
+        "camera_dynamics": "Static frame with gentle handheld sway to keep momentum alive as holographic elements pulse in rhythm with her gestures.",
+        "lighting_and_atmosphere": "Console light intensifies, casting dynamic highlights across Rhea's features and catching micro reflections in the visor surface.",
+        "continuity_notes": "Match visor reflections to the branch layout and retain consistent console widget choreography for downstream beats."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Close framing on Rhea's visor reflecting interactive story branches, crisp depth of field, teal rim lights, tactile console surfaces rendered with cinematic realism.",
+        "key_frame_storyboard_prompt": "Storyboard frame depicting Rhea challenging the model, UI pulses layering around her glove gestures, emphasizing confident attitude and responsive holographic feedback arcs.",
+        "video_clip_prompt": "Hold on Rhea as she issues the command, layering UI pulses, subtle camera sway, controlled breathing cues, and sharp rim lighting that intensifies the challenge. No background music."
+      }
+    }
+  ]
+}

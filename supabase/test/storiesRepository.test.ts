@@ -19,8 +19,6 @@ interface StoryRow {
   visual_design_document: unknown | null;
   audio_design_document: unknown | null;
   visual_reference_package: unknown | null;
-  storyboard_breakdown: unknown | null;
-  generation_prompts: unknown | null;
 }
 
 interface FakeResponse<T> {
@@ -142,8 +140,6 @@ function makeStoryRow(overrides: Partial<StoryRow> = {}): StoryRow {
     visual_design_document: { characters: [] },
     audio_design_document: { sonic_identity: {} },
     visual_reference_package: { character_model_sheets: [] },
-    storyboard_breakdown: { shots: [] },
-    generation_prompts: { prompts: [] },
   };
 
   return { ...base, ...overrides };

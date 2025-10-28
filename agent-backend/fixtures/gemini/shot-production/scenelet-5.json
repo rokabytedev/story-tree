@@ -1,0 +1,49 @@
+{
+  "scenelet_id": "scenelet-5",
+  "shots": [
+    {
+      "shot_index": 1,
+      "storyboard_entry": {
+        "framing_and_angle": "Handheld Medium Shot",
+        "composition_and_content": "Camera weaves through players sprinting across holographic puzzles, neon props streaking past the lens in energetic layers.",
+        "character_action_and_emotion": "Participants move with intense focus, faces flushed with adrenaline while puzzles reshuffle around them.",
+        "dialogue": [
+          {
+            "character": "Narrator",
+            "line": "The room hums as players sprint through puzzles, breathless but exhilarated."
+          }
+        ],
+        "camera_dynamics": "Energetic handheld movement mirroring the chaotic gameplay with occasional whip pans to accent sudden turns.",
+        "lighting_and_atmosphere": "Deep shadows slice between neon puzzle elements, heightening the rush with saturated magenta and cobalt accents.",
+        "continuity_notes": "Keep puzzle glyph animations synchronized with previous challenge metrics and maintain player silhouettes across the run."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Handheld mid-shot plowing through neon puzzle structures, motion blur streaks, adrenaline-charged players, and saturated magenta lighting across the space.",
+        "key_frame_storyboard_prompt": "Storyboard frame capturing chaotic player motion in the challenge branch, laser-cut lighting, overlapping puzzle holograms, and visceral kinetic tension.",
+        "video_clip_prompt": "Handheld rush weaving through players as puzzles rearrange, layering neon highlights, fast whip pans, and breathless momentum that sells the trial. No background music."
+      }
+    },
+    {
+      "shot_index": 2,
+      "storyboard_entry": {
+        "framing_and_angle": "Analytical Close-Up",
+        "composition_and_content": "Rhea records notes on a holoboard while puzzles rewind behind her in translucent reflections.",
+        "character_action_and_emotion": "She grins with determined resolve, already planning refinements even as the footage loops nearby.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "We kept them on their toes. Let's capture this momentum for iteration two."
+          }
+        ],
+        "camera_dynamics": "Slow push toward the holoboard as annotations update in real time, emphasizing iterative strategy.",
+        "lighting_and_atmosphere": "Pulses of saturated magenta sync with each note she records, signaling energetic debrief lighting against cooler ambient tones.",
+        "continuity_notes": "Match holoboard annotations with previous challenge telemetry and retain puzzle rewind pacing for narrative cohesion."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Close-up of Rhea annotating a glowing holoboard, reflected puzzle footage looping behind her, crisp magenta lighting with analytical focus.",
+        "key_frame_storyboard_prompt": "Storyboard frame of Rhea documenting lessons at the holoboard, luminous annotations forming trails while background footage rewinds with graphic clarity.",
+        "video_clip_prompt": "Measured push-in on Rhea's debrief, highlighting dynamic holoboard notes, reflective puzzle footage, and her confident momentum-setting gestures. No background music."
+      }
+    }
+  ]
+}

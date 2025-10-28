@@ -4,12 +4,13 @@ import type {
   SceneletPersistence,
 } from '../interactive-story/types.js';
 import type { StoryTreeSnapshot } from '../story-storage/types.js';
-import type {
-  VisualDesignTaskDependencies,
-  VisualDesignTaskRunner,
-} from '../visual-design/types.js';
-import type { StoryboardTaskDependencies, StoryboardTaskRunner } from '../storyboard/types.js';
+import type { VisualDesignTaskDependencies, VisualDesignTaskRunner } from '../visual-design/types.js';
 import type { AudioDesignTaskDependencies, AudioDesignTaskRunner } from '../audio-design/types.js';
+import type {
+  ShotProductionTaskDependencies,
+  ShotProductionTaskRunner,
+  ShotProductionShotsRepository,
+} from '../shot-production/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -17,8 +18,8 @@ export interface AgentWorkflowStoryRecord {
   initialPrompt: string;
   storyConstitution: unknown | null;
   visualDesignDocument: unknown | null;
-  storyboardBreakdown: unknown | null;
   audioDesignDocument: unknown | null;
+  visualReferencePackage?: unknown | null;
 }
 
 export interface AgentWorkflowStoryCreateInput {
@@ -30,8 +31,8 @@ export interface AgentWorkflowStoryUpdatePatch {
   displayName?: string;
   storyConstitution?: unknown;
   visualDesignDocument?: unknown;
-  storyboardBreakdown?: unknown;
   audioDesignDocument?: unknown;
+  visualReferencePackage?: unknown;
 }
 
 export interface AgentWorkflowStoriesRepository {
@@ -57,6 +58,7 @@ export interface AgentWorkflowLogger {
 
 export interface AgentWorkflowOptions {
   storiesRepository: AgentWorkflowStoriesRepository;
+  shotsRepository: ShotProductionShotsRepository;
   sceneletPersistence: SceneletPersistence;
   constitutionOptions?: StoryConstitutionOptions;
   interactiveStoryOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
@@ -67,10 +69,10 @@ export interface AgentWorkflowOptions {
   storyTreeLoader?: (storyId: string) => Promise<StoryTreeSnapshot>;
   visualDesignTaskOptions?: VisualDesignTaskOptions;
   runVisualDesignTask?: VisualDesignTaskRunner;
-  storyboardTaskOptions?: StoryboardTaskOptions;
-  runStoryboardTask?: StoryboardTaskRunner;
   audioDesignTaskOptions?: AudioDesignTaskOptions;
   runAudioDesignTask?: AudioDesignTaskRunner;
+  shotProductionTaskOptions?: ShotProductionTaskOptions;
+  runShotProductionTask?: ShotProductionTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -83,8 +85,8 @@ export type StoryWorkflowTask =
   | 'CREATE_CONSTITUTION'
   | 'CREATE_INTERACTIVE_SCRIPT'
   | 'CREATE_VISUAL_DESIGN'
-  | 'CREATE_STORYBOARD'
-  | 'CREATE_AUDIO_DESIGN';
+  | 'CREATE_AUDIO_DESIGN'
+  | 'CREATE_SHOT_PRODUCTION';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -96,10 +98,10 @@ export type VisualDesignTaskOptions = Partial<
   Omit<VisualDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
 >;
 
-export type StoryboardTaskOptions = Partial<
-  Omit<StoryboardTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
->;
-
 export type AudioDesignTaskOptions = Partial<
   Omit<AudioDesignTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;
+
+export type ShotProductionTaskOptions = Partial<
+  Omit<ShotProductionTaskDependencies, 'storiesRepository' | 'shotsRepository' | 'storyTreeLoader'>
 >;

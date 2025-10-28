@@ -30,7 +30,6 @@ export interface AudioDesignGeminiRequest {
 
 export interface AudioDesignStoryRecord extends AgentWorkflowStoryRecord {
   visualDesignDocument: unknown | null;
-  storyboardBreakdown: unknown | null;
   audioDesignDocument: unknown | null;
 }
 

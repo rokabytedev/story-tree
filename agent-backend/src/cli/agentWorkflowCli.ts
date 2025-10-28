@@ -16,6 +16,7 @@ import {
   type SceneletsRepository,
 } from '../../../supabase/src/sceneletsRepository.js';
 import { createStoriesRepository } from '../../../supabase/src/storiesRepository.js';
+import { createShotsRepository } from '../../../supabase/src/shotsRepository.js';
 import type { StoryConstitution } from '../story-constitution/types.js';
 import type { GeminiGenerateJsonOptions, GeminiGenerateJsonRequest, GeminiJsonClient } from '../gemini/types.js';
 import type { AgentWorkflowOptions, StoryWorkflowTask } from '../workflow/types.js';
@@ -29,17 +30,20 @@ const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
-const STORYBOARD_FIXTURE = resolve(REPO_ROOT, 'fixtures/storyboard/stub-gemini-response.json');
 const AUDIO_DESIGN_FIXTURE = resolve(
   REPO_ROOT,
   'fixtures/gemini/audio-design/success.json'
+);
+const SHOT_PRODUCTION_FIXTURE_DIRECTORY = resolve(
+  REPO_ROOT,
+  'fixtures/gemini/shot-production'
 );
 const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
-  'CREATE_STORYBOARD',
   'CREATE_AUDIO_DESIGN',
+  'CREATE_SHOT_PRODUCTION',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -196,6 +200,7 @@ async function buildWorkflowDependencies(
 
   const client = createSupabaseServiceClient(credentials);
   const storiesRepository = createStoriesRepository(client);
+  const shotsRepository = createShotsRepository(client);
   const sceneletsRepository = createSceneletsRepository(client);
   const sceneletPersistence = new SceneletPersistenceAdapter(sceneletsRepository);
   const logger = createDebugLogger(verbose);
@@ -204,6 +209,7 @@ async function buildWorkflowDependencies(
 
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
+    shotsRepository,
     sceneletPersistence,
     logger,
     constitutionOptions: {
@@ -216,10 +222,10 @@ async function buildWorkflowDependencies(
     visualDesignTaskOptions: {
       logger,
     },
-    storyboardTaskOptions: {
+    audioDesignTaskOptions: {
       logger,
     },
-    audioDesignTaskOptions: {
+    shotProductionTaskOptions: {
       logger,
     },
   };
@@ -240,17 +246,24 @@ async function buildWorkflowDependencies(
         await loadVisualDesignResponse(),
       ]),
     };
-    const storyboardResponse = await loadStoryboardResponse();
-    workflowOptions.storyboardTaskOptions = {
-      logger,
-      promptLoader: async () => 'Stub storyboard system prompt',
-      geminiClient: new FixtureGeminiClient([storyboardResponse]),
-    };
     const audioResponse = await loadAudioDesignResponse();
     workflowOptions.audioDesignTaskOptions = {
       logger,
       promptLoader: async () => 'Stub audio design system prompt',
       geminiClient: new FixtureGeminiClient([audioResponse]),
+    };
+    const shotProductionGeminiClient: GeminiJsonClient = {
+      async generateJson(request) {
+        const content = (request as { userContent?: string } | undefined)?.userContent ?? '';
+        const match = content.match(/- scenelet_id:\s*["']?([A-Za-z0-9_-]+)/);
+        const sceneletId = match?.[1] ?? 'scenelet-1';
+        return loadShotProductionFixture(sceneletId);
+      },
+    };
+    workflowOptions.shotProductionTaskOptions = {
+      logger,
+      promptLoader: async () => 'Stub shot production system prompt',
+      geminiClient: shotProductionGeminiClient,
     };
   }
 
@@ -433,10 +446,6 @@ async function loadInteractiveResponses(): Promise<string[]> {
   });
 }
 
-async function loadStoryboardResponse(): Promise<string> {
-  return loadJsonFixture(STORYBOARD_FIXTURE, 'Storyboard fixture must not be empty.', 'Storyboard fixture must contain valid JSON.');
-}
-
 async function loadVisualDesignResponse(): Promise<string> {
   return loadJsonFixture(
     VISUAL_DESIGN_FIXTURE,
@@ -453,6 +462,20 @@ async function loadAudioDesignResponse(): Promise<string> {
   );
 }
 
+async function loadShotProductionFixture(sceneletId: string): Promise<string> {
+  const normalized = normalizeSceneletId(sceneletId);
+  const filePath = resolve(SHOT_PRODUCTION_FIXTURE_DIRECTORY, `${normalized}.json`);
+  if (!existsSync(filePath)) {
+    throw new CliParseError(`Missing stub shot production fixture for ${normalized}.`);
+  }
+
+  return loadJsonFixture(
+    filePath,
+    `Shot production fixture ${normalized}.json must not be empty.`,
+    `Shot production fixture ${normalized}.json must contain valid JSON.`
+  );
+}
+
 async function loadJsonFixture(path: string, emptyMessage: string, invalidMessage: string): Promise<string> {
   const raw = await readFile(path, 'utf8');
   if (!raw.trim()) {
@@ -464,6 +487,19 @@ async function loadJsonFixture(path: string, emptyMessage: string, invalidMessag
     throw new CliParseError(invalidMessage);
   }
   return raw;
+}
+
+function normalizeSceneletId(sceneletId: string): string {
+  const trimmed = sceneletId?.trim?.() ?? '';
+  if (!trimmed) {
+    throw new CliParseError('Shot production fixture lookup received an empty scenelet id.');
+  }
+
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+    throw new CliParseError(`Shot production fixture scenelet id contains unsupported characters: ${sceneletId}`);
+  }
+
+  return trimmed;
 }
 
 function resolveSupabaseCredentials(

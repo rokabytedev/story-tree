@@ -63,7 +63,7 @@ The workflow MUST expose `runTask` and `runAllTasks` so callers can execute indi
 #### Scenario: Run all tasks sequentially
 - **GIVEN** a workflow handle
 - **WHEN** `runAllTasks` is invoked
-- **THEN** it MUST execute the supported tasks in the defined order (constitution then interactive script)
+- **THEN** it MUST execute the supported tasks in the defined order (constitution, interactive script, visual design, audio design, shot production)
 - **AND** it MUST surface the final constitution metadata for compatibility with existing callers.
 
 ### Requirement: Schedule Visual Design Task
@@ -82,39 +82,44 @@ The workflow MUST expose a `CREATE_VISUAL_DESIGN` task that runs after interacti
 - **THEN** it MUST throw an error if the story lacks a constitution, has no stored scenelets, or already has a visual design document
 - **AND** when prerequisites pass it MUST load the constitution, assemble the interactive script tree payload, call Gemini with the visual design system prompt, and persist the returned JSON via the stories repository.
 
-### Requirement: Schedule Storyboard Task
-The workflow MUST expose a `CREATE_STORYBOARD` task that runs after visual design generation and persists the storyboard breakdown JSON onto the story record.
+### Requirement: Schedule Shot Production Task
+The workflow MUST expose a `CREATE_SHOT_PRODUCTION` task that runs after audio design and persists the validated shot list via the shots repository.
 
-#### Scenario: runAllTasks executes storyboard after visual design
-- **GIVEN** a story with stored constitution, generated scenelets, and a persisted visual design document
+#### Scenario: runAllTasks executes shot production after audio design
+- **GIVEN** a story with stored constitution, generated scenelets, and persisted visual and audio design documents but no stored shots
 - **WHEN** `runAllTasks` executes
-- **THEN** it MUST invoke the storyboard task immediately after `CREATE_VISUAL_DESIGN`
-- **AND** it MUST persist the validated Gemini payload into `stories.storyboard_breakdown`
-- **AND** it MUST skip the task when `stories.storyboard_breakdown` is already populated.
+- **THEN** it MUST invoke the shot production task immediately after `CREATE_AUDIO_DESIGN`
+- **AND** it MUST call the shots repository to store every scenelet’s shots in order
+- **AND** it MUST skip the task when the shots repository reports that all scenelets for the story already have stored shots.
 
-#### Scenario: storyboard task validates prerequisites and response
+#### Scenario: shot production task validates prerequisites and response
 - **GIVEN** a workflow handle
-- **WHEN** `runTask('CREATE_STORYBOARD')` executes
-- **THEN** it MUST throw a descriptive error if the story lacks a constitution, has no scenelets, lacks a visual design document, or already has a storyboard breakdown
-- **AND** when prerequisites pass it MUST assemble the Gemini user prompt from the constitution, story tree YAML snapshot, and visual design document
-- **AND** it MUST call Gemini with `system_prompts/storyboard_artist.md`, validate that every scenelet dialogue line maps to a shot using matching `scenelet_id` and `character` values from the visual design document, and persist the validated JSON via the stories repository.
+- **WHEN** `runTask('CREATE_SHOT_PRODUCTION')` executes
+- **THEN** it MUST throw a descriptive error if the story lacks a constitution, has no scenelets, lacks a visual or audio design document, or already has stored shots for any scenelet
+- **AND** when prerequisites pass it MUST assemble the Gemini prompt from the constitution, story tree snapshot, visual design document, audio design document, and target scenelet
+- **AND** it MUST call Gemini with `system_prompts/shot_director.md`, validate that every scenelet receives an ordered, gap-free shot list with compliant prompts, and persist the normalized shots via the shots repository.
 
-### Requirement: Workflow CLI Exposes Storyboard Task
-The workflow CLI MUST allow operators to run the storyboard task explicitly or as part of the full pipeline in both stub and real Gemini modes.
+### Requirement: Workflow CLI Exposes Shot Production Task
+The workflow CLI MUST allow operators to run the shot production task explicitly or as part of the full pipeline in both stub and real Gemini modes.
 
-#### Scenario: CLI runs storyboard task in stub mode
-- **GIVEN** the CLI is invoked with `run-task --task CREATE_STORYBOARD --mode stub`
-- **WHEN** the storyboard fixtures are loaded
-- **THEN** it MUST route the call to the workflow `CREATE_STORYBOARD` task using the stub Gemini response
-- **AND** it MUST print success output upon persisting the storyboard breakdown.
+#### Scenario: CLI runs shot production task in stub mode
+- **GIVEN** the CLI is invoked with `run-task --task CREATE_SHOT_PRODUCTION --mode stub`
+- **WHEN** the shot production fixtures are loaded
+- **THEN** it MUST route the call to the workflow `CREATE_SHOT_PRODUCTION` task using the stub Gemini response
+- **AND** it MUST print success output after persisting the generated shots.
+
+#### Scenario: CLI run-all includes shot production
+- **GIVEN** the CLI is invoked with `run-all --mode stub`
+- **WHEN** visual design, audio design, and shot production fixtures are provided
+- **THEN** the pipeline MUST include `CREATE_SHOT_PRODUCTION` after audio design and complete without duplicating stored shots.
 
 ### Requirement: Schedule Audio Design Task
-The workflow MUST expose an audio design task that runs after storyboard generation and persists a validated audio design document.
+The workflow MUST expose an audio design task that runs after visual design generation and persists a validated audio design document.
 
-#### Scenario: runAllTasks executes audio design after storyboard
-- **GIVEN** a story with stored constitution, scenelets, visual design document, and storyboard breakdown but no audio design document
+#### Scenario: runAllTasks executes audio design after visual design
+- **GIVEN** a story with stored constitution, generated scenelets, and a visual design document but no audio design document
 - **WHEN** `runAllTasks` executes
-- **THEN** it MUST invoke `CREATE_AUDIO_DESIGN` immediately after `CREATE_STORYBOARD`
+- **THEN** it MUST invoke `CREATE_AUDIO_DESIGN` immediately after `CREATE_VISUAL_DESIGN`
 - **AND** it MUST persist the Gemini output into `stories.audio_design_document`
 - **AND** it MUST skip the task when `stories.audio_design_document` is already populated.
 
@@ -136,7 +141,7 @@ The workflow CLI MUST let operators run the audio design task directly or as par
 
 #### Scenario: CLI run-all uses compatible stub fixtures
 - **GIVEN** the CLI is invoked with `run-all --mode stub`
-- **WHEN** the storyboard, visual design, and audio design fixtures are used
-- **THEN** it MUST complete the full task pipeline without audio validation errors
-- **AND** it MUST persist an audio design document that matches the stub fixture expectations.
+- **WHEN** the visual design, audio design, and shot production fixtures are used
+- **THEN** it MUST complete the full task pipeline without validation errors
+- **AND** it MUST persist an audio design document and scenelet shots that match the stub fixture expectations.
 

@@ -8,18 +8,19 @@ import type {
   VisualDesignTaskRunner,
   VisualDesignTaskDependencies,
 } from '../visual-design/types.js';
-import { runStoryboardTask } from '../storyboard/storyboardTask.js';
-import type {
-  StoryboardTaskOptions,
-  StoryboardTaskRunner,
-  StoryboardTaskDependencies,
-} from '../storyboard/types.js';
 import { runAudioDesignTask } from '../audio-design/audioDesignTask.js';
 import type {
   AudioDesignTaskOptions,
   AudioDesignTaskRunner,
   AudioDesignTaskDependencies,
 } from '../audio-design/types.js';
+import { runShotProductionTask } from '../shot-production/shotProductionTask.js';
+import type {
+  ShotProductionTaskOptions,
+  ShotProductionTaskRunner,
+  ShotProductionTaskDependencies,
+  ShotProductionShotsRepository,
+} from '../shot-production/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -38,13 +39,14 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
-  'CREATE_STORYBOARD',
   'CREATE_AUDIO_DESIGN',
+  'CREATE_SHOT_PRODUCTION',
 ];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
   storiesRepository: Required<AgentWorkflowStoriesRepository>;
   storyTreeLoader: NonNullable<AgentWorkflowOptions['storyTreeLoader']>;
+  shotsRepository: ShotProductionShotsRepository;
 }
 
 export async function createWorkflowFromPrompt(
@@ -101,12 +103,13 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly interactiveOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
   private readonly logger?: AgentWorkflowLogger;
   private readonly storyTreeLoader: NonNullable<AgentWorkflowOptions['storyTreeLoader']>;
+  private readonly shotsRepository: ShotProductionShotsRepository;
   private readonly visualDesignTaskRunner: VisualDesignTaskRunner;
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
-  private readonly storyboardTaskRunner: StoryboardTaskRunner;
-  private readonly storyboardOptions?: StoryboardTaskOptions;
   private readonly audioDesignTaskRunner: AudioDesignTaskRunner;
   private readonly audioDesignOptions?: AudioDesignTaskOptions;
+  private readonly shotProductionTaskRunner: ShotProductionTaskRunner;
+  private readonly shotProductionOptions?: ShotProductionTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -123,20 +126,21 @@ class StoryWorkflowImpl implements StoryWorkflow {
       ? { ...dependencies.interactiveStoryOptions }
       : undefined;
     this.storyTreeLoader = dependencies.storyTreeLoader;
+    this.shotsRepository = dependencies.shotsRepository;
     this.visualDesignTaskRunner =
       dependencies.runVisualDesignTask ?? runVisualDesignTask;
     this.visualDesignOptions = dependencies.visualDesignTaskOptions
       ? { ...dependencies.visualDesignTaskOptions }
       : undefined;
-    this.storyboardTaskRunner =
-      dependencies.runStoryboardTask ?? runStoryboardTask;
-    this.storyboardOptions = dependencies.storyboardTaskOptions
-      ? { ...dependencies.storyboardTaskOptions }
-      : undefined;
     this.audioDesignTaskRunner =
       dependencies.runAudioDesignTask ?? runAudioDesignTask;
     this.audioDesignOptions = dependencies.audioDesignTaskOptions
       ? { ...dependencies.audioDesignTaskOptions }
+      : undefined;
+    this.shotProductionTaskRunner =
+      dependencies.runShotProductionTask ?? runShotProductionTask;
+    this.shotProductionOptions = dependencies.shotProductionTaskOptions
+      ? { ...dependencies.shotProductionTaskOptions }
       : undefined;
     this.logger = dependencies.logger;
   }
@@ -152,11 +156,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
       case 'CREATE_VISUAL_DESIGN':
         await this.runVisualDesignTask();
         return;
-      case 'CREATE_STORYBOARD':
-        await this.runStoryboardTask();
-        return;
       case 'CREATE_AUDIO_DESIGN':
         await this.runAudioDesignTask();
+        return;
+      case 'CREATE_SHOT_PRODUCTION':
+        await this.runShotProductionTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -177,11 +181,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
         case 'CREATE_VISUAL_DESIGN':
           await this.runVisualDesignTask();
           break;
-        case 'CREATE_STORYBOARD':
-          await this.runStoryboardTask();
-          break;
         case 'CREATE_AUDIO_DESIGN':
           await this.runAudioDesignTask();
+          break;
+        case 'CREATE_SHOT_PRODUCTION':
+          await this.runShotProductionTask();
           break;
         default:
           break;
@@ -289,46 +293,19 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.visualDesignTaskRunner(this.storyId, dependencies);
   }
 
-  private async runStoryboardTask(): Promise<void> {
-    const dependencies = this.buildStoryboardDependencies();
-    await this.storyboardTaskRunner(this.storyId, dependencies);
-  }
-
   private async runAudioDesignTask(): Promise<void> {
     const dependencies = this.buildAudioDesignDependencies();
     await this.audioDesignTaskRunner(this.storyId, dependencies);
   }
 
+  private async runShotProductionTask(): Promise<void> {
+    const dependencies = this.buildShotProductionDependencies();
+    await this.shotProductionTaskRunner(this.storyId, dependencies);
+  }
+
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
     const overrides = this.visualDesignOptions;
     const dependencies: VisualDesignTaskDependencies = {
-      storiesRepository: this.storiesRepository,
-      storyTreeLoader: this.storyTreeLoader,
-    };
-
-    if (overrides?.promptLoader) {
-      dependencies.promptLoader = overrides.promptLoader;
-    }
-
-    if (overrides?.geminiClient) {
-      dependencies.geminiClient = overrides.geminiClient;
-    }
-
-    if (overrides?.geminiOptions) {
-      dependencies.geminiOptions = overrides.geminiOptions;
-    }
-
-    const logger = overrides?.logger ?? this.logger;
-    if (logger) {
-      dependencies.logger = logger;
-    }
-
-    return dependencies;
-  }
-
-  private buildStoryboardDependencies(): StoryboardTaskDependencies {
-    const overrides = this.storyboardOptions;
-    const dependencies: StoryboardTaskDependencies = {
       storiesRepository: this.storiesRepository,
       storyTreeLoader: this.storyTreeLoader,
     };
@@ -380,6 +357,34 @@ class StoryWorkflowImpl implements StoryWorkflow {
     return dependencies;
   }
 
+  private buildShotProductionDependencies(): ShotProductionTaskDependencies {
+    const overrides = this.shotProductionOptions;
+    const dependencies: ShotProductionTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      shotsRepository: this.shotsRepository,
+      storyTreeLoader: this.storyTreeLoader,
+    };
+
+    if (overrides?.promptLoader) {
+      dependencies.promptLoader = overrides.promptLoader;
+    }
+
+    if (overrides?.geminiClient) {
+      dependencies.geminiClient = overrides.geminiClient;
+    }
+
+    if (overrides?.geminiOptions) {
+      dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
   private async ensureStory(): Promise<AgentWorkflowStoryRecord> {
     const story = await this.storiesRepository.getStoryById(this.storyId);
     if (!story) {
@@ -394,9 +399,13 @@ function normalizeDependencies(options: AgentWorkflowOptions): StoryWorkflowDepe
     throw new AgentWorkflowError('Agent workflow options must be provided.');
   }
 
-  const { storiesRepository, sceneletPersistence, storyTreeLoader } = options;
+  const { storiesRepository, shotsRepository, sceneletPersistence, storyTreeLoader } = options;
   if (!storiesRepository) {
     throw new AgentWorkflowError('Stories repository dependency is required.');
+  }
+
+  if (!shotsRepository) {
+    throw new AgentWorkflowError('Shots repository dependency is required.');
   }
 
   if (!sceneletPersistence) {
@@ -416,6 +425,7 @@ function normalizeDependencies(options: AgentWorkflowOptions): StoryWorkflowDepe
   return {
     ...options,
     storiesRepository,
+    shotsRepository,
     sceneletPersistence,
     storyTreeLoader,
   };

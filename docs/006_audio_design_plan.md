@@ -9,10 +9,10 @@ Add a `CREATE_AUDIO_DESIGN` workflow task that converts the completed pre-produc
 - Visual design document populated at `stories.visual_design_document`.
 - System prompt `system_prompts/audio_director.md` reviewed in detail; it defines the output schema, naming constraints, and creative expectations.
 
-The task intentionally does **not** require the storyboard artifact, but in the default pipeline it will execute after `CREATE_STORYBOARD` to keep downstream orchestration simple.
+The task intentionally does **not** require the shot production artifact, but in the default pipeline it executes immediately before `CREATE_SHOT_PRODUCTION` so downstream cinematics inherit the finalized sonic canon.
 
 ## Gemini Prompt Assembly
-Audio design reuses the same deterministic prompt assembly style as the storyboard task with audio-specific framing. The request format is:
+Audio design reuses the same deterministic prompt assembly style as the shot production task with audio-specific framing. The request format is:
 
 1. **System Prompt** — supply `system_prompts/audio_director.md` verbatim. Preserve whitespace and headings to avoid mismatched expectations.
 2. **User Prompt** — a single markdown document assembled in this order:
@@ -45,7 +45,7 @@ Persist the validated object to `stories.audio_design_document` via the stories 
 
 ## Workflow Integration
 - Extend the workflow task union with `CREATE_AUDIO_DESIGN`.
-- Place the task after `CREATE_STORYBOARD` in both `runTask` (for direct invocation) and `runAllTasks`. Running it earlier is technically possible, but sequencing it last simplifies operator expectations and keeps musical work aligned with locked storyboards.
+- Place the task after `CREATE_VISUAL_DESIGN` and before `CREATE_SHOT_PRODUCTION` in both `runTask` (for direct invocation) and `runAllTasks`. This sequencing keeps musical direction aligned with approved visuals while feeding finalized cues into shot production.
 - Prerequisite checks:
   - Constitution present.
   - Scenelets exist.
@@ -61,9 +61,9 @@ Persist the validated object to `stories.audio_design_document` via the stories 
 
 ## CLI Support
 - Add `CREATE_AUDIO_DESIGN` to CLI task enums, help text, and validation.
-- Ensure `run-all` schedules the task after storyboard generation.
+- Ensure `run-all` schedules the task after visual design and before shot production.
 - Stub mode:
-  - Create deterministic Gemini fixtures under `agent-backend/fixtures/gemini/audio-design/` (e.g., `success.json`, `invalid-character.json`). The primary `success.json` must align with existing storyboard and visual design fixtures so `run-all --mode stub` completes without triggering validation errors.
+  - Create deterministic Gemini fixtures under `agent-backend/fixtures/gemini/audio-design/` (e.g., `success.json`, `invalid-character.json`). The primary `success.json` must align with existing shot production and visual design fixtures so `run-all --mode stub` completes without triggering validation errors.
   - Extend stub loader to return audio design fixtures when the system prompt path matches `audio_director.md`.
 - Real mode should expose Gemini failures and validation errors without masking stack traces in debug logs. Include human-friendly summaries for referential integrity violations.
 

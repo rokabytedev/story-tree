@@ -261,8 +261,6 @@ describe('storiesCli runCli', () => {
         visualDesignDocument: null,
         audioDesignDocument: null,
         visualReferencePackage: null,
-        storyboardBreakdown: null,
-        generationPrompts: null,
       },
       {
         id: 'id-2',
@@ -275,8 +273,6 @@ describe('storiesCli runCli', () => {
         visualDesignDocument: null,
         audioDesignDocument: null,
         visualReferencePackage: null,
-        storyboardBreakdown: null,
-        generationPrompts: null,
       },
     ]);
 
@@ -314,8 +310,6 @@ describe('storiesCli runCli', () => {
       visualDesignDocument: null,
       audioDesignDocument: null,
       visualReferencePackage: null,
-      storyboardBreakdown: null,
-      generationPrompts: null,
     });
 
     await runCli(['show', 'abc'], {

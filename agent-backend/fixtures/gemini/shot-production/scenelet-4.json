@@ -1,0 +1,49 @@
+{
+  "scenelet_id": "scenelet-4",
+  "shots": [
+    {
+      "shot_index": 1,
+      "storyboard_entry": {
+        "framing_and_angle": "Charged Tracking Shot",
+        "composition_and_content": "Camera follows a charged branch streaking across the studio while Rhea sketches aggressive angles into the challenge path.",
+        "character_action_and_emotion": "Rhea's expression sharpens with excitement, movements precise and accelerated to signal heightened stakes.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "Or we launch with a challenge to jolt them awake."
+          }
+        ],
+        "camera_dynamics": "Fast lateral move matching the branch momentum, adding whip-pan accents as new geometry sparks.",
+        "lighting_and_atmosphere": "Warning reds and electric violets flash across the environment, charging the air with kinetic urgency.",
+        "continuity_notes": "Synchronize branch glow intensity with the challenge metrics and preserve Rhea's hand positions for pickup shots."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Tracking shot setup with a charged crimson branch racing through the studio, Rhea sketching sharp angles, kinetic lighting, high-stakes energy frozen mid motion.",
+        "key_frame_storyboard_prompt": "Storyboard frame illustrating Rhea accelerating the challenge branch, motion blur streaks, energized posture, and vivid warning hues dominating the frame.",
+        "video_clip_prompt": "Dynamic tracking move pursuing the energized branch as Rhea drafts the challenge path, layering whip-pan accents, crackling light, and intense audio-visual focus. No background music."
+      }
+    },
+    {
+      "shot_index": 2,
+      "storyboard_entry": {
+        "framing_and_angle": "Dynamic HUD Close-Up",
+        "composition_and_content": "Testing Agent's diagnostics display timers and intensity gauges spiking toward the red as metrics cascade across the interface.",
+        "character_action_and_emotion": "The companion steadies itself, projecting crisp metrics with analytical calm that contrasts the surrounding urgency.",
+        "dialogue": [
+          {
+            "character": "Testing Agent",
+            "line": "Noted. Tracking elevated tension and time pressure cues."
+          }
+        ],
+        "camera_dynamics": "Static with rapid HUD cascading animations, allowing the data to pulse toward camera while remaining legible.",
+        "lighting_and_atmosphere": "High-contrast highlights carve through the air, underscoring the urgency with hot magenta edges and deep shadows.",
+        "continuity_notes": "Match gauge levels and countdown timers between shots to keep the challenge escalation believable."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "HUD close-up saturated with red warning gauges, translucent overlays, and precise typography, balanced by the companion orb's analytical poise.",
+        "key_frame_storyboard_prompt": "Storyboard frame isolating the diagnostics readout, intense countdown numerals, and polished sci-fi interface depth communicating rising pressure.",
+        "video_clip_prompt": "Static insert on the diagnostics HUD surging with high-pressure data, crisp overlays animating forward with rhythmic pulses that emphasize urgency. No background music."
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "scenelet_id": "scenelet-2",
+  "shots": [
+    {
+      "shot_index": 1,
+      "storyboard_entry": {
+        "framing_and_angle": "Over-the-Shoulder Shot",
+        "composition_and_content": "Rhea sketches playful icons across a holographic branch labeled with the tutorial path, the studio stretching beyond her workstation.",
+        "character_action_and_emotion": "Her gestures are loose and inviting, shoulders relaxed to signal a welcoming teaching mode with collaborative intent.",
+        "dialogue": [
+          {
+            "character": "Rhea",
+            "line": "We'll lead with a welcoming tutorial, keep things breezy."
+          }
+        ],
+        "camera_dynamics": "Gentle arc around Rhea to reveal the icons forming, keeping the branch readable and the tutorial tone approachable.",
+        "lighting_and_atmosphere": "Warm amber accents bloom as the tutorial branch takes shape, soft overlays guiding the audience toward the playful glyphs.",
+        "continuity_notes": "Ensure icon designs match later tutorial payoffs and preserve branch labeling across intercut beats."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Over-shoulder composition of Rhea sketching playful tutorial icons on a glowing branch, warm amber bounce light, cinematic depth and cooperative tone in focus.",
+        "key_frame_storyboard_prompt": "Storyboard frame capturing Rhea's relaxed guidance, holographic icons materializing with whimsical motion trails, emphasizing approachability and creative warmth.",
+        "video_clip_prompt": "Orbit around Rhea as she drafts the tutorial path, highlighting gestural drawing, blooming amber highlights, and responsive holograms that celebrate onboarding energy. No background music."
+      }
+    },
+    {
+      "shot_index": 2,
+      "storyboard_entry": {
+        "framing_and_angle": "Stylized Insert Shot",
+        "composition_and_content": "Testing Agent's HUD fills the frame with safety metrics spiking green while annotations animate along the screen edges.",
+        "character_action_and_emotion": "The orb companion pulses confidently as data logs scroll, reinforcing the designed sense of security and playful instruction.",
+        "dialogue": [
+          {
+            "character": "Testing Agent",
+            "line": "Logging: tutorial tone, comedic beats, zero peril."
+          }
+        ],
+        "camera_dynamics": "Static insert with UI elements animating forward toward lens, keeping text legible while maintaining energy.",
+        "lighting_and_atmosphere": "Soft diffusion keeps the HUD readable while ambient glow links back to Rhea's console palette.",
+        "continuity_notes": "Retain the green metric thresholds for later callbacks and align HUD typography with global visual design specifications."
+      },
+      "generation_prompts": {
+        "first_frame_prompt": "Full HUD close-up of the Testing Agent interface, neon green safety metrics, translucent widgets, depth layering that keeps text crisp and futuristic.",
+        "key_frame_storyboard_prompt": "Storyboard frame focusing on the orb companion's diagnostic display, emphasizing comedic safety indicators, animated glyphs, and supportive UI narration.",
+        "video_clip_prompt": "Static but lively insert of the HUD surging with approvals, projecting holographic readouts toward camera with comedic cadence and playful data overlays. No background music."
+      }
+    }
+  ]
+}
