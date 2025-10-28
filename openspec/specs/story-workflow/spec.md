@@ -33,13 +33,11 @@ The workflow MUST capture the Gemini-generated constitution and align the story 
 ### Requirement: Trigger Interactive Story Generation
 The workflow MUST populate scenelets when the `CREATE_INTERACTIVE_SCRIPT` task runs for a story that already has a constitution.
 
-#### Scenario: Interactive script task generates scenelets
-- **GIVEN** the story has a stored constitution and no prior interactive generation
+#### Scenario: Resume completes partially generated trees
+- **GIVEN** a story already has persisted scenelets but the workflow is invoked with resume mode enabled
 - **WHEN** the interactive script task runs
-- **THEN** it MUST invoke the interactive generator with the story id, constitution markdown, and injected scenelet persistence
-- **AND** it MUST persist generated scenelets via the persistence interface
-- **AND** it MUST surface generator failures to the caller
-- **AND** it MUST mark the task as completed so repeat invocations fail fast.
+- **THEN** it MUST inspect the stored scenelets, resume generation for unfinished branches, and exit successfully when the tree is complete
+- **AND** it MUST leave existing scenelets untouched.
 
 ### Requirement: Keep Orchestrator Testable
 The workflow MUST separate business logic from IO so unit tests can run without real Supabase or Gemini dependencies for each task.
@@ -167,4 +165,13 @@ The workflow CLI MUST allow operators to run the visual reference task explicitl
 - **GIVEN** the CLI is invoked with `run-all --mode stub`
 - **WHEN** constitution, interactive script, visual design, and visual reference fixtures are provided
 - **THEN** the pipeline MUST include `CREATE_VISUAL_REFERENCE` after visual design and before audio design and complete without duplicating stored artifacts.
+
+### Requirement: Workflow CLI Supports Interactive Script Resume
+The workflow CLI MUST let operators request resume mode for the interactive script task.
+
+#### Scenario: CLI forwards resume flag for interactive script task
+- **GIVEN** an operator runs `run-task --task CREATE_INTERACTIVE_SCRIPT --resume-interactive-script`
+- **WHEN** the CLI prepares workflow options
+- **THEN** it MUST enable resume mode on the workflow before invoking the task
+- **AND** it MUST surface the task outcome according to normal CLI behaviour.
 

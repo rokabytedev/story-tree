@@ -66,6 +66,7 @@ export interface AgentWorkflowOptions {
   sceneletPersistence: SceneletPersistence;
   constitutionOptions?: StoryConstitutionOptions;
   interactiveStoryOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
+  resumeInteractiveScript?: boolean;
   generateStoryConstitution?: AgentWorkflowConstitutionGenerator;
   generateInteractiveStoryTree?: AgentWorkflowInteractiveGenerator;
   initialDisplayNameFactory?: (prompt: string) => string;

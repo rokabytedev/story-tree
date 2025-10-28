@@ -367,6 +367,121 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.audioDesignDocument).not.toBeNull();
   });
 
+  it('resumes interactive script when resume flag is provided', async () => {
+    const storyId = 'story-1';
+    const { repository, stories } = createStoriesRepositoryStub([
+      {
+        id: storyId,
+        displayName: 'Existing Story',
+        initialPrompt: 'Prompt',
+        storyConstitution: { proposedStoryTitle: 'Existing Story', storyConstitutionMarkdown: '# Constitution' },
+        visualDesignDocument: null,
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository, scenelets } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    scenelets.push(
+      {
+        id: 'scenelet-root',
+        storyId,
+        parentId: null,
+        choiceLabelFromParent: null,
+        choicePrompt: null,
+        content: {
+          description: 'Existing root',
+          dialogue: [],
+          shot_suggestions: ['Root shot'],
+        },
+        isBranchPoint: false,
+        isTerminalNode: false,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'scenelet-leaf',
+        storyId,
+        parentId: 'scenelet-root',
+        choiceLabelFromParent: null,
+        choicePrompt: null,
+        content: {
+          description: 'Existing leaf',
+          dialogue: [],
+          shot_suggestions: ['Leaf shot'],
+        },
+        isBranchPoint: false,
+        isTerminalNode: false,
+        createdAt: new Date().toISOString(),
+      }
+    );
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    logs.length = 0;
+    errors.length = 0;
+
+    const env = {
+      SUPABASE_URL: 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+    };
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_INTERACTIVE_SCRIPT',
+        '--story-id',
+        storyId,
+        '--mode',
+        'stub',
+        '--resume-interactive-script',
+      ],
+      env
+    );
+
+    expect(process.exitCode).toBeUndefined();
+    expect(errors).toEqual([]);
+    expect(sceneletsRepository.listSceneletsByStory).toHaveBeenCalledWith(storyId);
+    const output = JSON.parse(logs[0]);
+    expect(output).toEqual({ storyId, task: 'CREATE_INTERACTIVE_SCRIPT', status: 'completed' });
+    expect(stories[0]?.storyConstitution).not.toBeNull();
+  });
+
+  it('rejects resume flag for irrelevant tasks', async () => {
+    const { repository } = createStoriesRepositoryStub();
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    errors.length = 0;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_CONSTITUTION',
+        '--story-id',
+        'story-1',
+        '--resume-interactive-script',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain('--resume-interactive-script can only be used with CREATE_INTERACTIVE_SCRIPT.');
+  });
+
   it('fails gracefully when story missing for run-task', async () => {
     const { repository } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository } = createSceneletsRepositoryStub();

@@ -9,8 +9,23 @@ export class GeminiRateLimitError extends Error {
 }
 
 export class GeminiApiError extends Error {
-  constructor(message: string, options: { cause?: unknown } = {}) {
+  readonly statusCode?: number;
+  readonly statusText?: string;
+  readonly isRetryable: boolean;
+
+  constructor(
+    message: string,
+    options: {
+      cause?: unknown;
+      statusCode?: number;
+      statusText?: string;
+      isRetryable?: boolean;
+    } = {}
+  ) {
     super(message, { cause: options.cause });
     this.name = 'GeminiApiError';
+    this.statusCode = options.statusCode;
+    this.statusText = options.statusText;
+    this.isRetryable = Boolean(options.isRetryable);
   }
 }
