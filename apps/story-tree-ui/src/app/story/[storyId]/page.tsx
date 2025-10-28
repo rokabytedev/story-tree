@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { storyTabs } from "@/components/storySidebar";
 
-export default function StoryDetailRedirect({
+export default async function StoryDetailRedirect({
   params,
 }: {
-  params: { storyId: string };
+  params: Promise<{ storyId: string }>;
 }) {
+  const { storyId } = await params;
   const defaultTab = storyTabs[0];
-  redirect(`/story/${params.storyId}/${defaultTab.slug}`);
+  redirect(`/story/${storyId}/${defaultTab.slug}`);
 }
