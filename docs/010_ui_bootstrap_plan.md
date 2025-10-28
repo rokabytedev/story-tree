@@ -22,6 +22,8 @@ the web app routing should follow url based rule like the following (just my ini
 - https://domain.com/story -> the index page of list of stories and new story button etc
 navigation should feel like it's single page app instead of full page refresh, if it's possible and follows next.js app convention. low priority if it's a lot of work to implement.
 
+for ui related feature, especially for visual elements, relax the TDD and testing requirements. it's lower priority, unless it's for unit testing some core business logic in ui layer which should happen rarely.
+
 your task:
 - read this doc and understand my intent
 - expand this doc to be a full requirement doc (let me review before continue)
