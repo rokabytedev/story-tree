@@ -4,54 +4,58 @@
 The Story Tree UI currently renders mock data. This change introduces a server-side data layer that queries Supabase so designers and engineers can inspect real stories. We will reuse the shared Supabase repositories, expose deterministic view models for the UI, and support both local and remote stacks through environment-based configuration. All data fetching stays in server components to keep service role secrets out of the browser bundle.
 
 ## Supabase Connection Strategy
-- Create `server/supabase/client.ts` (marked with `"server-only"`) to centralize credential resolution and instantiate a singleton Supabase service client.
-- Accept a `STORY_TREE_SUPABASE_MODE` env var (`local` default, `remote` optional). The resolver will mirror CLI precedence:
-  - `local`: `SUPABASE_LOCAL_URL` → `SUPABASE_URL`; `SUPABASE_LOCAL_SERVICE_ROLE_KEY` → `SUPABASE_SERVICE_ROLE_KEY`
-  - `remote`: `SUPABASE_REMOTE_URL`; `SUPABASE_REMOTE_SERVICE_ROLE_KEY`
-  - Allow per-process overrides via `STORY_TREE_SUPABASE_URL` / `STORY_TREE_SUPABASE_SERVICE_ROLE_KEY` for ad-hoc debugging.
-- Throw a descriptive `SupabaseUiConfigurationError` when credentials are missing so the UI can render an actionable empty state.
-- Export cached repository factories (`getStoriesRepository`, `getSceneletsRepository`) that always reuse the same Supabase client for the current request lifecycle.
-- All server-only utilities live under `apps/story-tree-ui/server/` so UI components (`apps/story-tree-ui/src/`) only import through this boundary.
+A server-only Supabase client will be created in `apps/story-tree-ui/src/server/supabase.ts`. This module will adapt the existing `createSupabaseServiceClient` factory from `supabase/src/client.ts` to handle UI-specific environment variables and configuration modes.
+
+### Environment Configuration
+The UI will support `local` and `remote` Supabase environments, controlled by the `STORY_TREE_SUPABASE_MODE` environment variable.
+
+- **Remote Mode**:
+  - `STORY_TREE_SUPABASE_MODE=remote`
+  - `SUPABASE_REMOTE_URL`: The URL of the production Supabase project.
+  - `SUPABASE_REMOTE_SERVICE_ROLE_KEY`: The service role key for the production project.
+- **Local Mode (Default)**:
+  - `STORY_TREE_SUPABASE_MODE=local` (or omitted)
+  - `SUPABASE_LOCAL_URL`: The URL for the local Supabase stack (e.g., `http://127.0.0.1:54321`).
+  - `SUPABASE_LOCAL_SERVICE_ROLE_KEY`: The service role key for the local stack.
+- **Fallback**: For convenience, the client resolver will also check for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` if the mode-specific variables are not found.
+
+The client factory will be memoized (e.g., using `React.cache`) to ensure a single client instance is created per request, preventing connection overhead. Accessing the service role key will be strictly limited to server-side files to prevent leaks into the browser.
 
 ## Data Access Layer
-- New module `server/data/storyData.ts` exposes async helpers:
-  - `fetchStorySummaries()` → array of `{ id, title, accentColor }`
-  - `fetchStoryDetail(storyId)` → `{ summary, constitutionMarkdown?, scriptYaml?, visualDesign?, audioDesign?, visualReference?, prompt }`
-  - `fetchStoryTreeYaml(storyId)` that wraps `loadStoryTreeSnapshot` from `agent-backend/story-storage`.
-- Use `cache()` from `react` to memoize fetches per request to avoid duplicate Supabase queries when multiple tabs render on the same page.
-- Supabase access helpers live under `server/supabase/` and reuse repository factories imported from the shared `supabase` package (no duplicate data access logic).
-- Deterministic accent color generation: hash story id into palette (fallback palette constant). Author name remains `"Story Tree Agent"` until author metadata lands in Supabase.
+The data access layer will live in `apps/story-tree-ui/src/server/data/` and will provide high-level functions for fetching page-specific data. This layer will use the server-only Supabase client and reuse the existing repositories from the `supabase` and `agent-backend` packages.
 
-## Story Index Rendering
-- `app/story/page.tsx` becomes an async server component that calls `fetchStorySummaries()`.
-- If the resolver throws a configuration error or Supabase returns zero stories, render an updated empty state describing how to seed the database or configure credentials.
-- Replace `mockStory` references with fetched summaries; maintain existing styling.
+### Key Functions
+- `getStoryList()`: Fetches all stories using `storiesRepository.listStories()` and returns a summary view model (`{ id, title, author, accentColor }`) for the story index page.
+- `getStory(storyId)`: Fetches a single story's complete record using `storiesRepository.getStoryById()`.
+- `getStoryTreeScript(storyId)`: Fetches all scenelets for a story using `sceneletsRepository.listSceneletsByStory()`, then uses `assembleStoryTreeSnapshot()` from `agent-backend` to generate the YAML representation for the Script tab.
 
-## Story Detail Tabs
-- Remove `mockStory.ts` consumption; Story layout now calls `fetchStoryDetail` to provide `summary` and pass story metadata to children.
-- Constitution tab:
-  - Render markdown when `story.storyConstitutionMarkdown` exists; otherwise show empty state message referencing missing artifact.
-- Script tab:
-  - Call `fetchStoryTreeYaml`. On success render YAML via existing `MarkdownPreview` replacement (or code block); on `StoryTreeAssemblyError` render error prompt to check scenelets.
-  - Use `loadStoryTreeSnapshot` to build YAML (server-only module).
-- Visual / Audio tabs:
-  - Display pretty-printed JSON using current JSON viewer (update component to handle empty state when payload missing).
-- Storyboard tab:
-  - Continue to show placeholder but mention real data pending; include supabase-driven check once storyboard artifacts exist (out of scope now).
+These functions will be designed to be called from Next.js Server Components. They will handle data transformation and gracefully return `null` or empty arrays when data is not found, allowing the UI to render appropriate empty states.
 
-## Error Handling & Fallbacks
-- Introduce shared `SupabaseDataError` type so UI surfaces clear copy (missing credentials, story not found, story missing artifacts).
-- Update empty states to include CTA for `supabase:stories-cli` seeding when relevant.
-- Keep route dynamic by exporting `dynamic = "force-dynamic"` on story routes to avoid build-time Supabase lookups; add `revalidate = 30` to enable Next caching without stale data risk.
-- When Supabase returns 404 for a story, issue `notFound()` to reuse existing 404 UI.
+## UI Implementation
+Data fetching will occur exclusively in Server Components (`page.tsx`, `layout.tsx`). Mock data imports from `@/data/mockStory` will be removed and replaced with calls to the new data access layer.
+
+### Story Index Page (`/story`)
+- The `StoryIndexPage` in `apps/story-tree-ui/src/app/story/page.tsx` will be converted to an `async` component.
+- It will call `getStoryList()` to fetch stories from Supabase.
+- If no stories are returned, it will render an empty state component that guides the developer on how to seed the database.
+
+### Story Detail Layout (`/story/[storyId]`)
+- The `StoryLayout` in `apps/story-tree-ui/src/app/story/[storyId]/layout.tsx` will become an `async` component.
+- It will fetch the story record using `getStory(params.storyId)`. This ensures all child pages (tabs) have access to the story's metadata (like the title) without re-fetching it.
+- The `generateStaticParams` function will be removed, as stories will be dynamic.
+- If a story is not found, it will use the `notFound()` function from Next.js.
+
+### Artifact Tabs (`/story/[storyId]/[tab]`)
+- Each tab's page component (e.g., `apps/story-tree-ui/src/app/story/[storyId]/constitution/page.tsx`) will be an `async` component.
+- It will fetch its specific data. For example, the Constitution tab will get the story record and access the `storyConstitution` property. The Script tab will call `getStoryTreeScript()`.
+- If a specific artifact is `null` or empty (e.g., `story.storyConstitution` is null), the component will render an `<EmptyState />` with a relevant message.
 
 ## Documentation & Tooling
-- Extend `apps/story-tree-ui/README.md` with a configuration section describing:
-  1. Required env vars for local (`STORY_TREE_SUPABASE_MODE=local`, `SUPABASE_LOCAL_URL`, `SUPABASE_LOCAL_SERVICE_ROLE_KEY`).
-  2. Remote mode instructions and mapping to existing Supabase CLI secrets.
-  3. Quick test flow using `npm run supabase:stories-cli -- list`.
-- Provide `.env.local.example` for the UI workspace containing commented placeholders for both modes.
+- An `.env.local.example` file will be added to `apps/story-tree-ui/` to document the required environment variables for both local and remote Supabase connections.
+- The `apps/story-tree-ui/README.md` will be updated with detailed instructions on how to:
+  1.  Set up the environment variables.
+  2.  Run the UI against the local Supabase stack.
+  3.  Connect the UI to the remote Supabase project.
 
 ## Stakeholder Alignment
 - **Accepted assumptions:** Scenelets exist for showcased stories (else script tab shows empty state). The UI runs in a trusted environment; no additional authentication handling will be implemented in this change.
-- **Implementation requirements:** All server-only modules reside under `apps/story-tree-ui-server/`, and Supabase access helpers live under `apps/story-tree-ui-server/supabase/` while reusing the shared repository code in `supabase/`—no duplicate data access layers elsewhere.
