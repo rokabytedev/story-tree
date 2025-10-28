@@ -32,18 +32,25 @@ The backend MUST expose a TypeScript function that accepts a short story descrip
 - **AND** it MUST apply a timeout suitable for multi-minute generations and pass through thinking budget configuration required by the prompt.
 
 ### Requirement: Return Parsed Story Constitution JSON
-The function MUST validate and return Gemini's JSON output as a typed object containing the proposed title and markdown constitution.
+The function MUST validate and return Gemini's JSON output as a typed object containing the proposed title, markdown constitution, and the scenelet target per path.
 
-#### Scenario: Valid Gemini JSON response
-- **GIVEN** Gemini returns a well-formed JSON payload containing `proposed_story_title` and `story_constitution_markdown`
-- **WHEN** the function receives the response
-- **THEN** it MUST parse the JSON safely
-- **AND** it MUST return the parsed object to the caller without additional transformation.
+#### Scenario: Target scenelet count surfaced
+- **GIVEN** Gemini returns a payload that includes `target_scenelets_per_path`
+- **WHEN** the constitution generator parses the response
+- **THEN** it MUST expose the integer as `targetSceneletsPerPath` in the returned object
+- **AND** the value MUST be persisted untouched when the constitution is stored.
 
-#### Scenario: Malformed Gemini response
-- **GIVEN** Gemini responds with content that cannot be parsed as the expected JSON structure
-- **WHEN** the function processes the response
-- **THEN** it MUST raise a descriptive parsing error that identifies the operation and includes the raw text for debugging (redacted of secrets).
+#### Scenario: Default target length applied
+- **GIVEN** the user's prompt omits an explicit length request
+- **WHEN** the story constitution is generated
+- **THEN** the system prompt MUST instruct Gemini to default the target to 12 scenelets per path
+- **AND** the parsed response MUST provide `target_scenelets_per_path: 12`.
+
+#### Scenario: Story length requests convert to scenelet targets
+- **GIVEN** the user specifies a desired runtime (e.g., "a 10 minute story") or scenelet count
+- **WHEN** the constitution prompt is assembled
+- **THEN** it MUST instruct Gemini to translate minutes into scenelets at a 2:1 ratio or to use the provided count directly
+- **AND** the returned `target_scenelets_per_path` MUST reflect that computed value.
 
 ### Requirement: Distinguish Gemini Rate Limit Errors
 Gemini rate limit or resource exhaustion responses MUST surface as a dedicated retryable error type shared across Gemini integrations.

@@ -183,6 +183,7 @@ describe('runAgentWorkflow', () => {
       return {
         proposedStoryTitle: 'Star Trail',
         storyConstitutionMarkdown: '## Constitution',
+        targetSceneletsPerPath: 18,
       };
     };
 
@@ -213,10 +214,12 @@ describe('runAgentWorkflow', () => {
     expect(interactiveOptions).toEqual({
       timeoutMs: 60_000,
       sceneletPersistence,
+      targetSceneletsPerPath: 18,
     });
     expect(storiesRepository.record?.storyConstitution).toEqual({
       proposedStoryTitle: 'Star Trail',
       storyConstitutionMarkdown: '## Constitution',
+      targetSceneletsPerPath: 18,
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
     expect(storiesRepository.record?.visualReferencePackage).toEqual({ character_model_sheets: [] });
@@ -252,6 +255,7 @@ describe('runAgentWorkflow', () => {
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
       proposedStoryTitle: '',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     });
 
     const interactiveGenerator: AgentWorkflowInteractiveGenerator = async () => {};
@@ -303,6 +307,7 @@ describe('runAgentWorkflow', () => {
         generateStoryConstitution: async () => ({
           proposedStoryTitle: 'Failure Title',
           storyConstitutionMarkdown: '## Failure',
+          targetSceneletsPerPath: 12,
         }),
         generateInteractiveStoryTree: async () => {
           throw new Error('Interactive generator failed');
@@ -388,6 +393,7 @@ describe('runAgentWorkflow', () => {
       return {
         proposedStoryTitle: 'Option',
         storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
       };
     };
 

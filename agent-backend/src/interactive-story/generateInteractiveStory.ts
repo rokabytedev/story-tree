@@ -15,6 +15,8 @@ import {
   ScriptwriterScenelet,
 } from './types.js';
 
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
+
 export async function generateInteractiveStoryTree(
   storyId: string,
   storyConstitution: string,
@@ -34,6 +36,8 @@ export async function generateInteractiveStoryTree(
   if (!persistence) {
     throw new InteractiveStoryError('Scenelet persistence implementation is required.');
   }
+
+  const targetSceneletsPerPath = normalizeTargetScenelets(options.targetSceneletsPerPath);
 
   const promptLoader = options.promptLoader ?? loadInteractiveScriptwriterPrompt;
   const geminiClient = options.geminiClient ?? createGeminiJsonClient();
@@ -83,6 +87,7 @@ export async function generateInteractiveStoryTree(
       storyConstitution: trimmedConstitution,
       pathContext: task.pathContext,
       isRoot,
+      targetSceneletsPerPath,
     });
 
     options.logger?.debug?.('Interactive story Gemini request', {
@@ -90,6 +95,7 @@ export async function generateInteractiveStoryTree(
       parentSceneletId: task.parentSceneletId,
       isRoot,
       pathContextLength: task.pathContext.length,
+      targetSceneletsPerPath,
       geminiRequest: {
         systemInstruction,
         userContent,
@@ -138,7 +144,15 @@ export async function generateInteractiveStoryTree(
     storyId: trimmedStoryId,
     resumeMode,
     createdScenelets,
+    targetSceneletsPerPath,
   });
+}
+
+function normalizeTargetScenelets(value: number | undefined): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 1) {
+    return Math.trunc(value);
+  }
+  return DEFAULT_TARGET_SCENELETS_PER_PATH;
 }
 
 async function handleLinearResponse(

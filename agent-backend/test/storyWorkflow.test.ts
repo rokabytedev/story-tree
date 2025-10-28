@@ -245,8 +245,11 @@ function buildOptions(overrides: Partial<AgentWorkflowOptions> & {
     generateStoryConstitution: async () => ({
       proposedStoryTitle: 'Draft Story',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     }),
-    generateInteractiveStoryTree: async () => {},
+    generateInteractiveStoryTree: async (_storyId, _markdown, options) => {
+      expect(options?.targetSceneletsPerPath).toBe(12);
+    },
     ...overrides,
   } satisfies AgentWorkflowOptions;
 }
@@ -315,6 +318,7 @@ describe('storyWorkflow tasks', () => {
       return {
         proposedStoryTitle: 'New Title',
         storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
       };
     };
 
@@ -333,6 +337,7 @@ describe('storyWorkflow tasks', () => {
     expect(storiesRepository.records[0]?.storyConstitution).toEqual({
       proposedStoryTitle: 'New Title',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     });
 
     await expect(workflow.runTask(taskConstitution)).rejects.toThrow(
@@ -361,6 +366,7 @@ describe('storyWorkflow tasks', () => {
           parentId: null,
           content: { description: 'Generated scenelet', dialogue: [], shot_suggestions: [] },
         });
+        expect(options?.targetSceneletsPerPath).toBe(12);
         if (options && typeof options === 'object' && 'sceneletPersistence' in options) {
           // no-op; included to exercise options path
         }
@@ -374,6 +380,7 @@ describe('storyWorkflow tasks', () => {
     storiesRepository.records[0]!.storyConstitution = {
       proposedStoryTitle: 'Title',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     };
 
     await workflow.runTask(taskInteractive);
@@ -387,7 +394,11 @@ describe('storyWorkflow tasks', () => {
     const storyId = 'story-resume';
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: storyId,
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
     }));
     const shotsRepository = createShotsRepository();
     const sceneletPersistence = createSceneletPersistence();
@@ -448,7 +459,11 @@ describe('storyWorkflow tasks', () => {
     const storyId = 'story-complete';
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: storyId,
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
     }));
     const shotsRepository = createShotsRepository();
     const sceneletPersistence = createSceneletPersistence();
@@ -488,7 +503,11 @@ describe('storyWorkflow tasks', () => {
   it('runs visual design task after prerequisites', async () => {
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: 'story-visual',
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
     }));
     const shotsRepository = createShotsRepository();
     const sceneletPersistence = createSceneletPersistence();
@@ -514,7 +533,11 @@ describe('storyWorkflow tasks', () => {
   it('runs visual reference task after prerequisites', async () => {
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: 'story-visual-ref',
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
       visualDesignDocument: { characters: [] },
     }));
     const shotsRepository = createShotsRepository();
@@ -543,7 +566,11 @@ describe('storyWorkflow tasks', () => {
   it('requires audio design prerequisites and logs artifacts', async () => {
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: 'story-audio',
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
       visualDesignDocument: { characters: [] },
     }));
     const shotsRepository = createShotsRepository();
@@ -569,7 +596,11 @@ describe('storyWorkflow tasks', () => {
   it('runs shot production task, persists shots, and prevents reruns when shots exist', async () => {
     const storiesRepository = createStoriesRepository(createStoryRecord({
       id: 'story-shots',
-      storyConstitution: { proposedStoryTitle: 'Title', storyConstitutionMarkdown: '# Constitution' },
+      storyConstitution: {
+        proposedStoryTitle: 'Title',
+        storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
+      },
       visualDesignDocument: { characters: [] },
       audioDesignDocument: { audio_design_document: { cues: [] } },
     }));
@@ -613,7 +644,8 @@ describe('runAllTasks', () => {
       runVisualReferenceTask: visualReference.runner,
       runAudioDesignTask: audioDesign.runner,
       runShotProductionTask: shotProduction.runner,
-      generateInteractiveStoryTree: async () => {
+      generateInteractiveStoryTree: async (_storyId, _markdown, options) => {
+        expect(options?.targetSceneletsPerPath).toBe(12);
         await sceneletPersistence.createScenelet({
           storyId: 'story-run-all',
           parentId: null,

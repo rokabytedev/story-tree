@@ -7,12 +7,13 @@ export interface BuildPromptOptions {
   storyConstitution: string;
   pathContext: ScriptwriterScenelet[];
   isRoot: boolean;
+  targetSceneletsPerPath: number;
 }
 
 export function buildInteractiveScriptwriterUserContent(
   options: BuildPromptOptions
 ): string {
-  const { storyConstitution, pathContext, isRoot } = options;
+  const { storyConstitution, pathContext, isRoot, targetSceneletsPerPath } = options;
   const trimmedConstitution = storyConstitution.trim();
   const instruction = isRoot ? ROOT_INSTRUCTION : CONTINUE_INSTRUCTION;
   const lines: string[] = [];
@@ -21,13 +22,25 @@ export function buildInteractiveScriptwriterUserContent(
   lines.push(trimmedConstitution);
   lines.push('');
 
-  if (!isRoot && pathContext.length > 0) {
-    lines.push('## Current Narrative Path');
+  const currentCount = pathContext.length;
+  const remainingCount = Math.max(targetSceneletsPerPath - currentCount, 0);
 
+  lines.push('## Current Narrative Path');
+  lines.push(`Target scenelets per path: ${targetSceneletsPerPath}`);
+  lines.push(`Current scenelets in this path: ${currentCount}`);
+  lines.push(
+    `Reminder: Aim to conclude this path within ${targetSceneletsPerPath} scenelets. Approximately ${remainingCount} scenelets remain.`
+  );
+
+  if (pathContext.length === 0) {
+    lines.push('No scenelets have been written on this path yet.');
+  } else {
     const serializedPath = JSON.stringify(pathContext, null, 2);
-    lines.push(serializedPath);
     lines.push('');
+    lines.push(serializedPath);
   }
+
+  lines.push('');
 
   lines.push('## Instruction');
   lines.push(instruction);

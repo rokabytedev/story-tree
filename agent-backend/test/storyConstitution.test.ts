@@ -36,6 +36,7 @@ describe('generateStoryConstitution', () => {
     const jsonResponse = JSON.stringify({
       proposed_story_title: 'Enchanted Trails',
       story_constitution_markdown: '### **Story Constitution: Enchanted Trails**\n\nStub markdown.',
+      target_scenelets_per_path: 18,
     });
 
     const client = makeClient(
@@ -49,6 +50,7 @@ describe('generateStoryConstitution', () => {
 
     expect(result.proposedStoryTitle).toBe('Enchanted Trails');
     expect(result.storyConstitutionMarkdown).toContain('Stub markdown.');
+    expect(result.targetSceneletsPerPath).toBe(18);
   });
 
   it('logs Gemini request payload when logger is provided', async () => {
@@ -56,6 +58,7 @@ describe('generateStoryConstitution', () => {
     const jsonResponse = JSON.stringify({
       proposed_story_title: 'Reflective Tale',
       story_constitution_markdown: '## Tale',
+      target_scenelets_per_path: 12,
     });
 
     const client = makeClient(
@@ -117,5 +120,46 @@ describe('generateStoryConstitution', () => {
         retryOptions: { policy: null, sleep: async () => {} },
       })
     ).rejects.toBeInstanceOf(GeminiRateLimitError);
+  });
+});
+
+describe('story constitution target scenelet handling', () => {
+  it('honours explicit target length values from Gemini', async () => {
+    const brief = 'Adventure prompt';
+    const jsonResponse = JSON.stringify({
+      proposed_story_title: 'Chosen Length',
+      story_constitution_markdown: '## Markdown',
+      target_scenelets_per_path: 22,
+    });
+
+    const client = makeClient(
+      () => ({ text: jsonResponse } as unknown as GenerateContentResponse)
+    );
+
+    const result = await generateStoryConstitution(brief, {
+      geminiClient: client,
+      promptLoader: async () => 'system prompt',
+    });
+
+    expect(result.targetSceneletsPerPath).toBe(22);
+  });
+
+  it('defaults target length to 12 when Gemini omits the field', async () => {
+    const brief = 'Missing length prompt';
+    const jsonResponse = JSON.stringify({
+      proposed_story_title: 'Default Length',
+      story_constitution_markdown: '## Markdown',
+    });
+
+    const client = makeClient(
+      () => ({ text: jsonResponse } as unknown as GenerateContentResponse)
+    );
+
+    const result = await generateStoryConstitution(brief, {
+      geminiClient: client,
+      promptLoader: async () => 'system prompt',
+    });
+
+    expect(result.targetSceneletsPerPath).toBe(12);
   });
 });

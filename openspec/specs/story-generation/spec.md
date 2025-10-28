@@ -32,11 +32,12 @@ The generator MUST interpret Gemini responses to continue linearly, branch into 
 ### Requirement: Gemini Interactive Scriptwriter Invocation
 The generator MUST call Gemini with the `system_prompts/interactive_scriptwriter.md` prompt, the current path context, and an instruction that distinguishes the root versus continuation scenelets.
 
-#### Scenario: Prompt formatted for root and continuation
-- **GIVEN** the orchestrator prepares a Gemini request
-- **WHEN** the task has no prior scenelets
-- **THEN** it MUST issue user content that includes the story constitution and a root instruction without a current path section
-- **AND** when prior scenelets exist it MUST include the serialized path context and a continuation instruction so Gemini receives the full narrative history.
+#### Scenario: Prompt reiterates path length constraint
+- **GIVEN** the generator prepares the user prompt for Gemini
+- **WHEN** a story constitution includes `targetSceneletsPerPath` and the current narrative path already contains scenelets
+- **THEN** the prompt's `## Current Narrative Path` section MUST state both the target path length and the current scenelet count
+- **AND** it MUST calculate the scenelet count from the path data rather than trusting cached values
+- **AND** the prompt MUST remind Gemini that remaining scenelets should conclude within the stated target.
 
 ### Requirement: Robust Gemini Response Validation
 The generator MUST validate Gemini JSON before attempting persistence and surface descriptive errors when payloads are malformed or missing required fields.

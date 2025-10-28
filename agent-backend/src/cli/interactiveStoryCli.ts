@@ -39,6 +39,7 @@ async function main(argv: string[]): Promise<void> {
       geminiClient,
       promptLoader: async () => 'Stub interactive scriptwriter prompt',
       sceneletPersistence: persistence,
+      targetSceneletsPerPath: 12,
       ...(logger ? { logger } : {}),
     } satisfies InteractiveStoryGeneratorOptions);
 

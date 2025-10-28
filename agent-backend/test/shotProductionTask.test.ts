@@ -20,6 +20,7 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
       overrides.storyConstitution ?? {
         proposedStoryTitle: 'Draft Story',
         storyConstitutionMarkdown: '# Constitution',
+        targetSceneletsPerPath: 12,
       },
     visualDesignDocument:
       overrides.visualDesignDocument ?? {

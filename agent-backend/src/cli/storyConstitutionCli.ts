@@ -53,6 +53,12 @@ class StubGeminiClient implements GeminiJsonClient {
     const storyBrief = request.userContent;
     const storyTitle = template['proposed_story_title'];
     const markdown = template['story_constitution_markdown'];
+    const target =
+      typeof template['target_scenelets_per_path'] === 'number'
+        ? template['target_scenelets_per_path']
+        : typeof template['targetSceneletsPerPath'] === 'number'
+          ? template['targetSceneletsPerPath']
+          : 12;
 
     const finalTitle =
       typeof storyTitle === 'string'
@@ -67,6 +73,7 @@ class StubGeminiClient implements GeminiJsonClient {
     return JSON.stringify({
       proposed_story_title: finalTitle,
       story_constitution_markdown: finalMarkdown,
+      target_scenelets_per_path: target,
     });
   }
 

@@ -136,7 +136,7 @@ function makeStoryRow(overrides: Partial<StoryRow> = {}): StoryRow {
     initial_prompt: 'Grow a space garden.',
     created_at: '2025-01-01T00:00:00.000Z',
     updated_at: '2025-01-01T00:00:00.000Z',
-    story_constitution: { title: 'Galactic Garden' },
+    story_constitution: { title: 'Galactic Garden', targetSceneletsPerPath: 14 },
     visual_design_document: { characters: [] },
     audio_design_document: { sonic_identity: {} },
     visual_reference_package: { character_model_sheets: [] },
@@ -149,7 +149,7 @@ describe('storiesRepository.createStory', () => {
   it('inserts a story and returns the saved record', async () => {
     const insertedRow = makeStoryRow({
       display_name: 'New Story',
-      story_constitution: { title: 'New Story' },
+      story_constitution: { title: 'New Story', targetSceneletsPerPath: 16 },
     });
     const { repo, table, client } = makeRepository({
       insert: { data: insertedRow, error: null },
@@ -158,7 +158,7 @@ describe('storiesRepository.createStory', () => {
     const result = await repo.createStory({
       displayName: 'New Story',
       initialPrompt: 'Tell me a bedtime story.',
-      storyConstitution: { title: 'New Story' },
+      storyConstitution: { title: 'New Story', targetSceneletsPerPath: 16 },
     });
 
     expect(client.lastTableRequested).toBe('stories');
@@ -166,11 +166,11 @@ describe('storiesRepository.createStory', () => {
     expect(table.inserted[0]).toMatchObject({
       display_name: 'New Story',
       initial_prompt: 'Tell me a bedtime story.',
-      story_constitution: { title: 'New Story' },
+      story_constitution: { title: 'New Story', targetSceneletsPerPath: 16 },
     });
     expect(result.displayName).toBe('New Story');
     expect(result.id).toBe(insertedRow.id);
-    expect(result.storyConstitution).toEqual({ title: 'New Story' });
+    expect(result.storyConstitution).toEqual({ title: 'New Story', targetSceneletsPerPath: 16 });
     expect(result.initialPrompt).toBe(insertedRow.initial_prompt);
   });
 
@@ -198,7 +198,7 @@ describe('storiesRepository.createStory', () => {
 describe('storiesRepository.updateStoryArtifacts', () => {
   it('updates provided JSON fields and returns the saved row', async () => {
     const updatedRow = makeStoryRow({
-      story_constitution: { title: 'Alpha' },
+      story_constitution: { title: 'Alpha', targetSceneletsPerPath: 20 },
       visual_design_document: { characters: ['Hero'] },
       audio_design_document: { voices: [] },
       visual_reference_package: { character_model_sheets: [] },
@@ -208,7 +208,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
     });
 
     const result = await repo.updateStoryArtifacts(updatedRow.id, {
-      storyConstitution: { title: 'Alpha' },
+      storyConstitution: { title: 'Alpha', targetSceneletsPerPath: 20 },
       visualDesignDocument: { characters: ['Hero'] },
       audioDesignDocument: { voices: [] },
       visualReferencePackage: { character_model_sheets: [] },
@@ -216,7 +216,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
 
     expect(table.updated).toHaveLength(1);
     expect(table.updated[0]).toMatchObject({
-      story_constitution: { title: 'Alpha' },
+      story_constitution: { title: 'Alpha', targetSceneletsPerPath: 20 },
       visual_design_document: { characters: ['Hero'] },
       audio_design_document: { voices: [] },
       visual_reference_package: { character_model_sheets: [] },
@@ -225,7 +225,7 @@ describe('storiesRepository.updateStoryArtifacts', () => {
       { column: 'id', value: updatedRow.id },
     ]);
     expect(result.id).toBe(updatedRow.id);
-    expect(result.storyConstitution).toEqual({ title: 'Alpha' });
+    expect(result.storyConstitution).toEqual({ title: 'Alpha', targetSceneletsPerPath: 20 });
     expect(result.visualDesignDocument).toEqual({ characters: ['Hero'] });
     expect(result.audioDesignDocument).toEqual({ voices: [] });
     expect(result.visualReferencePackage).toEqual({ character_model_sheets: [] });

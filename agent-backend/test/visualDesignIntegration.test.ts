@@ -14,6 +14,7 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
     storyConstitution: {
       proposedStoryTitle: 'Integration Story',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     },
     visualDesignDocument: null,
     audioDesignDocument: null,
