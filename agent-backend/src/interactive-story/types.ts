@@ -91,4 +91,5 @@ export interface InteractiveStoryGeneratorOptions {
   timeoutMs?: number;
   resumeState?: InteractiveStoryResumeState | null;
   retryOptions?: GeminiRetryOptions;
+  targetSceneletsPerPath?: number;
 }

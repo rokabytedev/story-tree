@@ -6,6 +6,8 @@ import { StoryConstitution, StoryConstitutionOptions } from './types.js';
 
 const RESPONSE_TITLE_KEY = 'proposed_story_title';
 const RESPONSE_MARKDOWN_KEY = 'story_constitution_markdown';
+const RESPONSE_TARGET_SCENELETS_KEY = 'target_scenelets_per_path';
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
 
 export async function generateStoryConstitution(
   brief: string,
@@ -50,6 +52,8 @@ function parseStoryConstitution(rawResponse: string): StoryConstitution {
     const record = parsed as Record<string, unknown>;
     const title = record[RESPONSE_TITLE_KEY];
     const markdown = record[RESPONSE_MARKDOWN_KEY];
+    const targetOrFallback =
+      record[RESPONSE_TARGET_SCENELETS_KEY] ?? (record as Record<string, unknown>).targetSceneletsPerPath;
 
     if (typeof title !== 'string' || !title.trim()) {
       throw new Error(`Missing "${RESPONSE_TITLE_KEY}" in Gemini response.`);
@@ -59,9 +63,12 @@ function parseStoryConstitution(rawResponse: string): StoryConstitution {
       throw new Error(`Missing "${RESPONSE_MARKDOWN_KEY}" in Gemini response.`);
     }
 
+    const targetSceneletsPerPath = normalizeTargetScenelets(targetOrFallback);
+
     return {
       proposedStoryTitle: title.trim(),
       storyConstitutionMarkdown: markdown,
+      targetSceneletsPerPath,
     };
   } catch (error) {
     throw new StoryConstitutionParsingError(
@@ -70,4 +77,24 @@ function parseStoryConstitution(rawResponse: string): StoryConstitution {
       { cause: error }
     );
   }
+}
+
+function normalizeTargetScenelets(value: unknown): number {
+  const numeric =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(numeric)) {
+    return DEFAULT_TARGET_SCENELETS_PER_PATH;
+  }
+
+  const rounded = Math.trunc(numeric);
+  if (rounded >= 1) {
+    return rounded;
+  }
+
+  return DEFAULT_TARGET_SCENELETS_PER_PATH;
 }

@@ -3,6 +3,7 @@ import type { GeminiJsonClient } from '../gemini/types.js';
 export interface StoryConstitution {
   proposedStoryTitle: string;
   storyConstitutionMarkdown: string;
+  targetSceneletsPerPath: number;
 }
 
 export interface StoryConstitutionLogger {

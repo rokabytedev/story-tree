@@ -374,7 +374,11 @@ describe('agentWorkflow CLI', () => {
         id: storyId,
         displayName: 'Existing Story',
         initialPrompt: 'Prompt',
-        storyConstitution: { proposedStoryTitle: 'Existing Story', storyConstitutionMarkdown: '# Constitution' },
+        storyConstitution: {
+          proposedStoryTitle: 'Existing Story',
+          storyConstitutionMarkdown: '# Constitution',
+          targetSceneletsPerPath: 12,
+        },
         visualDesignDocument: null,
         audioDesignDocument: null,
         visualReferencePackage: null,

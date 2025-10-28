@@ -14,6 +14,8 @@ import type {
   VisualDesignStoryRecord,
 } from './types.js';
 
+const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
+
 export async function runVisualDesignTask(
   storyId: string,
   dependencies: VisualDesignTaskDependencies
@@ -143,8 +145,19 @@ function readPersistedConstitution(story: VisualDesignStoryRecord): StoryConstit
     return null;
   }
 
+  const target =
+    typeof record.targetSceneletsPerPath === 'number'
+      ? Math.trunc(record.targetSceneletsPerPath)
+      : typeof record.target_scenelets_per_path === 'number'
+        ? Math.trunc(record.target_scenelets_per_path)
+        : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
+  const normalizedTarget =
+    Number.isFinite(target) && target >= 1 ? target : DEFAULT_TARGET_SCENELETS_PER_PATH;
+
   return {
     proposedStoryTitle: proposedTitle,
     storyConstitutionMarkdown: markdown,
+    targetSceneletsPerPath: normalizedTarget,
   };
 }

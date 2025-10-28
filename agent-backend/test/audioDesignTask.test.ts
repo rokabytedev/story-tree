@@ -15,6 +15,7 @@ function createStory(): AgentWorkflowStoryRecord {
     storyConstitution: {
       proposedStoryTitle: 'Stub Story',
       storyConstitutionMarkdown: '# Constitution',
+      targetSceneletsPerPath: 12,
     },
     visualDesignDocument: {
       character_designs: [
