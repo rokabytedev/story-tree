@@ -25,6 +25,7 @@ import type { SceneletPersistence } from '../interactive-story/types.js';
 import type { InteractiveStoryLogger } from '../interactive-story/types.js';
 import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
 import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
+import { createGeminiJsonClient } from '../gemini/client.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
@@ -239,9 +240,12 @@ async function buildWorkflowDependencies(
   const storyTreeLoader = (storyId: string) =>
     loadStoryTreeSnapshot(storyId, { sceneletsRepository });
 
-  // Create gemini image client for real mode with verbose support
+  // Create gemini clients for real mode with verbose support
   const geminiImageClient = mode === 'real'
     ? createGeminiImageClient({ verbose })
+    : undefined;
+  const geminiJsonClient = mode === 'real'
+    ? createGeminiJsonClient({ verbose })
     : undefined;
 
   const workflowOptions: AgentWorkflowOptions = {
@@ -251,16 +255,20 @@ async function buildWorkflowDependencies(
     logger,
     constitutionOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     interactiveStoryOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     storyTreeLoader,
     visualDesignTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     visualReferenceTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     visualReferenceImageTaskOptions: {
       logger,
@@ -277,9 +285,11 @@ async function buildWorkflowDependencies(
     },
     audioDesignTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     shotProductionTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     shotImageTaskOptions: {
       logger,

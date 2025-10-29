@@ -26,6 +26,7 @@ export interface GeminiClientFactoryOptions {
   defaultTimeoutMs?: number;
   defaultThinkingBudget?: number;
   transport?: GeminiModelTransport;
+  verbose?: boolean;
 }
 
 export function createGeminiJsonClient(
@@ -38,6 +39,7 @@ export function createGeminiJsonClient(
   const defaultThinkingBudget =
     options.defaultThinkingBudget ??
     ensureInteger(DEFAULT_THINKING_BUDGET, 'DEFAULT_THINKING_BUDGET');
+  const verbose = options.verbose ?? false;
 
   return {
     async generateJson(
@@ -73,6 +75,10 @@ export function createGeminiJsonClient(
                 },
               },
             });
+
+            if (verbose) {
+              console.log('[gemini-json-client] GenerateContentResponse:', JSON.stringify(response, null, 2));
+            }
 
             if (!response.text) {
               throw new GeminiApiError('Gemini returned an empty response.');
