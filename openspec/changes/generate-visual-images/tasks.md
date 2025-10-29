@@ -2,11 +2,11 @@
 
 ## Progress Checklist
 
-- [ ] Batch 1: Foundation - Gemini Image Client & File Storage (4 tasks)
-  - [ ] Task 1.1: Implement name normalization utility
-  - [ ] Task 1.2: Implement image storage helper
-  - [ ] Task 1.3: Implement Gemini image generation client
-  - [ ] Task 1.4: Add image path storage helpers
+- [x] Batch 1: Foundation - Gemini Image Client & File Storage (4 tasks)
+  - [x] Task 1.1: Implement name normalization utility
+  - [x] Task 1.2: Implement image storage helper
+  - [x] Task 1.3: Implement Gemini image generation client
+  - [x] Task 1.4: Add image path storage helpers
 - [ ] Batch 2: Visual Reference Image Generation Task (3 tasks)
   - [ ] Task 2.1: Create visual reference image task implementation
   - [ ] Task 2.2: Integrate CREATE_VISUAL_REFERENCE_IMAGES into workflow
