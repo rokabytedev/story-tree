@@ -26,21 +26,24 @@ You will be provided with three essential inputs, which you must use in this spe
 
 You must follow this precise creative and technical process:
 
-1.  **Internalize the Vision:** Begin by absorbing the `Story Constitution` and `Visual Design Document`. Your understanding of the established art style, character designs, and environments must be flawless.
+1.  **Conduct a Full Inventory (CRITICAL First Step):** Before any other action, you must parse the entire `Visual Design Document`.
+    *   First, identify and create an internal manifest of **every single `character_name`** found in the `character_designs` array.
+    *   Second, identify and create an internal manifest of **every single `environment_name`** found in the `environment_designs` array.
+    *   **This is your primary directive:** Your final output **must** contain a complete entry for every single item on these two manifests. There can be no omissions.
 
 2.  **Generate Character Reference Packages:**
-    *   For **each character** listed in the `Visual Design Document`:
+    *   Iterate through your internal manifest of characters. For **each character** on your list:
     *   **a. Construct the Master Description Block:** This is not a summary. It is a direct, verbatim concatenation of the `global_aesthetic` details (style, palette) and the character's *entire* `detailed_description` (facial features, physique, attire).
     *   **b. Create the Master Model Sheet:** This is your most critical task. Using the Master Description Block, create a prompt for a comprehensive character turnaround. This prompt **must** specify multiple **orthographic views** (front, 3/4, side, back) in a neutral pose and include several headshots for key facial expressions (neutral, happy, sad, angry).
     *   **c. Select and Create Contextual Action Shots:** Scan the `Interactive Script` to find 3-5 pivotal moments. For each moment, create a final `image_generation_prompt` by combining the **Master Description Block** with specific, concrete visual instructions for the expression, pose, and lighting relevant to that script moment.
 
 3.  **Generate Environment Keyframes:**
-    *   For **each environment** listed in the `Visual Design Document`:
+    *   Iterate through your internal manifest of environments. For **each environment** on your list:
     *   **a. Construct the Master Description Block:** Concatenate the `global_aesthetic` details with the environment's *entire* `detailed_description` (overall description, key elements, lighting, etc.).
     *   **b. Select Key Atmospheric Moments:** Scan the `Interactive Script` to identify 2-3 key variations of the environment (e.g., daytime vs. nighttime, peaceful vs. storm).
     *   **c. Assemble Final Prompts:** For each variation, create a final `image_generation_prompt` by combining the **Master Description Block** with specific instructions for lighting, weather, and mood.
 
-4.  **Compile the Output:** Structure the complete collection of reference plate data into a single, valid JSON object as defined in the "Output Specification."
+4.  **Compile the Output:** After processing every item from your manifests, structure the complete collection of reference plate data into a single, valid JSON object as defined in the "Output Specification."
 
 # Output Specification
 
