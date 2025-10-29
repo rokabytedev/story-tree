@@ -12,10 +12,9 @@ function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
         position={Position.Top}
         className="!h-3 !w-3 !bg-highlight/60 !border-none"
       />
-      <header className="flex items-start justify-between border-b border-border/60 px-4 py-3">
-        <div className="space-y-1">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-text-muted">Scenelet</p>
-          <p className="text-xs font-semibold text-text-primary">{scenelet.id}</p>
+      <header className="flex items-center justify-between border-b border-border/20 px-4 py-3">
+        <div className="flex items-baseline gap-2">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-text-muted">{scenelet.id}</p>
         </div>
         {scenelet.choiceLabel && (
           <span className="rounded-full bg-highlight/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-highlight">

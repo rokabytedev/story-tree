@@ -49,7 +49,11 @@ export function StoryboardCanvas({ data }: StoryboardCanvasProps) {
           gap={32}
           size={2}
         />
-        <Controls showInteractive={false} position="top-left" />
+        <Controls
+          showInteractive={false}
+          position="top-left"
+          className="[&_button]:!bg-surface [&_button]:!border-border"
+        />
         <Panel position="top-right">
           <div className="rounded-full bg-surface-muted/80 px-3 py-1 text-xs text-text-muted">
             Scroll or pinch to zoom • Drag background to pan

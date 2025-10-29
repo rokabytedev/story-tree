@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 export const NODE_WIDTH = 640;
-export const HORIZONTAL_GAP = 60;
+export const HORIZONTAL_GAP = 0;
 export const VERTICAL_GAP = 660;
 
 export type StoryboardHierarchyNode =
