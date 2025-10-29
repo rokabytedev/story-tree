@@ -76,8 +76,8 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   task: StoryWorkflowTask;
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
-  characterName?: string;
-  environmentName?: string;
+  characterId?: string;
+  environmentId?: string;
   imageIndex?: number;
   sceneletId?: string;
   shotIndex?: number;
@@ -273,11 +273,11 @@ async function buildWorkflowDependencies(
     visualReferenceImageTaskOptions: {
       logger,
       ...(geminiImageClient ? { geminiImageClient } : {}),
-      ...(options.command === 'run-task' && options.characterName
-        ? { targetCharacterName: options.characterName }
+      ...(options.command === 'run-task' && options.characterId
+        ? { targetCharacterId: options.characterId }
         : {}),
-      ...(options.command === 'run-task' && options.environmentName
-        ? { targetEnvironmentName: options.environmentName }
+      ...(options.command === 'run-task' && options.environmentId
+        ? { targetEnvironmentId: options.environmentId }
         : {}),
       ...(options.command === 'run-task' && options.imageIndex !== undefined
         ? { targetIndex: options.imageIndex }
@@ -412,8 +412,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let storyId: string | undefined;
   let taskName: string | undefined;
   let resumeFlag = false;
-  let characterName: string | undefined;
-  let environmentName: string | undefined;
+  let characterId: string | undefined;
+  let environmentId: string | undefined;
   let imageIndex: number | undefined;
   let sceneletId: string | undefined;
   let shotIndex: number | undefined;
@@ -469,11 +469,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '--resume':
         resumeFlag = true;
         break;
-      case '--character-name':
-        characterName = rest[++index];
+      case '--character-id':
+        characterId = rest[++index];
         break;
-      case '--environment-name':
-        environmentName = rest[++index];
+      case '--environment-id':
+        environmentId = rest[++index];
         break;
       case '--image-index': {
         const value = rest[++index];
@@ -531,8 +531,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         task,
         resumeInteractiveScript,
         resumeShotProduction,
-        characterName,
-        environmentName,
+        characterId,
+        environmentId,
         imageIndex,
         sceneletId,
         shotIndex,
@@ -765,9 +765,9 @@ function printHelp(): void {
   console.log('  --remote                     Use remote Supabase credentials (default is local).');
   console.log('  --verbose (-v)               Print debug logs.');
   console.log('  --resume                     Resume pending interactive script or shot production tasks.');
-  console.log('  --character-name <name>      Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
-  console.log('  --environment-name <name>    Generate only images for specific environment (CREATE_VISUAL_REFERENCE_IMAGES).');
-  console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-name or --environment-name).');
+  console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --environment-id <id>        Generate only images for specific environment (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
   console.log('  --scenelet-id <id>           Generate only images for specific scenelet (CREATE_SHOT_IMAGES).');
   console.log('  --shot-index <number>        Generate only images for specific shot (1-based, use with --scenelet-id).');
   console.log('  --help (-h)                  Show this help message.');
@@ -776,11 +776,11 @@ function printHelp(): void {
   console.log('  # Generate all visual reference images for a story');
   console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --mode stub');
   console.log('');
-  console.log('  # Generate only character "Cosmo" reference images');
-  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-name "Cosmo" --mode stub');
+  console.log('  # Generate only character "cosmo-the-fox" reference images');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-id "cosmo-the-fox" --mode stub');
   console.log('');
-  console.log('  # Generate only first plate for character "Cosmo"');
-  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-name "Cosmo" --image-index 1 --mode stub');
+  console.log('  # Generate only first plate for character "cosmo-the-fox"');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-id "cosmo-the-fox" --image-index 1 --mode stub');
   console.log('');
   console.log('  # Generate all shot images for a story');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --mode stub');

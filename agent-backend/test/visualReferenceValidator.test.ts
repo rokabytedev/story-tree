@@ -5,11 +5,11 @@ import { VisualReferenceTaskError } from '../src/visual-reference/errors.js';
 
 const VISUAL_DESIGN_DOCUMENT = {
   character_designs: [
-    { character_name: 'Rhea' },
-    { character_name: 'Narrator' },
+    { character_id: 'rhea' },
+    { character_id: 'narrator' },
   ],
   environment_designs: [
-    { environment_name: 'Choice Clearing' },
+    { environment_id: 'choice-clearing' },
   ],
 };
 
@@ -17,7 +17,7 @@ const VALID_RESPONSE = JSON.stringify({
   visual_reference_package: {
     character_model_sheets: [
       {
-        character_name: 'Rhea',
+        character_id: 'rhea',
         reference_plates: [
           {
             plate_description: 'Rhea model sheet',
@@ -28,7 +28,7 @@ const VALID_RESPONSE = JSON.stringify({
         ],
       },
       {
-        character_name: 'Narrator',
+        character_id: 'narrator',
         reference_plates: [
           {
             plate_description: 'Narrator model sheet',
@@ -41,7 +41,7 @@ const VALID_RESPONSE = JSON.stringify({
     ],
     environment_keyframes: [
       {
-        environment_name: 'Choice Clearing',
+        environment_id: 'choice-clearing',
         keyframes: [
           {
             keyframe_description: 'Dusk ambiance',
@@ -72,7 +72,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -85,7 +85,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Nighttime',
@@ -111,7 +111,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -124,7 +124,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Atmosphere',
@@ -150,7 +150,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -161,7 +161,7 @@ describe('validateVisualReferenceResponse', () => {
             ],
           },
           {
-            character_name: 'Narrator',
+            character_id: 'narrator',
             reference_plates: [
               {
                 plate_description: 'Narrator model sheet',
@@ -174,7 +174,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Neutral view',
@@ -198,15 +198,15 @@ describe('validateVisualReferenceResponse', () => {
   describe('normalized ID matching', () => {
     it('accepts environment names with apostrophes when prompt uses similar variations', () => {
       const visualDesign = {
-        character_designs: [{ character_name: 'Cosmo' }],
-        environment_designs: [{ environment_name: "Cosmo's Jungle Workshop" }],
+        character_designs: [{ character_id: 'cosmo' }],
+        environment_designs: [{ environment_id: 'cosmos-jungle-workshop' }],
       };
 
       const response = JSON.stringify({
         visual_reference_package: {
           character_model_sheets: [
             {
-              character_name: 'Cosmo',
+              character_id: 'cosmo',
               reference_plates: [
                 {
                   plate_description: 'Cosmo model sheet',
@@ -219,7 +219,7 @@ describe('validateVisualReferenceResponse', () => {
           ],
           environment_keyframes: [
             {
-              environment_name: "Cosmo's Jungle Workshop",
+              environment_id: 'cosmos-jungle-workshop',
               keyframes: [
                 {
                   keyframe_description: 'Main workshop view',
@@ -243,15 +243,15 @@ describe('validateVisualReferenceResponse', () => {
 
     it('accepts character names with case variations', () => {
       const visualDesign = {
-        character_designs: [{ character_name: 'Rhea the Explorer' }],
-        environment_designs: [{ environment_name: 'Test Zone' }],
+        character_designs: [{ character_id: 'rhea-the-explorer' }],
+        environment_designs: [{ environment_id: 'test-zone' }],
       };
 
       const response = JSON.stringify({
         visual_reference_package: {
           character_model_sheets: [
             {
-              character_name: 'Rhea the Explorer',
+              character_id: 'rhea-the-explorer',
               reference_plates: [
                 {
                   plate_description: 'Rhea model sheet',
@@ -265,7 +265,7 @@ describe('validateVisualReferenceResponse', () => {
           ],
           environment_keyframes: [
             {
-              environment_name: 'Test Zone',
+              environment_id: 'test-zone',
               keyframes: [
                 {
                   keyframe_description: 'Zone overview',
@@ -288,15 +288,15 @@ describe('validateVisualReferenceResponse', () => {
 
     it('accepts names with special characters when prompt uses normalized versions', () => {
       const visualDesign = {
-        character_designs: [{ character_name: 'Agent-007' }],
-        environment_designs: [{ environment_name: 'Level @2 Hub' }],
+        character_designs: [{ character_id: 'agent-007' }],
+        environment_designs: [{ environment_id: 'level-2-hub' }],
       };
 
       const response = JSON.stringify({
         visual_reference_package: {
           character_model_sheets: [
             {
-              character_name: 'Agent-007',
+              character_id: 'agent-007',
               reference_plates: [
                 {
                   plate_description: 'Agent model sheet',
@@ -310,7 +310,7 @@ describe('validateVisualReferenceResponse', () => {
           ],
           environment_keyframes: [
             {
-              environment_name: 'Level @2 Hub',
+              environment_id: 'level-2-hub',
               keyframes: [
                 {
                   keyframe_description: 'Hub entrance',
@@ -336,14 +336,12 @@ describe('validateVisualReferenceResponse', () => {
       const visualDesign = {
         character_designs: [
           {
-            character_name: "Cosmo's Helper",
-            character_id: 'cosmos-helper', // Pre-normalized ID
+            character_id: 'cosmos-helper',
           },
         ],
         environment_designs: [
           {
-            environment_name: 'The Workshop',
-            environment_id: 'the-workshop', // Pre-normalized ID
+            environment_id: 'the-workshop',
           },
         ],
       };
@@ -352,7 +350,7 @@ describe('validateVisualReferenceResponse', () => {
         visual_reference_package: {
           character_model_sheets: [
             {
-              character_name: "Cosmo's Helper",
+              character_id: 'cosmos-helper',
               reference_plates: [
                 {
                   plate_description: 'Helper model sheet',
@@ -365,7 +363,7 @@ describe('validateVisualReferenceResponse', () => {
           ],
           environment_keyframes: [
             {
-              environment_name: 'The Workshop',
+              environment_id: 'the-workshop',
               keyframes: [
                 {
                   keyframe_description: 'Workshop interior',

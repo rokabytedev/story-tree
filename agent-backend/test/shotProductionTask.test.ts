@@ -24,7 +24,7 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
       },
     visualDesignDocument:
       overrides.visualDesignDocument ?? {
-        character_designs: [{ character_name: 'Narrator' }],
+        character_designs: [{ character_id: 'narrator' }],
       },
     audioDesignDocument:
       overrides.audioDesignDocument ?? { audio_design_document: { cues: [] } },

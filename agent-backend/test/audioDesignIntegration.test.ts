@@ -18,8 +18,8 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
     },
     visualDesignDocument: {
       character_designs: [
-        { character_name: 'Rhea' },
-        { character_name: 'Narrator' },
+        { character_id: 'rhea' },
+        { character_id: 'narrator' },
       ],
     },
     audioDesignDocument: null,

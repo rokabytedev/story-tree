@@ -14,17 +14,17 @@ const STORY_TREE: StoryTreeSnapshot = {
 
 const VISUAL_DESIGN_DOCUMENT = {
   character_designs: [
-    { character_name: 'Rhea' },
-    { character_name: 'Narrator' },
+    { character_id: 'rhea' },
+    { character_id: 'narrator' },
   ],
-  environment_designs: [{ environment_name: 'Choice Clearing' }],
+  environment_designs: [{ environment_id: 'choice-clearing' }],
 };
 
 const VALID_RESPONSE = JSON.stringify({
   visual_reference_package: {
     character_model_sheets: [
       {
-        character_name: 'Rhea',
+        character_id: 'rhea',
         reference_plates: [
           {
             plate_description: 'Comprehensive model sheet',
@@ -35,7 +35,7 @@ const VALID_RESPONSE = JSON.stringify({
         ],
       },
       {
-        character_name: 'Narrator',
+        character_id: 'narrator',
         reference_plates: [
           {
             plate_description: 'Narrator model sheet',
@@ -48,7 +48,7 @@ const VALID_RESPONSE = JSON.stringify({
     ],
     environment_keyframes: [
       {
-        environment_name: 'Choice Clearing',
+        environment_id: 'choice-clearing',
         keyframes: [
           {
             keyframe_description: 'Dusk ambience',

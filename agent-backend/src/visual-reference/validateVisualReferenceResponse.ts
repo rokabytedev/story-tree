@@ -46,38 +46,29 @@ export function validateVisualReferenceResponse(
   }
 
   const visualDesign = normalizeVisualDesignDocument(options.visualDesignDocument);
-  const requiredCharacterNames = extractNames(visualDesign, ['character_designs'], ['characterDesigns'], 'character_name');
-  const requiredEnvironmentNames = extractNames(
-    visualDesign,
-    ['environment_designs'],
-    ['environmentDesigns'],
-    'environment_name'
-  );
 
-  // Extract normalized IDs for reliable matching
+  // Extract normalized IDs from visual design document
   const requiredCharacterIds = extractIds(
     visualDesign,
     ['character_designs'],
     ['characterDesigns'],
-    'character_name',
     'character_id'
   );
   const requiredEnvironmentIds = extractIds(
     visualDesign,
     ['environment_designs'],
     ['environmentDesigns'],
-    'environment_name',
     'environment_id'
   );
 
-  if (requiredCharacterNames.length === 0) {
+  if (requiredCharacterIds.length === 0) {
     throw new VisualReferenceTaskError(
-      'Visual design document must include character_designs with character_name for visual reference validation.'
+      'Visual design document must include character_designs with character_id for visual reference validation.'
     );
   }
-  if (requiredEnvironmentNames.length === 0) {
+  if (requiredEnvironmentIds.length === 0) {
     throw new VisualReferenceTaskError(
-      'Visual design document must include environment_designs with environment_name for visual reference validation.'
+      'Visual design document must include environment_designs with environment_id for visual reference validation.'
     );
   }
 
@@ -94,25 +85,22 @@ export function validateVisualReferenceResponse(
     }
 
     const sheetRecord = entry as JsonRecord;
-    const name = resolveStringField(
+    const characterId = resolveStringField(
       sheetRecord,
-      ['character_name'],
-      ['characterName'],
-      `visual_reference_package.character_model_sheets[${index}].character_name`
+      ['character_id'],
+      ['characterId'],
+      `visual_reference_package.character_model_sheets[${index}].character_id`
     );
-
-    // Normalize the character name to an ID for reliable matching
-    const characterId = normalizeNameToId(name);
 
     if (!requiredCharacterIds.includes(characterId)) {
       throw new VisualReferenceTaskError(
-        `visual_reference_package.character_model_sheets[${index}] referenced unknown character "${name}" (normalized: "${characterId}").`
+        `visual_reference_package.character_model_sheets[${index}] referenced unknown character ID "${characterId}".`
       );
     }
 
     if (seenCharacters.has(characterId)) {
       throw new VisualReferenceTaskError(
-        `visual_reference_package.character_model_sheets includes duplicate entry for character "${name}".`
+        `visual_reference_package.character_model_sheets includes duplicate entry for character ID "${characterId}".`
       );
     }
     seenCharacters.add(characterId);
@@ -162,12 +150,6 @@ export function validateVisualReferenceResponse(
         modelSheetCount += 1;
       }
 
-      if (!promptContainsName(prompt, name, characterId)) {
-        throw new VisualReferenceTaskError(
-          `visual_reference_package.character_model_sheets[${index}].reference_plates[${plateIndex}] prompt must include the character name "${name}".`
-        );
-      }
-
       ensurePromptLength(
         prompt,
         options.minimumPromptLength,
@@ -193,26 +175,24 @@ export function validateVisualReferenceResponse(
     }
 
     const sanitizedSheet: JsonRecord = {
-      ...sheetRecord,
-      character_name: name,
+      character_id: characterId,
       reference_plates: sanitizedPlates,
     };
-    delete sanitizedSheet.characterName;
-    delete sanitizedSheet.referencePlates;
+    // Copy over other fields from original except the ones we're standardizing
+    for (const key in sheetRecord) {
+      if (key !== 'character_id' && key !== 'characterId' && key !== 'character_name' && key !== 'characterName' && key !== 'reference_plates' && key !== 'referencePlates') {
+        sanitizedSheet[key] = sheetRecord[key];
+      }
+    }
 
     return sanitizedSheet;
   });
 
-  // Check for missing characters using normalized IDs
+  // Check for missing characters using IDs
   const missingCharacterIds = requiredCharacterIds.filter((id) => !seenCharacters.has(id));
   if (missingCharacterIds.length > 0) {
-    // Map back to original names for error message
-    const missingNames = missingCharacterIds.map((id) => {
-      const index = requiredCharacterIds.indexOf(id);
-      return requiredCharacterNames[index];
-    });
     throw new VisualReferenceTaskError(
-      `visual_reference_package.character_model_sheets missing entries for: ${missingNames.join(', ')}.`
+      `visual_reference_package.character_model_sheets missing entries for character IDs: ${missingCharacterIds.join(', ')}.`
     );
   }
 
@@ -231,25 +211,22 @@ export function validateVisualReferenceResponse(
     }
 
     const envRecord = entry as JsonRecord;
-    const name = resolveStringField(
+    const environmentId = resolveStringField(
       envRecord,
-      ['environment_name'],
-      ['environmentName'],
-      `visual_reference_package.environment_keyframes[${index}].environment_name`
+      ['environment_id'],
+      ['environmentId'],
+      `visual_reference_package.environment_keyframes[${index}].environment_id`
     );
-
-    // Normalize the environment name to an ID for reliable matching
-    const environmentId = normalizeNameToId(name);
 
     if (!requiredEnvironmentIds.includes(environmentId)) {
       throw new VisualReferenceTaskError(
-        `visual_reference_package.environment_keyframes[${index}] referenced unknown environment "${name}" (normalized: "${environmentId}").`
+        `visual_reference_package.environment_keyframes[${index}] referenced unknown environment ID "${environmentId}".`
       );
     }
 
     if (seenEnvironments.has(environmentId)) {
       throw new VisualReferenceTaskError(
-        `visual_reference_package.environment_keyframes includes duplicate entry for environment "${name}".`
+        `visual_reference_package.environment_keyframes includes duplicate entry for environment ID "${environmentId}".`
       );
     }
     seenEnvironments.add(environmentId);
@@ -288,12 +265,6 @@ export function validateVisualReferenceResponse(
         `visual_reference_package.environment_keyframes[${index}].keyframes[${frameIndex}].image_generation_prompt`
       );
 
-      if (!promptContainsName(prompt, name, environmentId)) {
-        throw new VisualReferenceTaskError(
-          `visual_reference_package.environment_keyframes[${index}].keyframes[${frameIndex}] prompt must include the environment name "${name}".`
-        );
-      }
-
       ensurePromptLength(
         prompt,
         options.minimumPromptLength,
@@ -318,26 +289,24 @@ export function validateVisualReferenceResponse(
     });
 
     const sanitizedEnvironment: JsonRecord = {
-      ...envRecord,
-      environment_name: name,
+      environment_id: environmentId,
       keyframes: sanitizedKeyframes,
     };
-    delete sanitizedEnvironment.environmentName;
-    delete sanitizedEnvironment.environment_keyframes_entries;
+    // Copy over other fields from original except the ones we're standardizing
+    for (const key in envRecord) {
+      if (key !== 'environment_id' && key !== 'environmentId' && key !== 'environment_name' && key !== 'environmentName' && key !== 'keyframes' && key !== 'environment_keyframes_entries') {
+        sanitizedEnvironment[key] = envRecord[key];
+      }
+    }
 
     return sanitizedEnvironment;
   });
 
-  // Check for missing environments using normalized IDs
+  // Check for missing environments using IDs
   const missingEnvironmentIds = requiredEnvironmentIds.filter((id) => !seenEnvironments.has(id));
   if (missingEnvironmentIds.length > 0) {
-    // Map back to original names for error message
-    const missingNames = missingEnvironmentIds.map((id) => {
-      const index = requiredEnvironmentIds.indexOf(id);
-      return requiredEnvironmentNames[index];
-    });
     throw new VisualReferenceTaskError(
-      `visual_reference_package.environment_keyframes missing entries for: ${missingNames.join(', ')}.`
+      `visual_reference_package.environment_keyframes missing entries for environment IDs: ${missingEnvironmentIds.join(', ')}.`
     );
   }
 
@@ -382,53 +351,19 @@ function normalizeVisualDesignDocument(document: unknown): JsonRecord {
   throw new VisualReferenceTaskError('Visual design document must be an object or JSON string.');
 }
 
-function extractNames(
-  document: JsonRecord,
-  preferredKeys: string[],
-  alternateKeys: string[],
-  fieldKey: string
-): string[] {
-  const containerLabel = `visual_design_document.${preferredKeys[0]}`;
-  const entries = resolveArray(document, preferredKeys, alternateKeys, containerLabel, true);
-  const names: string[] = [];
-
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new VisualReferenceTaskError(
-        `${preferredKeys[0]}.${fieldKey} entry at index ${index} must be an object.`
-      );
-    }
-
-    const name = resolveStringField(
-      entry as JsonRecord,
-      [fieldKey],
-      [camelCase(fieldKey)],
-      `${preferredKeys[0]}[${index}].${fieldKey}`
-    );
-    names.push(name);
-  }
-
-  return names;
-}
-
 /**
- * Extracts normalized IDs from character or environment designs in the visual design document.
- * If the document already has ID fields (character_id/environment_id), uses those.
- * Otherwise, normalizes the name fields to generate IDs.
+ * Extracts IDs from character or environment designs in the visual design document.
  *
  * @param document Visual design document
  * @param preferredKeys Preferred keys for the container array (e.g., ['character_designs'])
  * @param alternateKeys Alternate keys for the container array (e.g., ['characterDesigns'])
- * @param nameFieldKey Key for the name field (e.g., 'character_name')
  * @param idFieldKey Key for the ID field (e.g., 'character_id')
- * @returns Array of normalized IDs
+ * @returns Array of IDs
  */
 function extractIds(
   document: JsonRecord,
   preferredKeys: string[],
   alternateKeys: string[],
-  nameFieldKey: string,
   idFieldKey: string
 ): string[] {
   const containerLabel = `visual_design_document.${preferredKeys[0]}`;
@@ -439,27 +374,18 @@ function extractIds(
     const entry = entries[index];
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw new VisualReferenceTaskError(
-        `${preferredKeys[0]}.${nameFieldKey} entry at index ${index} must be an object.`
+        `${preferredKeys[0]}.${idFieldKey} entry at index ${index} must be an object.`
       );
     }
 
     const entryRecord = entry as JsonRecord;
-
-    // Try to get the ID field first (if document was normalized during parsing)
-    const existingId = resolveField(entryRecord, [idFieldKey], [camelCase(idFieldKey)]);
-    if (typeof existingId === 'string' && existingId.trim()) {
-      ids.push(existingId);
-      continue;
-    }
-
-    // Fallback: normalize the name field to generate an ID
-    const name = resolveStringField(
+    const id = resolveStringField(
       entryRecord,
-      [nameFieldKey],
-      [camelCase(nameFieldKey)],
-      `${preferredKeys[0]}[${index}].${nameFieldKey}`
+      [idFieldKey],
+      [camelCase(idFieldKey)],
+      `${preferredKeys[0]}[${index}].${idFieldKey}`
     );
-    ids.push(normalizeNameToId(name));
+    ids.push(id);
   }
 
   return ids;
@@ -532,18 +458,17 @@ function ensurePromptLength(prompt: string, minimum: number, label: string): voi
 }
 
 /**
- * Checks if a prompt contains a character or environment name.
+ * Checks if a prompt contains a character or environment reference.
  * Uses normalized ID matching for more reliable validation that's resilient to:
  * - Apostrophes and special characters ("Cosmo's" vs "Cosmos")
  * - Case variations
  * - Minor formatting differences
  *
  * @param prompt The image generation prompt to check
- * @param name The original character or environment name
  * @param normalizedId The normalized ID to match against
- * @returns true if the prompt contains the name (matched by normalized ID)
+ * @returns true if the prompt contains the ID
  */
-function promptContainsName(prompt: string, name: string, normalizedId: string): boolean {
+function promptContainsId(prompt: string, normalizedId: string): boolean {
   // Normalize the entire prompt to an ID format and check if it contains the normalized ID
   const promptNormalized = normalizeNameToId(prompt);
   return promptNormalized.includes(normalizedId);

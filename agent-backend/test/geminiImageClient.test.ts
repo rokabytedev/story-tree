@@ -61,7 +61,7 @@ describe('createGeminiImageClient', () => {
     expect(Array.isArray(parts)).toBe(true);
     expect(parts[0].inlineData?.data).toBe(referenceBuffer.toString('base64'));
     expect(parts[1].text).toBe('Create a cinematic shot of a hero.');
-    expect(request.imageConfig?.aspectRatio).toBe('4:3');
+    expect(request.config?.imageConfig?.aspectRatio).toBe('4:3');
   });
 
   it('rejects requests with more than three reference images', async () => {

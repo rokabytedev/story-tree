@@ -75,28 +75,28 @@ Your entire output must be a single, valid JSON object. Do not include any text 
   "visual_reference_package": {
     "character_model_sheets": [
       {
-        "character_id": "cosmo",
+        "character_id": "",
         "reference_plates": [
           {
-            "plate_description": "Comprehensive character turnaround and expression sheet.",
+            "plate_description": "",
             "type": "CHARACTER_MODEL_SHEET",
-            "image_generation_prompt": "A definitive character model sheet for a children's animation project. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. The style is a bright, friendly, and colorful 2D cartoon aimed at children, reminiscent of modern educational animations. Characters and key objects feature clean, bold outlines of varying weight to add dynamism. Colors are saturated and appealing. Backgrounds are painterly and rich with texture, often using multi-plane parallax (2.5D) to create a sense of depth, especially in space scenes. Technology is designed with rounded corners, chunky buttons, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Jungle Canopy Green (#2E7D32), Deep Space Blue (#0D1B2A), A.I.D.A. Cyan (#00BCD4), Rocket Silver (#B0BEC5), Adventure Orange (#FF7043). // SUBJECT DETAILS: The character is Cosmo. FACIAL FEATURES: A stylized capuchin monkey with large, expressive, curious eyes of deep, friendly chocolate brown (#4E342E) with large black pupils. The area around his eyes and muzzle is a lighter, cream-colored fur (#D7CCC8). He has a small, black button nose and a wide, highly expressive mouth. He has large, rounded ears that stick out. FUR: Warm, light brown (#A1887F). PHYSIQUE: Small and nimble with a slightly oversized head, a slender body, long limbs, and a long, prehensile tail. ATTIRE: A slightly baggy, retro-style silver (#B0BEC5) jumpsuit with reinforced darker grey patches on the knees and elbows. The collar and cuffs are trimmed with 'Adventure Orange' (#FF7043). // COMPOSITION & CAMERA: A clean character sheet layout on a plain, neutral grey background. The character must be shown in multiple orthographic views in a neutral T-pose: front view, side profile view, three-quarter view, and back view. The layout must also include three separate headshot busts showing key facial expressions: neutral, joyful, and focused determination. All views must be 100% stylistically consistent."
+            "image_generation_prompt": ""
           },
           {
-            "plate_description": "Cosmo in awe, looking at Earth from orbit.",
+            "plate_description": "",
             "type": "CHARACTER_ACTION_SHOT",
-            "image_generation_prompt": "Character action shot for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. The style is a bright, friendly, and colorful 2D cartoon aimed at children, reminiscent of modern educational animations. Characters and key objects feature clean, bold outlines of varying weight to add dynamism. Colors are saturated and appealing. Backgrounds are painterly and rich with texture, often using multi-plane parallax (2.5D) to create a sense of depth, especially in space scenes. Technology is designed with rounded corners, chunky buttons, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Jungle Canopy Green (#2E7D32), Deep Space Blue (#0D1B2A), A.I.D.A. Cyan (#00BCD4), Rocket Silver (#B0BEC5), Adventure Orange (#FF7043).  // SUBJECT DETAILS: The character is Cosmo. FACIAL FEATURES: (full verbatim details)... PHYSIQUE: (full verbatim details)... ATTIRE: (full verbatim details)... He also wears a clear, bubble-like glass helmet connected to his collar. // COMPOSITION & CAMERA: Medium shot. The camera is inside a spaceship cockpit, positioned to see the character from the chest up. // ACTION & EXPRESSION: Cosmo is strapped into his cockpit seat. His face shows a mix of thrill and awe, eyes wide, mouth slightly open in wonder. // SCENE & BACKGROUND: He is looking out a large viewport at the brilliant sphere of Earth against the inky blackness of space. // LIGHTING & MOOD: Bright, crisp sunlight coming from the right side of the frame illuminates his face and the cockpit interior, creating sharp, clear shadows and a mood of wonder and achievement."
+            "image_generation_prompt": ""
           }
         ]
       }
     ],
     "environment_keyframes": [
       {
-        "environment_id": "Cosmo's Jungle Workshop",
+        "environment_id": "",
         "keyframes": [
           {
-            "keyframe_description": "Establishing shot, daytime, pre-launch excitement.",
-            "image_generation_prompt": "Environment concept art for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. The style is a bright, friendly, and colorful 2D cartoon aimed at children, reminiscent of modern educational animations. Characters and key objects feature clean, bold outlines of varying weight to add dynamism. Colors are saturated and appealing. Backgrounds are painterly and rich with texture, often using multi-plane parallax (2.5D) to create a sense of depth, especially in space scenes. Technology is designed with rounded corners, chunky buttons, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Jungle Canopy Green (#2E7D32), Deep Space Blue (#0D1B2A), A.I.D.A. Cyan (#00BCD4), Rocket Silver (#B0BEC5), Adventure Orange (#FF7043).  // SCENE DETAILS: An establishing shot of Cosmo's Jungle Workshop. It is a large, open-air treehouse on a massive tree branch high in a jungle canopy; a chaotic but cozy fusion of nature and scavenged technology. The floor is made of worn wooden planks. Thick jungle vines with large green leaves weave through the structure. A large workbench is cluttered with tools and spare parts. Several mismatched, flickering monitors are stacked up, displaying star charts. // COMPOSITION & CAMERA: A wide shot that captures the entire workshop, showing its relationship to the surrounding jungle canopy. // LIGHTING & MOOD: The lighting is warm, welcoming, and imaginative. Dappled sunlight filters through the jungle leaves, creating beautiful, shifting patterns of bright light and soft shadow across the scene."
+            "keyframe_description": "",
+            "image_generation_prompt": ""
           }
         ]
       }

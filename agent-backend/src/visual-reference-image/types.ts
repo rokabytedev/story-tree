@@ -22,8 +22,8 @@ export interface VisualReferenceImageTaskDependencies {
   environmentAspectRatio?: ImageAspectRatio;
   timeoutMs?: number;
   retry?: GeminiRetryOptions;
-  targetCharacterName?: string;
-  targetEnvironmentName?: string;
+  targetCharacterId?: string;
+  targetEnvironmentId?: string;
   targetIndex?: number;
 }
 
@@ -46,7 +46,7 @@ export interface VisualReferenceCharacterPlate extends Record<string, unknown> {
 }
 
 export interface VisualReferenceCharacterSheet extends Record<string, unknown> {
-  character_name: string;
+  character_id: string;
   reference_plates: VisualReferenceCharacterPlate[];
 }
 
@@ -57,7 +57,7 @@ export interface VisualReferenceEnvironmentKeyframe extends Record<string, unkno
 }
 
 export interface VisualReferenceEnvironmentEntry extends Record<string, unknown> {
-  environment_name: string;
+  environment_id: string;
   keyframes: VisualReferenceEnvironmentKeyframe[];
 }
 

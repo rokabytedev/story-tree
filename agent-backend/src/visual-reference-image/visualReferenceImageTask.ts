@@ -50,42 +50,42 @@ export async function runVisualReferenceImageTask(
   const characterAspectRatio = dependencies.characterAspectRatio ?? DEFAULT_ASPECT_RATIO;
   const environmentAspectRatio = dependencies.environmentAspectRatio ?? DEFAULT_ASPECT_RATIO;
 
-  const targetCharacterName = dependencies.targetCharacterName?.trim();
-  const targetEnvironmentName = dependencies.targetEnvironmentName?.trim();
+  const targetCharacterId = dependencies.targetCharacterId?.trim();
+  const targetEnvironmentId = dependencies.targetEnvironmentId?.trim();
   const targetIndex = dependencies.targetIndex;
 
   // Validate target exists if specified
-  if (targetCharacterName) {
+  if (targetCharacterId) {
     const found = packageClone.character_model_sheets.find(
-      (sheet) => sheet.character_name === targetCharacterName
+      (sheet) => sheet.character_id === targetCharacterId
     );
     if (!found) {
       throw new VisualReferenceImageTaskError(
-        `Target character "${targetCharacterName}" not found in visual reference package.`
+        `Target character "${targetCharacterId}" not found in visual reference package.`
       );
     }
     if (targetIndex !== undefined) {
       if (targetIndex < 1 || targetIndex > found.reference_plates.length) {
         throw new VisualReferenceImageTaskError(
-          `Target index ${targetIndex} out of range for character "${targetCharacterName}" (has ${found.reference_plates.length} plates).`
+          `Target index ${targetIndex} out of range for character "${targetCharacterId}" (has ${found.reference_plates.length} plates).`
         );
       }
     }
   }
 
-  if (targetEnvironmentName) {
+  if (targetEnvironmentId) {
     const found = packageClone.environment_keyframes.find(
-      (env) => env.environment_name === targetEnvironmentName
+      (env) => env.environment_id === targetEnvironmentId
     );
     if (!found) {
       throw new VisualReferenceImageTaskError(
-        `Target environment "${targetEnvironmentName}" not found in visual reference package.`
+        `Target environment "${targetEnvironmentId}" not found in visual reference package.`
       );
     }
     if (targetIndex !== undefined) {
       if (targetIndex < 1 || targetIndex > found.keyframes.length) {
         throw new VisualReferenceImageTaskError(
-          `Target index ${targetIndex} out of range for environment "${targetEnvironmentName}" (has ${found.keyframes.length} keyframes).`
+          `Target index ${targetIndex} out of range for environment "${targetEnvironmentId}" (has ${found.keyframes.length} keyframes).`
         );
       }
     }
@@ -94,12 +94,12 @@ export async function runVisualReferenceImageTask(
   let generatedCharacterImages = 0;
   let generatedEnvironmentImages = 0;
 
-  if (!targetEnvironmentName || targetCharacterName) {
+  if (!targetEnvironmentId || targetCharacterId) {
     for (let sheetIndex = 0; sheetIndex < packageClone.character_model_sheets.length; sheetIndex += 1) {
       const sheet = packageClone.character_model_sheets[sheetIndex]!;
 
       // Skip if targeting a different character
-      if (targetCharacterName && sheet.character_name !== targetCharacterName) {
+      if (targetCharacterId && sheet.character_id !== targetCharacterId) {
         continue;
       }
 
@@ -107,7 +107,7 @@ export async function runVisualReferenceImageTask(
         const plate = sheet.reference_plates[plateIndex]!;
 
         // Skip if targeting a specific index
-        if (targetCharacterName && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
+        if (targetCharacterId && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
           continue;
         }
 
@@ -116,12 +116,12 @@ export async function runVisualReferenceImageTask(
         }
 
         const userPrompt = plate.image_generation_prompt;
-        const targetPath = buildVisualReferencePath(trimmedStoryId, 'characters', sheet.character_name, plateIndex + 1);
+        const targetPath = buildVisualReferencePath(trimmedStoryId, 'characters', sheet.character_id, plateIndex + 1);
         const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
 
         logger?.debug?.('Generating character visual reference image', {
           storyId: trimmedStoryId,
-          characterName: sheet.character_name,
+          characterId: sheet.character_id,
           sheetIndex: sheetIndex + 1,
           plateIndex: plateIndex + 1,
           filename,
@@ -138,7 +138,7 @@ export async function runVisualReferenceImageTask(
           imageData = result.imageData;
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to generate image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to generate image for character "${sheet.character_id}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }
@@ -148,7 +148,7 @@ export async function runVisualReferenceImageTask(
           savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to persist image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to persist image for character "${sheet.character_id}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }
@@ -159,12 +159,12 @@ export async function runVisualReferenceImageTask(
     }
   }
 
-  if (!targetCharacterName || targetEnvironmentName) {
+  if (!targetCharacterId || targetEnvironmentId) {
     for (let envIndex = 0; envIndex < packageClone.environment_keyframes.length; envIndex += 1) {
       const environment = packageClone.environment_keyframes[envIndex]!;
 
       // Skip if targeting a different environment
-      if (targetEnvironmentName && environment.environment_name !== targetEnvironmentName) {
+      if (targetEnvironmentId && environment.environment_id !== targetEnvironmentId) {
         continue;
       }
 
@@ -172,7 +172,7 @@ export async function runVisualReferenceImageTask(
         const keyframe = environment.keyframes[frameIndex]!;
 
         // Skip if targeting a specific index
-        if (targetEnvironmentName && targetIndex !== undefined && frameIndex + 1 !== targetIndex) {
+        if (targetEnvironmentId && targetIndex !== undefined && frameIndex + 1 !== targetIndex) {
           continue;
         }
 
@@ -184,14 +184,14 @@ export async function runVisualReferenceImageTask(
         const targetPath = buildVisualReferencePath(
           trimmedStoryId,
           'environments',
-          environment.environment_name,
+          environment.environment_id,
           frameIndex + 1
         );
         const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
 
         logger?.debug?.('Generating environment visual reference image', {
           storyId: trimmedStoryId,
-          environmentName: environment.environment_name,
+          environmentId: environment.environment_id,
           environmentIndex: envIndex + 1,
           keyframeIndex: frameIndex + 1,
           filename,
@@ -208,7 +208,7 @@ export async function runVisualReferenceImageTask(
           imageData = result.imageData;
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to generate image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to generate image for environment "${environment.environment_id}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }
@@ -218,7 +218,7 @@ export async function runVisualReferenceImageTask(
           savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to persist image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to persist image for environment "${environment.environment_id}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }
@@ -351,10 +351,10 @@ function normalizeCharacterSheet(entry: unknown, index: number): VisualReference
   }
 
   const sheetRecord = { ...(entry as Record<string, unknown>) };
-  const name = readStringField(
+  const id = readStringField(
     sheetRecord,
-    ['character_name', 'characterName'],
-    `visual_reference_package.character_model_sheets[${index}].character_name`
+    ['character_id', 'characterId'],
+    `visual_reference_package.character_model_sheets[${index}].character_id`
   );
 
   const platesRaw = sheetRecord.reference_plates ?? sheetRecord.referencePlates;
@@ -372,7 +372,7 @@ function normalizeCharacterSheet(entry: unknown, index: number): VisualReference
 
   return {
     ...sheetRecord,
-    character_name: name,
+    character_id: id,
     reference_plates: referencePlates,
   } as VisualReferenceCharacterSheet;
 }
@@ -433,10 +433,10 @@ function normalizeEnvironmentEntry(entry: unknown, index: number): VisualReferen
   }
 
   const environmentRecord = { ...(entry as Record<string, unknown>) };
-  const name = readStringField(
+  const id = readStringField(
     environmentRecord,
-    ['environment_name', 'environmentName'],
-    `visual_reference_package.environment_keyframes[${index}].environment_name`
+    ['environment_id', 'environmentId'],
+    `visual_reference_package.environment_keyframes[${index}].environment_id`
   );
   const keyframesRaw = environmentRecord.keyframes ?? environmentRecord.environment_keyframes_entries;
   if (!Array.isArray(keyframesRaw)) {
@@ -449,12 +449,12 @@ function normalizeEnvironmentEntry(entry: unknown, index: number): VisualReferen
     normalizeEnvironmentKeyframe(frame, index, frameIndex)
   );
 
-  delete environmentRecord.environmentName;
+  delete environmentRecord.environmentId;
   delete environmentRecord.environment_keyframes_entries;
 
   return {
     ...environmentRecord,
-    environment_name: name,
+    environment_id: id,
     keyframes,
   } as VisualReferenceEnvironmentEntry;
 }

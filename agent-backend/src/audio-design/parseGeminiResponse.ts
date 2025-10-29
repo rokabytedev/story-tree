@@ -7,6 +7,7 @@ import type {
   AudioVoiceProfile,
 } from './types.js';
 import type { StoryTreeSnapshot, SceneletDigest } from '../story-storage/types.js';
+import { normalizeNameToId } from '../visual-design/utils.js';
 
 interface AudioDesignResponseValidationContext {
   storyTree: StoryTreeSnapshot;
@@ -134,14 +135,17 @@ function parseVoiceProfiles(
       `character_voice_profiles[${index}].character_name`
     );
 
-    if (!characterRoster.has(characterName)) {
+    // Normalize character name to ID for matching against visual design document
+    const characterId = normalizeNameToId(characterName);
+
+    if (!characterRoster.has(characterId)) {
       unexpected.add(characterName);
     }
 
-    if (seen.has(characterName)) {
+    if (seen.has(characterId)) {
       duplicates.add(characterName);
     }
-    seen.add(characterName);
+    seen.add(characterId);
 
     const voiceDescription = extractDetailedString(
       record.voice_description ?? record.voiceDescription,
@@ -162,7 +166,7 @@ function parseVoiceProfiles(
     });
   });
 
-  const missing = [...characterRoster].filter((name) => !seen.has(name));
+  const missing = [...characterRoster].filter((id) => !seen.has(id));
   const issues: string[] = [];
   if (unexpected.size > 0) {
     issues.push(
@@ -361,17 +365,17 @@ function extractCharacterNames(document: unknown): Set<string> {
     if (!entry || typeof entry !== 'object') {
       return;
     }
-    const value = (entry as Record<string, unknown>).character_name ??
-      (entry as Record<string, unknown>).characterName;
-    const name = typeof value === 'string' ? value.trim() : '';
-    if (name) {
-      roster.add(name);
+    const value = (entry as Record<string, unknown>).character_id ??
+      (entry as Record<string, unknown>).characterId;
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (id) {
+      roster.add(id);
     }
   });
 
   if (roster.size === 0) {
     throw new AudioDesignTaskError(
-      'Visual design document must include character_name values for every character.'
+      'Visual design document must include character_id values for every character.'
     );
   }
 
