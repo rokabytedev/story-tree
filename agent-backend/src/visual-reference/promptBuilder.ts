@@ -6,9 +6,9 @@ const YAML_PRIMER =
 
 const TASK_INSTRUCTIONS = [
   'Produce a single JSON object named visual_reference_package that matches the schema described in the system prompt.',
-  'Match character_name and environment_name values exactly (case-sensitive) to those in the visual design document.',
+  'Match character_name and environment_name values to those in the visual design document. The visual design document includes normalized IDs (character_id, environment_id) for each design; use the original names (character_name, environment_name) in your response.',
   'Provide at least one reference plate with type "CHARACTER_MODEL_SHEET" for every character and include optional contextual action shots.',
-  'Every image_generation_prompt must be richly descriptive (>= 80 characters), reference the exact character or environment name, and avoid empty or placeholder text.',
+  'Every image_generation_prompt must be richly descriptive (>= 80 characters) and clearly reference the character or environment (by name or recognizable description). Validation will use normalized name matching, so minor variations in spelling or formatting are acceptable as long as the name is recognizable.',
   'Environment keyframes must describe lighting or atmospheric context so downstream renders stay consistent.',
 ].join(' ');
 

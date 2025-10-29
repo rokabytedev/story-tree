@@ -194,4 +194,196 @@ describe('validateVisualReferenceResponse', () => {
       })
     ).toThrow(/lighting or atmosphere/i);
   });
+
+  describe('normalized ID matching', () => {
+    it('accepts environment names with apostrophes when prompt uses similar variations', () => {
+      const visualDesign = {
+        character_designs: [{ character_name: 'Cosmo' }],
+        environment_designs: [{ environment_name: "Cosmo's Jungle Workshop" }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_name: 'Cosmo',
+              reference_plates: [
+                {
+                  plate_description: 'Cosmo model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  image_generation_prompt:
+                    'Cosmo character design with vibrant lighting, showing the inventor in their natural habitat with glowing details.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_name: "Cosmo's Jungle Workshop",
+              keyframes: [
+                {
+                  keyframe_description: 'Main workshop view',
+                  // Prompt uses "Cosmos" instead of "Cosmo's" - should still match via normalization
+                  image_generation_prompt:
+                    'Cosmos Jungle Workshop interior with warm ambient lighting, tropical vines, and mechanical contraptions illuminated by sunset rays.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('accepts character names with case variations', () => {
+      const visualDesign = {
+        character_designs: [{ character_name: 'Rhea the Explorer' }],
+        environment_designs: [{ environment_name: 'Test Zone' }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_name: 'Rhea the Explorer',
+              reference_plates: [
+                {
+                  plate_description: 'Rhea model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  // Uses "RHEA THE EXPLORER" in caps - should still match
+                  image_generation_prompt:
+                    'RHEA THE EXPLORER character model sheet, full body view with dramatic studio lighting and confident pose.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_name: 'Test Zone',
+              keyframes: [
+                {
+                  keyframe_description: 'Zone overview',
+                  image_generation_prompt:
+                    'test zone environment with bright daylight illumination and clear atmospheric conditions for testing purposes.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('accepts names with special characters when prompt uses normalized versions', () => {
+      const visualDesign = {
+        character_designs: [{ character_name: 'Agent-007' }],
+        environment_designs: [{ environment_name: 'Level @2 Hub' }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_name: 'Agent-007',
+              reference_plates: [
+                {
+                  plate_description: 'Agent model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  // Uses "Agent 007" without hyphen - should match
+                  image_generation_prompt:
+                    'Agent 007 character design showing sleek tactical gear with moody dramatic lighting and action-ready stance.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_name: 'Level @2 Hub',
+              keyframes: [
+                {
+                  keyframe_description: 'Hub entrance',
+                  // Uses "Level 2 Hub" without @ symbol - should match
+                  image_generation_prompt:
+                    'Level 2 Hub entrance area with neon lighting and futuristic atmosphere, glowing panels and cool blue illumination.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('works with pre-normalized IDs in visual design document', () => {
+      const visualDesign = {
+        character_designs: [
+          {
+            character_name: "Cosmo's Helper",
+            character_id: 'cosmos-helper', // Pre-normalized ID
+          },
+        ],
+        environment_designs: [
+          {
+            environment_name: 'The Workshop',
+            environment_id: 'the-workshop', // Pre-normalized ID
+          },
+        ],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_name: "Cosmo's Helper",
+              reference_plates: [
+                {
+                  plate_description: 'Helper model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  image_generation_prompt:
+                    'Cosmos Helper character showing a friendly robotic companion with glowing circuits and soft ambient lighting effects.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_name: 'The Workshop',
+              keyframes: [
+                {
+                  keyframe_description: 'Workshop interior',
+                  image_generation_prompt:
+                    'the workshop interior space with industrial lighting, workbenches, and tools scattered about in warm atmosphere.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+  });
 });
