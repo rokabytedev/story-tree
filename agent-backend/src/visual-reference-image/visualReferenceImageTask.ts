@@ -94,134 +94,138 @@ export async function runVisualReferenceImageTask(
   let generatedCharacterImages = 0;
   let generatedEnvironmentImages = 0;
 
-  for (let sheetIndex = 0; sheetIndex < packageClone.character_model_sheets.length; sheetIndex += 1) {
-    const sheet = packageClone.character_model_sheets[sheetIndex]!;
+  if (!targetEnvironmentName || targetCharacterName) {
+    for (let sheetIndex = 0; sheetIndex < packageClone.character_model_sheets.length; sheetIndex += 1) {
+      const sheet = packageClone.character_model_sheets[sheetIndex]!;
 
-    // Skip if targeting a different character
-    if (targetCharacterName && sheet.character_name !== targetCharacterName) {
-      continue;
-    }
-
-    for (let plateIndex = 0; plateIndex < sheet.reference_plates.length; plateIndex += 1) {
-      const plate = sheet.reference_plates[plateIndex]!;
-
-      // Skip if targeting a specific index
-      if (targetCharacterName && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
+      // Skip if targeting a different character
+      if (targetCharacterName && sheet.character_name !== targetCharacterName) {
         continue;
       }
 
-      if (hasImagePath(plate.image_path)) {
-        continue;
-      }
+      for (let plateIndex = 0; plateIndex < sheet.reference_plates.length; plateIndex += 1) {
+        const plate = sheet.reference_plates[plateIndex]!;
 
-      const userPrompt = plate.image_generation_prompt;
-      const targetPath = buildVisualReferencePath(trimmedStoryId, 'characters', sheet.character_name, plateIndex + 1);
-      const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
+        // Skip if targeting a specific index
+        if (targetCharacterName && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
+          continue;
+        }
 
-      logger?.debug?.('Generating character visual reference image', {
-        storyId: trimmedStoryId,
-        characterName: sheet.character_name,
-        sheetIndex: sheetIndex + 1,
-        plateIndex: plateIndex + 1,
-        filename,
-      });
+        if (hasImagePath(plate.image_path)) {
+          continue;
+        }
 
-      let imageData: Buffer;
-      try {
-        const result = await geminiClient.generateImage({
-          userPrompt,
-          aspectRatio: characterAspectRatio,
-          timeoutMs: dependencies.timeoutMs,
-          retry: dependencies.retry,
+        const userPrompt = plate.image_generation_prompt;
+        const targetPath = buildVisualReferencePath(trimmedStoryId, 'characters', sheet.character_name, plateIndex + 1);
+        const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
+
+        logger?.debug?.('Generating character visual reference image', {
+          storyId: trimmedStoryId,
+          characterName: sheet.character_name,
+          sheetIndex: sheetIndex + 1,
+          plateIndex: plateIndex + 1,
+          filename,
         });
-        imageData = result.imageData;
-      } catch (error) {
-        throw new VisualReferenceImageTaskError(
-          `Failed to generate image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
-          { cause: error }
-        );
-      }
 
-      let savedPath: string;
-      try {
-        savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
-      } catch (error) {
-        throw new VisualReferenceImageTaskError(
-          `Failed to persist image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
-          { cause: error }
-        );
-      }
+        let imageData: Buffer;
+        try {
+          const result = await geminiClient.generateImage({
+            userPrompt,
+            aspectRatio: characterAspectRatio,
+            timeoutMs: dependencies.timeoutMs,
+            retry: dependencies.retry,
+          });
+          imageData = result.imageData;
+        } catch (error) {
+          throw new VisualReferenceImageTaskError(
+            `Failed to generate image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            { cause: error }
+          );
+        }
 
-      plate.image_path = savedPath;
-      generatedCharacterImages += 1;
+        let savedPath: string;
+        try {
+          savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
+        } catch (error) {
+          throw new VisualReferenceImageTaskError(
+            `Failed to persist image for character "${sheet.character_name}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            { cause: error }
+          );
+        }
+
+        plate.image_path = savedPath;
+        generatedCharacterImages += 1;
+      }
     }
   }
 
-  for (let envIndex = 0; envIndex < packageClone.environment_keyframes.length; envIndex += 1) {
-    const environment = packageClone.environment_keyframes[envIndex]!;
+  if (!targetCharacterName || targetEnvironmentName) {
+    for (let envIndex = 0; envIndex < packageClone.environment_keyframes.length; envIndex += 1) {
+      const environment = packageClone.environment_keyframes[envIndex]!;
 
-    // Skip if targeting a different environment
-    if (targetEnvironmentName && environment.environment_name !== targetEnvironmentName) {
-      continue;
-    }
-
-    for (let frameIndex = 0; frameIndex < environment.keyframes.length; frameIndex += 1) {
-      const keyframe = environment.keyframes[frameIndex]!;
-
-      // Skip if targeting a specific index
-      if (targetEnvironmentName && targetIndex !== undefined && frameIndex + 1 !== targetIndex) {
+      // Skip if targeting a different environment
+      if (targetEnvironmentName && environment.environment_name !== targetEnvironmentName) {
         continue;
       }
 
-      if (hasImagePath(keyframe.image_path)) {
-        continue;
-      }
+      for (let frameIndex = 0; frameIndex < environment.keyframes.length; frameIndex += 1) {
+        const keyframe = environment.keyframes[frameIndex]!;
 
-      const userPrompt = keyframe.image_generation_prompt;
-      const targetPath = buildVisualReferencePath(
-        trimmedStoryId,
-        'environments',
-        environment.environment_name,
-        frameIndex + 1
-      );
-      const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
+        // Skip if targeting a specific index
+        if (targetEnvironmentName && targetIndex !== undefined && frameIndex + 1 !== targetIndex) {
+          continue;
+        }
 
-      logger?.debug?.('Generating environment visual reference image', {
-        storyId: trimmedStoryId,
-        environmentName: environment.environment_name,
-        environmentIndex: envIndex + 1,
-        keyframeIndex: frameIndex + 1,
-        filename,
-      });
+        if (hasImagePath(keyframe.image_path)) {
+          continue;
+        }
 
-      let imageData: Buffer;
-      try {
-        const result = await geminiClient.generateImage({
-          userPrompt,
-          aspectRatio: environmentAspectRatio,
-          timeoutMs: dependencies.timeoutMs,
-          retry: dependencies.retry,
+        const userPrompt = keyframe.image_generation_prompt;
+        const targetPath = buildVisualReferencePath(
+          trimmedStoryId,
+          'environments',
+          environment.environment_name,
+          frameIndex + 1
+        );
+        const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
+
+        logger?.debug?.('Generating environment visual reference image', {
+          storyId: trimmedStoryId,
+          environmentName: environment.environment_name,
+          environmentIndex: envIndex + 1,
+          keyframeIndex: frameIndex + 1,
+          filename,
         });
-        imageData = result.imageData;
-      } catch (error) {
-        throw new VisualReferenceImageTaskError(
-          `Failed to generate image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
-          { cause: error }
-        );
-      }
 
-      let savedPath: string;
-      try {
-        savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
-      } catch (error) {
-        throw new VisualReferenceImageTaskError(
-          `Failed to persist image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
-          { cause: error }
-        );
-      }
+        let imageData: Buffer;
+        try {
+          const result = await geminiClient.generateImage({
+            userPrompt,
+            aspectRatio: environmentAspectRatio,
+            timeoutMs: dependencies.timeoutMs,
+            retry: dependencies.retry,
+          });
+          imageData = result.imageData;
+        } catch (error) {
+          throw new VisualReferenceImageTaskError(
+            `Failed to generate image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
+            { cause: error }
+          );
+        }
 
-      keyframe.image_path = savedPath;
-      generatedEnvironmentImages += 1;
+        let savedPath: string;
+        try {
+          savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
+        } catch (error) {
+          throw new VisualReferenceImageTaskError(
+            `Failed to persist image for environment "${environment.environment_name}" keyframe #${frameIndex + 1}. ${extractErrorMessage(error)}`,
+            { cause: error }
+          );
+        }
+
+        keyframe.image_path = savedPath;
+        generatedEnvironmentImages += 1;
+      }
     }
   }
 
