@@ -50,13 +50,66 @@ export async function runVisualReferenceImageTask(
   const characterAspectRatio = dependencies.characterAspectRatio ?? DEFAULT_ASPECT_RATIO;
   const environmentAspectRatio = dependencies.environmentAspectRatio ?? DEFAULT_ASPECT_RATIO;
 
+  const targetCharacterName = dependencies.targetCharacterName?.trim();
+  const targetEnvironmentName = dependencies.targetEnvironmentName?.trim();
+  const targetIndex = dependencies.targetIndex;
+
+  // Validate target exists if specified
+  if (targetCharacterName) {
+    const found = packageClone.character_model_sheets.find(
+      (sheet) => sheet.character_name === targetCharacterName
+    );
+    if (!found) {
+      throw new VisualReferenceImageTaskError(
+        `Target character "${targetCharacterName}" not found in visual reference package.`
+      );
+    }
+    if (targetIndex !== undefined) {
+      if (targetIndex < 1 || targetIndex > found.reference_plates.length) {
+        throw new VisualReferenceImageTaskError(
+          `Target index ${targetIndex} out of range for character "${targetCharacterName}" (has ${found.reference_plates.length} plates).`
+        );
+      }
+    }
+  }
+
+  if (targetEnvironmentName) {
+    const found = packageClone.environment_keyframes.find(
+      (env) => env.environment_name === targetEnvironmentName
+    );
+    if (!found) {
+      throw new VisualReferenceImageTaskError(
+        `Target environment "${targetEnvironmentName}" not found in visual reference package.`
+      );
+    }
+    if (targetIndex !== undefined) {
+      if (targetIndex < 1 || targetIndex > found.keyframes.length) {
+        throw new VisualReferenceImageTaskError(
+          `Target index ${targetIndex} out of range for environment "${targetEnvironmentName}" (has ${found.keyframes.length} keyframes).`
+        );
+      }
+    }
+  }
+
   let generatedCharacterImages = 0;
   let generatedEnvironmentImages = 0;
 
   for (let sheetIndex = 0; sheetIndex < packageClone.character_model_sheets.length; sheetIndex += 1) {
     const sheet = packageClone.character_model_sheets[sheetIndex]!;
+
+    // Skip if targeting a different character
+    if (targetCharacterName && sheet.character_name !== targetCharacterName) {
+      continue;
+    }
+
     for (let plateIndex = 0; plateIndex < sheet.reference_plates.length; plateIndex += 1) {
       const plate = sheet.reference_plates[plateIndex]!;
+
+      // Skip if targeting a specific index
+      if (targetCharacterName && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
+        continue;
+      }
+
       if (hasImagePath(plate.image_path)) {
         continue;
       }
@@ -106,8 +159,20 @@ export async function runVisualReferenceImageTask(
 
   for (let envIndex = 0; envIndex < packageClone.environment_keyframes.length; envIndex += 1) {
     const environment = packageClone.environment_keyframes[envIndex]!;
+
+    // Skip if targeting a different environment
+    if (targetEnvironmentName && environment.environment_name !== targetEnvironmentName) {
+      continue;
+    }
+
     for (let frameIndex = 0; frameIndex < environment.keyframes.length; frameIndex += 1) {
       const keyframe = environment.keyframes[frameIndex]!;
+
+      // Skip if targeting a specific index
+      if (targetEnvironmentName && targetIndex !== undefined && frameIndex + 1 !== targetIndex) {
+        continue;
+      }
+
       if (hasImagePath(keyframe.image_path)) {
         continue;
       }

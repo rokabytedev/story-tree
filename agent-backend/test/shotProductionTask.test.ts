@@ -79,6 +79,15 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
     async findSceneletIdsMissingShots(storyId, sceneletIds) {
       return sceneletIds.filter((id) => !existingKeys.has(`${storyId}:${id}`));
     },
+    async getShotsByStory(_storyId) {
+      return {};
+    },
+    async findShotsMissingImages(_storyId) {
+      return [];
+    },
+    async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
+      // Mock implementation
+    },
   };
 }
 

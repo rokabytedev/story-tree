@@ -114,23 +114,19 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): AgentWorkflow
 
 function buildDependencies(
   overrides: Partial<VisualReferenceTaskDependencies> & {
-    storiesRepository?: AgentWorkflowStoriesRepository;
+    storiesRepository: AgentWorkflowStoriesRepository;
+    storyTreeLoader: (storyId: string) => Promise<StoryTreeSnapshot>;
   }
 ): VisualReferenceTaskDependencies {
-  if (!overrides.storiesRepository) {
-    throw new Error('storiesRepository is required');
-  }
-  if (!overrides.storyTreeLoader) {
-    throw new Error('storyTreeLoader is required');
-  }
-
   return {
     promptLoader: async () => 'System prompt',
     geminiClient: {
       generateJson: vi.fn(async () => VALID_RESPONSE),
     },
+    storiesRepository: overrides.storiesRepository,
+    storyTreeLoader: overrides.storyTreeLoader,
     ...overrides,
-  } satisfies VisualReferenceTaskDependencies;
+  };
 }
 
 describe('runVisualReferenceTask', () => {

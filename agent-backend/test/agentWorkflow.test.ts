@@ -132,6 +132,15 @@ function createShotsRepository(): ShotProductionShotsRepository & {
     async findSceneletIdsMissingShots(storyId, sceneletIds) {
       return sceneletIds.filter((id) => !existing.has(`${storyId}:${id}`));
     },
+    async getShotsByStory(_storyId) {
+      return {};
+    },
+    async findShotsMissingImages(_storyId) {
+      return [];
+    },
+    async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
+      // Mock implementation
+    },
   };
 }
 
@@ -154,10 +163,16 @@ describe('runAgentWorkflow', () => {
       };
     };
     const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
-      storiesRepository.record!.visualReferencePackage = { character_model_sheets: [] };
+      storiesRepository.record!.visualReferencePackage = {
+        character_model_sheets: [],
+        environment_keyframes: []
+      };
       return {
         storyId,
-        visualReferencePackage: { character_model_sheets: [] },
+        visualReferencePackage: {
+          character_model_sheets: [],
+          environment_keyframes: []
+        },
       };
     };
     const audioRunner: AudioDesignTaskRunner = async (storyId) => {
@@ -207,6 +222,18 @@ describe('runAgentWorkflow', () => {
       runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunner,
       runShotProductionTask: shotProductionRunner,
+      shotImageTaskOptions: {
+        geminiImageClient: {
+          async generateImage() {
+            return { imageData: Buffer.from('stub'), mimeType: 'image/png' };
+          },
+        },
+        imageStorage: {
+          async saveImage(_buffer, storyId, category, filename) {
+            return `${storyId}/${category}/${filename}`;
+          },
+        },
+      },
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -222,7 +249,10 @@ describe('runAgentWorkflow', () => {
       targetSceneletsPerPath: 18,
     });
     expect(storiesRepository.record?.visualDesignDocument).toEqual({ stub: true });
-    expect(storiesRepository.record?.visualReferencePackage).toEqual({ character_model_sheets: [] });
+    expect(storiesRepository.record?.visualReferencePackage).toEqual({
+      character_model_sheets: [],
+      environment_keyframes: []
+    });
     expect(storiesRepository.record?.audioDesignDocument).toEqual({
       audio_design_document: { sonic_identity: {} },
     });
@@ -238,10 +268,19 @@ describe('runAgentWorkflow', () => {
       storyId,
       visualDesignDocument: {},
     });
-    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
-      storyId,
-      visualReferencePackage: { character_model_sheets: [] },
-    });
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
+      storiesRepository.record!.visualReferencePackage = {
+        character_model_sheets: [],
+        environment_keyframes: []
+      };
+      return {
+        storyId,
+        visualReferencePackage: {
+          character_model_sheets: [],
+          environment_keyframes: []
+        },
+      };
+    };
     const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
       audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
@@ -271,6 +310,18 @@ describe('runAgentWorkflow', () => {
       runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunnerStub,
       runShotProductionTask: shotProductionRunner,
+      shotImageTaskOptions: {
+        geminiImageClient: {
+          async generateImage() {
+            return { imageData: Buffer.from('stub'), mimeType: 'image/png' };
+          },
+        },
+        imageStorage: {
+          async saveImage(_buffer, storyId, category, filename) {
+            return `${storyId}/${category}/${filename}`;
+          },
+        },
+      },
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -287,7 +338,7 @@ describe('runAgentWorkflow', () => {
     });
     const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
       storyId,
-      visualReferencePackage: { character_model_sheets: [] },
+      visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
     });
     const audioRunner: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
@@ -334,7 +385,7 @@ describe('runAgentWorkflow', () => {
         }),
         runVisualReferenceTask: async (storyId) => ({
           storyId,
-          visualReferencePackage: { character_model_sheets: [] },
+          visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
         }),
       })
     ).rejects.toThrow(AgentWorkflowError);
@@ -357,7 +408,7 @@ describe('runAgentWorkflow', () => {
         runVisualDesignTask: visualDesignRunner,
         runVisualReferenceTask: async (storyId) => ({
           storyId,
-          visualReferencePackage: { character_model_sheets: [] },
+          visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
         }),
       })
     ).rejects.toThrow(AgentWorkflowError);
@@ -373,10 +424,19 @@ describe('runAgentWorkflow', () => {
       storyId,
       visualDesignDocument: {},
     });
-    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
-      storyId,
-      visualReferencePackage: { character_model_sheets: [] },
-    });
+    const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
+      storiesRepository.record!.visualReferencePackage = {
+        character_model_sheets: [],
+        environment_keyframes: []
+      };
+      return {
+        storyId,
+        visualReferencePackage: {
+          character_model_sheets: [],
+          environment_keyframes: []
+        },
+      };
+    };
     const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => ({
       storyId,
       audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
@@ -411,6 +471,18 @@ describe('runAgentWorkflow', () => {
       runVisualReferenceTask: visualReferenceRunner,
       runAudioDesignTask: audioRunnerForOptions,
       runShotProductionTask: shotProductionRunner,
+      shotImageTaskOptions: {
+        geminiImageClient: {
+          async generateImage() {
+            return { imageData: Buffer.from('stub'), mimeType: 'image/png' };
+          },
+        },
+        imageStorage: {
+          async saveImage(_buffer, storyId, category, filename) {
+            return `${storyId}/${category}/${filename}`;
+          },
+        },
+      },
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);

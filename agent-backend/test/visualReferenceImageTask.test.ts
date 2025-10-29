@@ -61,14 +61,12 @@ function createStoriesRepository(story: AgentWorkflowStoryRecord): RepositoryWit
 }
 
 function buildDependencies(
-  overrides: Partial<VisualReferenceImageTaskDependencies> & { storiesRepository?: AgentWorkflowStoriesRepository }
+  overrides: Partial<VisualReferenceImageTaskDependencies> & { storiesRepository: AgentWorkflowStoriesRepository }
 ): VisualReferenceImageTaskDependencies {
-  if (!overrides.storiesRepository) {
-    throw new Error('storiesRepository is required');
-  }
   return {
+    storiesRepository: overrides.storiesRepository,
     ...overrides,
-  } satisfies VisualReferenceImageTaskDependencies;
+  };
 }
 
 describe('runVisualReferenceImageTask', () => {

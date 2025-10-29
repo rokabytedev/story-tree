@@ -22,6 +22,9 @@ export interface VisualReferenceImageTaskDependencies {
   environmentAspectRatio?: ImageAspectRatio;
   timeoutMs?: number;
   retry?: GeminiRetryOptions;
+  targetCharacterName?: string;
+  targetEnvironmentName?: string;
+  targetIndex?: number;
 }
 
 export interface VisualReferenceImageTaskResult {

@@ -38,6 +38,12 @@ import type {
   ShotProductionTaskDependencies,
   ShotProductionShotsRepository,
 } from '../shot-production/types.js';
+import { runShotImageTask } from '../shot-image/shotImageTask.js';
+import type {
+  ShotImageTaskOptions,
+  ShotImageTaskRunner,
+  ShotImageTaskDependencies,
+} from '../shot-image/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -61,6 +67,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
+  'CREATE_SHOT_IMAGES',
 ];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
@@ -136,6 +143,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly audioDesignOptions?: AudioDesignTaskOptions;
   private readonly shotProductionTaskRunner: ShotProductionTaskRunner;
   private readonly shotProductionOptions?: ShotProductionTaskOptions;
+  private readonly shotImageTaskRunner: ShotImageTaskRunner;
+  private readonly shotImageOptions?: ShotImageTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -180,6 +189,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.shotProductionOptions = dependencies.shotProductionTaskOptions
       ? { ...dependencies.shotProductionTaskOptions }
       : undefined;
+    this.shotImageTaskRunner =
+      dependencies.runShotImageTask ?? runShotImageTask;
+    this.shotImageOptions = dependencies.shotImageTaskOptions
+      ? { ...dependencies.shotImageTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -205,6 +219,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_SHOT_PRODUCTION':
         await this.runShotProductionTask();
+        return;
+      case 'CREATE_SHOT_IMAGES':
+        await this.runShotImagesTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -233,6 +250,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_SHOT_PRODUCTION':
           await this.runShotProductionTask();
+          break;
+        case 'CREATE_SHOT_IMAGES':
+          await this.runShotImagesTask();
           break;
         default:
           break;
@@ -388,6 +408,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.shotProductionTaskRunner(this.storyId, dependencies);
   }
 
+  private async runShotImagesTask(): Promise<void> {
+    const dependencies = this.buildShotImageDependencies();
+    await this.shotImageTaskRunner(this.storyId, dependencies);
+  }
+
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
     const overrides = this.visualDesignOptions;
     const dependencies: VisualDesignTaskDependencies = {
@@ -534,6 +559,33 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.geminiOptions) {
       dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildShotImageDependencies(): ShotImageTaskDependencies {
+    const overrides = this.shotImageOptions;
+    const dependencies: ShotImageTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      shotsRepository: this.shotsRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.referenceImageLoader) {
+      dependencies.referenceImageLoader = overrides.referenceImageLoader;
     }
 
     const logger = overrides?.logger ?? this.logger;

@@ -12,6 +12,8 @@ type ShotRow = {
   first_frame_prompt: string;
   key_frame_prompt: string;
   video_clip_prompt: string;
+  first_frame_image_path: string | null;
+  key_frame_image_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -23,6 +25,8 @@ export interface ShotRecord {
   firstFramePrompt: string;
   keyFramePrompt: string;
   videoClipPrompt: string;
+  firstFrameImagePath?: string;
+  keyFrameImagePath?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +39,18 @@ export interface CreateShotInput {
   videoClipPrompt: string;
 }
 
+export interface UpdateShotImagePathsInput {
+  firstFrameImagePath?: string;
+  keyFrameImagePath?: string;
+}
+
+export interface ShotsMissingImages {
+  sceneletId: string;
+  shotIndex: number;
+  missingFirstFrame: boolean;
+  missingKeyFrame: boolean;
+}
+
 export interface ShotsRepository {
   getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>>;
   createSceneletShots(
@@ -44,6 +60,13 @@ export interface ShotsRepository {
     shots: CreateShotInput[]
   ): Promise<void>;
   findSceneletIdsMissingShots(storyId: string, sceneletIds: string[]): Promise<string[]>;
+  updateShotImagePaths(
+    storyId: string,
+    sceneletId: string,
+    shotIndex: number,
+    paths: UpdateShotImagePathsInput
+  ): Promise<void>;
+  findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]>;
 }
 
 export class ShotsRepositoryError extends Error {
@@ -227,6 +250,81 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       const existing = new Set((data ?? []).map((row) => row.scenelet_id));
       return normalizedSceneletIds.filter((id) => !existing.has(id));
     },
+
+    async updateShotImagePaths(
+      storyId: string,
+      sceneletId: string,
+      shotIndex: number,
+      paths: UpdateShotImagePathsInput
+    ): Promise<void> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new ShotsRepositoryError('Story id must be provided to update shot image paths.');
+      }
+
+      const trimmedSceneletId = sceneletId?.trim();
+      if (!trimmedSceneletId) {
+        throw new ShotsRepositoryError('Scenelet id must be provided to update shot image paths.');
+      }
+
+      if (!Number.isInteger(shotIndex) || shotIndex <= 0) {
+        throw new ShotsRepositoryError('Shot index must be a positive integer.');
+      }
+
+      if (!paths || (paths.firstFrameImagePath === undefined && paths.keyFrameImagePath === undefined)) {
+        throw new ShotsRepositoryError('At least one image path must be provided for update.');
+      }
+
+      const updateData: Record<string, string | null> = {};
+      if (paths.firstFrameImagePath !== undefined) {
+        updateData.first_frame_image_path = paths.firstFrameImagePath || null;
+      }
+      if (paths.keyFrameImagePath !== undefined) {
+        updateData.key_frame_image_path = paths.keyFrameImagePath || null;
+      }
+
+      const { error } = await client
+        .from(SHOTS_TABLE)
+        .update(updateData)
+        .eq('story_id', trimmedStoryId)
+        .eq('scenelet_id', trimmedSceneletId)
+        .eq('shot_index', shotIndex);
+
+      if (error) {
+        throw new ShotsRepositoryError('Failed to update shot image paths.', error);
+      }
+    },
+
+    async findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new ShotsRepositoryError('Story id must be provided to find shots missing images.');
+      }
+
+      const { data, error } = await client
+        .from(SHOTS_TABLE)
+        .select('scenelet_id, shot_index, first_frame_image_path, key_frame_image_path')
+        .eq('story_id', trimmedStoryId)
+        .order('scenelet_sequence', { ascending: true })
+        .order('shot_index', { ascending: true });
+
+      if (error) {
+        throw new ShotsRepositoryError('Failed to find shots missing images.', error);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+
+      return data
+        .filter((row) => !row.first_frame_image_path || !row.key_frame_image_path)
+        .map((row) => ({
+          sceneletId: row.scenelet_id,
+          shotIndex: row.shot_index,
+          missingFirstFrame: !row.first_frame_image_path,
+          missingKeyFrame: !row.key_frame_image_path,
+        }));
+    },
   };
 }
 
@@ -238,6 +336,8 @@ function mapRowToRecord(row: ShotRow): ShotRecord {
     firstFramePrompt: row.first_frame_prompt,
     keyFramePrompt: row.key_frame_prompt,
     videoClipPrompt: row.video_clip_prompt,
+    firstFrameImagePath: row.first_frame_image_path ?? undefined,
+    keyFrameImagePath: row.key_frame_image_path ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

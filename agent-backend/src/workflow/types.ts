@@ -19,6 +19,10 @@ import type {
   ShotProductionTaskRunner,
   ShotProductionShotsRepository,
 } from '../shot-production/types.js';
+import type {
+  ShotImageTaskDependencies,
+  ShotImageTaskRunner,
+} from '../shot-image/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -87,6 +91,8 @@ export interface AgentWorkflowOptions {
   runAudioDesignTask?: AudioDesignTaskRunner;
   shotProductionTaskOptions?: ShotProductionTaskOptions;
   runShotProductionTask?: ShotProductionTaskRunner;
+  shotImageTaskOptions?: ShotImageTaskOptions;
+  runShotImageTask?: ShotImageTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -102,7 +108,8 @@ export type StoryWorkflowTask =
   | 'CREATE_VISUAL_REFERENCE'
   | 'CREATE_VISUAL_REFERENCE_IMAGES'
   | 'CREATE_AUDIO_DESIGN'
-  | 'CREATE_SHOT_PRODUCTION';
+  | 'CREATE_SHOT_PRODUCTION'
+  | 'CREATE_SHOT_IMAGES';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -128,4 +135,8 @@ export type AudioDesignTaskOptions = Partial<
 
 export type ShotProductionTaskOptions = Partial<
   Omit<ShotProductionTaskDependencies, 'storiesRepository' | 'shotsRepository' | 'storyTreeLoader'>
+>;
+
+export type ShotImageTaskOptions = Partial<
+  Omit<ShotImageTaskDependencies, 'storiesRepository' | 'shotsRepository'>
 >;

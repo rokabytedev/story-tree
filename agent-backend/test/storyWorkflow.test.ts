@@ -170,7 +170,7 @@ function createVisualReferenceTask(): {
     calls.push(storyId);
     return {
       storyId,
-      visualReferencePackage: { character_model_sheets: [] },
+      visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
     };
   };
   return { runner, calls };
@@ -215,6 +215,15 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
     },
     async findSceneletIdsMissingShots(storyId, sceneletIds) {
       return sceneletIds.filter((sceneletId) => !existing.has(`${storyId}:${sceneletId}`));
+    },
+    async getShotsByStory(_storyId) {
+      return {};
+    },
+    async findShotsMissingImages(_storyId) {
+      return [];
+    },
+    async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
+      // Mock implementation
     },
   };
 }
@@ -625,7 +634,10 @@ describe('storyWorkflow tasks', () => {
 
 describe('runAllTasks', () => {
   it('executes entire workflow sequence ending with shot production', async () => {
-    const storyRecord = createStoryRecord({ id: 'story-run-all' });
+    const storyRecord = createStoryRecord({
+      id: 'story-run-all',
+      visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
+    });
     const storiesRepository = createStoriesRepository(storyRecord);
     const shotsRepository = createShotsRepository();
     const sceneletPersistence = createSceneletPersistence();
@@ -644,6 +656,18 @@ describe('runAllTasks', () => {
       runVisualReferenceTask: visualReference.runner,
       runAudioDesignTask: audioDesign.runner,
       runShotProductionTask: shotProduction.runner,
+      shotImageTaskOptions: {
+        geminiImageClient: {
+          async generateImage() {
+            return { imageData: Buffer.from('stub'), mimeType: 'image/png' };
+          },
+        },
+        imageStorage: {
+          async saveImage(_buffer, storyId, category, filename) {
+            return `${storyId}/${category}/${filename}`;
+          },
+        },
+      },
       generateInteractiveStoryTree: async (_storyId, _markdown, options) => {
         expect(options?.targetSceneletsPerPath).toBe(12);
         await sceneletPersistence.createScenelet({

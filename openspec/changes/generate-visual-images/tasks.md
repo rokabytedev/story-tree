@@ -7,20 +7,21 @@
   - [x] Task 1.2: Implement image storage helper
   - [x] Task 1.3: Implement Gemini image generation client
   - [x] Task 1.4: Add image path storage helpers
-- [ ] Batch 2: Visual Reference Image Generation Task (3 tasks)
-  - [ ] Task 2.1: Create visual reference image task implementation
-  - [ ] Task 2.2: Integrate CREATE_VISUAL_REFERENCE_IMAGES into workflow
-  - [ ] Task 2.3: Add visual reference image task to CLI
-- [ ] Batch 3: Shot Image Generation Task & Database Migration (6 tasks)
-  - [ ] Task 3.1: Add image_path columns to shots table
-  - [ ] Task 3.2: Update shots repository with image path methods
-  - [ ] Task 3.3: Create shot image task implementation
-  - [ ] Task 3.4: Create system prompt for visual renderer
-  - [ ] Task 3.5: Integrate CREATE_SHOT_IMAGES into workflow
+- [x] Batch 2: Visual Reference Image Generation Task (3 tasks)
+  - [x] Task 2.1: Create visual reference image task implementation
+  - [x] Task 2.2: Integrate CREATE_VISUAL_REFERENCE_IMAGES into workflow
+  - [x] Task 2.3: Add visual reference image task to CLI
+- [x] Batch 3: Shot Image Generation Task & Database Migration (6 tasks)
+  - [x] Task 3.1: Add image_path columns to shots table
+  - [x] Task 3.2: Update shots repository with image path methods
+  - [x] Task 3.3: Create shot image task implementation
+  - [x] Task 3.4: Create system prompt for visual renderer
+  - [x] Task 3.5: Integrate CREATE_SHOT_IMAGES into workflow
   - [ ] Task 3.6: Add shot image task to CLI
 - [ ] Batch 4: Individual Image Generation & CLI Enhancements (2 tasks)
   - [ ] Task 4.1: Add individual visual reference image generation support
   - [ ] Task 4.2: Add individual shot image generation support
+Optional - DO NOT IMPLEMENT YET:
 - [ ] Batch 5: Integration Testing & Documentation (4 tasks)
   - [ ] Task 5.1: Add integration tests with fixtures
   - [ ] Task 5.2: Update .gitignore for generated images

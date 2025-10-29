@@ -50,6 +50,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
+  'CREATE_SHOT_IMAGES',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -73,6 +74,11 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   task: StoryWorkflowTask;
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
+  characterName?: string;
+  environmentName?: string;
+  imageIndex?: number;
+  sceneletId?: string;
+  shotIndex?: number;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -252,12 +258,30 @@ async function buildWorkflowDependencies(
     },
     visualReferenceImageTaskOptions: {
       logger,
+      ...(options.command === 'run-task' && options.characterName
+        ? { targetCharacterName: options.characterName }
+        : {}),
+      ...(options.command === 'run-task' && options.environmentName
+        ? { targetEnvironmentName: options.environmentName }
+        : {}),
+      ...(options.command === 'run-task' && options.imageIndex !== undefined
+        ? { targetIndex: options.imageIndex }
+        : {}),
     },
     audioDesignTaskOptions: {
       logger,
     },
     shotProductionTaskOptions: {
       logger,
+    },
+    shotImageTaskOptions: {
+      logger,
+      ...(options.command === 'run-task' && options.sceneletId
+        ? { targetSceneletId: options.sceneletId }
+        : {}),
+      ...(options.command === 'run-task' && options.shotIndex !== undefined
+        ? { targetShotIndex: options.shotIndex }
+        : {}),
     },
   };
 
@@ -332,6 +356,22 @@ async function buildWorkflowDependencies(
       promptLoader: async () => 'Stub shot production system prompt',
       geminiClient: shotProductionGeminiClient,
     };
+    workflowOptions.shotImageTaskOptions = {
+      logger,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-image-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
+    };
   }
 
   return workflowOptions;
@@ -354,6 +394,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let storyId: string | undefined;
   let taskName: string | undefined;
   let resumeFlag = false;
+  let characterName: string | undefined;
+  let environmentName: string | undefined;
+  let imageIndex: number | undefined;
+  let sceneletId: string | undefined;
+  let shotIndex: number | undefined;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -406,6 +451,33 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '--resume':
         resumeFlag = true;
         break;
+      case '--character-name':
+        characterName = rest[++index];
+        break;
+      case '--environment-name':
+        environmentName = rest[++index];
+        break;
+      case '--image-index': {
+        const value = rest[++index];
+        const parsed = value ? Number.parseInt(value, 10) : NaN;
+        if (Number.isNaN(parsed) || parsed < 1) {
+          throw new CliParseError('--image-index must be a positive integer.');
+        }
+        imageIndex = parsed;
+        break;
+      }
+      case '--scenelet-id':
+        sceneletId = rest[++index];
+        break;
+      case '--shot-index': {
+        const value = rest[++index];
+        const parsed = value ? Number.parseInt(value, 10) : NaN;
+        if (Number.isNaN(parsed) || parsed < 1) {
+          throw new CliParseError('--shot-index must be a positive integer.');
+        }
+        shotIndex = parsed;
+        break;
+      }
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -441,6 +513,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         task,
         resumeInteractiveScript,
         resumeShotProduction,
+        characterName,
+        environmentName,
+        imageIndex,
+        sceneletId,
+        shotIndex,
         ...modeOptions,
       };
     }
@@ -664,13 +741,37 @@ function printHelp(): void {
   );
   console.log('');
   console.log('Flags:');
-  console.log('  --mode <stub|real>      Choose Gemini mode (stub uses fixtures). Default: stub.');
-  console.log('  --supabase-url <url>    Supabase URL override (falls back to SUPABASE_URL env).');
-  console.log('  --supabase-key <key>    Supabase service role key override (falls back to env).');
-  console.log('  --remote                Use remote Supabase credentials (default is local).');
-  console.log('  --verbose (-v)          Print debug logs.');
-  console.log('  --resume                Resume pending interactive script or shot production tasks.');
-  console.log('  --help (-h)             Show this help message.');
+  console.log('  --mode <stub|real>           Choose Gemini mode (stub uses fixtures). Default: stub.');
+  console.log('  --supabase-url <url>         Supabase URL override (falls back to SUPABASE_URL env).');
+  console.log('  --supabase-key <key>         Supabase service role key override (falls back to env).');
+  console.log('  --remote                     Use remote Supabase credentials (default is local).');
+  console.log('  --verbose (-v)               Print debug logs.');
+  console.log('  --resume                     Resume pending interactive script or shot production tasks.');
+  console.log('  --character-name <name>      Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --environment-name <name>    Generate only images for specific environment (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-name or --environment-name).');
+  console.log('  --scenelet-id <id>           Generate only images for specific scenelet (CREATE_SHOT_IMAGES).');
+  console.log('  --shot-index <number>        Generate only images for specific shot (1-based, use with --scenelet-id).');
+  console.log('  --help (-h)                  Show this help message.');
+  console.log('');
+  console.log('Examples:');
+  console.log('  # Generate all visual reference images for a story');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Generate only character "Cosmo" reference images');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-name "Cosmo" --mode stub');
+  console.log('');
+  console.log('  # Generate only first plate for character "Cosmo"');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-name "Cosmo" --image-index 1 --mode stub');
+  console.log('');
+  console.log('  # Generate all shot images for a story');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Generate only shot images for scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --mode stub');
+  console.log('');
+  console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
 }
 
 function loadEnvironmentVariables(): void {
