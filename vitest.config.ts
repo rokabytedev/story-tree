@@ -2,7 +2,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['agent-backend/test/**/*.test.ts', 'supabase/test/**/*.test.ts'],
+    include: [
+      'agent-backend/test/**/*.test.ts',
+      'supabase/test/**/*.test.ts',
+      'apps/story-tree-ui/src/**/*.test.ts',
+    ],
     exclude: ['node_modules/**', 'dist/**'],
   },
 });
