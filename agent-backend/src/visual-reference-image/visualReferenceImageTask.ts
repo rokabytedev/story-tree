@@ -50,9 +50,16 @@ export async function runVisualReferenceImageTask(
   const characterAspectRatio = dependencies.characterAspectRatio ?? DEFAULT_ASPECT_RATIO;
   const environmentAspectRatio = dependencies.environmentAspectRatio ?? DEFAULT_ASPECT_RATIO;
 
-  const targetCharacterId = dependencies.targetCharacterId?.trim();
-  const targetEnvironmentId = dependencies.targetEnvironmentId?.trim();
+  const targetCharacterId = dependencies.targetCharacterId?.trim() || undefined;
+  const targetEnvironmentId = dependencies.targetEnvironmentId?.trim() || undefined;
   const targetIndex = dependencies.targetIndex;
+
+  // Validate that targetIndex is only used with a specific character or environment
+  if (targetIndex !== undefined && !targetCharacterId && !targetEnvironmentId) {
+    throw new VisualReferenceImageTaskError(
+      'Target index can only be used with --character-id or --environment-id.'
+    );
+  }
 
   // Validate target exists if specified
   if (targetCharacterId) {
@@ -94,7 +101,12 @@ export async function runVisualReferenceImageTask(
   let generatedCharacterImages = 0;
   let generatedEnvironmentImages = 0;
 
-  if (!targetEnvironmentId || targetCharacterId) {
+  // Process characters if:
+  // 1. Targeting a specific character, OR
+  // 2. Not targeting anything specific (generate all)
+  const shouldProcessCharacters = targetCharacterId || !targetEnvironmentId;
+
+  if (shouldProcessCharacters) {
     for (let sheetIndex = 0; sheetIndex < packageClone.character_model_sheets.length; sheetIndex += 1) {
       const sheet = packageClone.character_model_sheets[sheetIndex]!;
 
@@ -172,11 +184,26 @@ export async function runVisualReferenceImageTask(
 
         plate.image_path = savedPath;
         generatedCharacterImages += 1;
+
+        // If targeting a specific character and index, exit early after generating it
+        if (targetCharacterId && targetIndex !== undefined) {
+          break;
+        }
+      }
+
+      // If targeting a specific character and index, exit early after processing that character
+      if (targetCharacterId && targetIndex !== undefined && generatedCharacterImages > 0) {
+        break;
       }
     }
   }
 
-  if (!targetCharacterId || targetEnvironmentId) {
+  // Process environments if:
+  // 1. Targeting a specific environment, OR
+  // 2. Not targeting anything specific (generate all)
+  const shouldProcessEnvironments = targetEnvironmentId || !targetCharacterId;
+
+  if (shouldProcessEnvironments) {
     for (let envIndex = 0; envIndex < packageClone.environment_keyframes.length; envIndex += 1) {
       const environment = packageClone.environment_keyframes[envIndex]!;
 
@@ -242,6 +269,16 @@ export async function runVisualReferenceImageTask(
 
         keyframe.image_path = savedPath;
         generatedEnvironmentImages += 1;
+
+        // If targeting a specific environment and index, exit early after generating it
+        if (targetEnvironmentId && targetIndex !== undefined) {
+          break;
+        }
+      }
+
+      // If targeting a specific environment and index, exit early after processing that environment
+      if (targetEnvironmentId && targetIndex !== undefined && generatedEnvironmentImages > 0) {
+        break;
       }
     }
   }
