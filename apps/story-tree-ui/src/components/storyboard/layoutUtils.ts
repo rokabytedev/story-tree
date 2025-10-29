@@ -5,9 +5,9 @@ import type {
   StoryboardScenelet,
 } from "./types";
 
-export const NODE_WIDTH = 320;
-export const HORIZONTAL_GAP = 120;
-export const VERTICAL_GAP = 280;
+export const NODE_WIDTH = 640;
+export const HORIZONTAL_GAP = 60;
+export const VERTICAL_GAP = 660;
 
 export type StoryboardHierarchyNode =
   | {
@@ -77,7 +77,7 @@ export function calculateTreeLayout(
     .nodeSize([NODE_WIDTH + HORIZONTAL_GAP, VERTICAL_GAP])
     .separation((left, right) => {
       const sameParent = left.parent?.data.id === right.parent?.data.id;
-      return sameParent ? 1 : 1.6;
+      return sameParent ? 1.2 : 2;
     })(hierarchy(hierarchyRoot, (node) => node.children));
 }
 
