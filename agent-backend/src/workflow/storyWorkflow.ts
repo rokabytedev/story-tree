@@ -25,6 +25,12 @@ import type {
   VisualReferenceTaskRunner,
   VisualReferenceTaskDependencies,
 } from '../visual-reference/types.js';
+import { runVisualReferenceImageTask as runVisualReferenceImageTaskImpl } from '../visual-reference-image/visualReferenceImageTask.js';
+import type {
+  VisualReferenceImageTaskOptions,
+  VisualReferenceImageTaskRunner,
+  VisualReferenceImageTaskDependencies,
+} from '../visual-reference-image/types.js';
 import { runShotProductionTask } from '../shot-production/shotProductionTask.js';
 import type {
   ShotProductionTaskOptions,
@@ -52,6 +58,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_VISUAL_REFERENCE',
+  'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
 ];
@@ -123,6 +130,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
   private readonly visualReferenceTaskRunner: VisualReferenceTaskRunner;
   private readonly visualReferenceOptions?: VisualReferenceTaskOptions;
+  private readonly visualReferenceImageTaskRunner: VisualReferenceImageTaskRunner;
+  private readonly visualReferenceImageOptions?: VisualReferenceImageTaskOptions;
   private readonly audioDesignTaskRunner: AudioDesignTaskRunner;
   private readonly audioDesignOptions?: AudioDesignTaskOptions;
   private readonly shotProductionTaskRunner: ShotProductionTaskRunner;
@@ -156,6 +165,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.visualReferenceOptions = dependencies.visualReferenceTaskOptions
       ? { ...dependencies.visualReferenceTaskOptions }
       : undefined;
+    this.visualReferenceImageTaskRunner =
+      dependencies.runVisualReferenceImageTask ?? runVisualReferenceImageTaskImpl;
+    this.visualReferenceImageOptions = dependencies.visualReferenceImageTaskOptions
+      ? { ...dependencies.visualReferenceImageTaskOptions }
+      : undefined;
     this.audioDesignTaskRunner =
       dependencies.runAudioDesignTask ?? runAudioDesignTask;
     this.audioDesignOptions = dependencies.audioDesignTaskOptions
@@ -182,6 +196,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_VISUAL_REFERENCE':
         await this.runVisualReferenceTask();
+        return;
+      case 'CREATE_VISUAL_REFERENCE_IMAGES':
+        await this.runVisualReferenceImagesTask();
         return;
       case 'CREATE_AUDIO_DESIGN':
         await this.runAudioDesignTask();
@@ -356,6 +373,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.visualReferenceTaskRunner(this.storyId, dependencies);
   }
 
+  private async runVisualReferenceImagesTask(): Promise<void> {
+    const dependencies = this.buildVisualReferenceImageDependencies();
+    await this.visualReferenceImageTaskRunner(this.storyId, dependencies);
+  }
+
   private async runAudioDesignTask(): Promise<void> {
     const dependencies = this.buildAudioDesignDependencies();
     await this.audioDesignTaskRunner(this.storyId, dependencies);
@@ -418,6 +440,44 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (typeof overrides?.minimumPromptLength === 'number') {
       dependencies.minimumPromptLength = overrides.minimumPromptLength;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildVisualReferenceImageDependencies(): VisualReferenceImageTaskDependencies {
+    const overrides = this.visualReferenceImageOptions;
+    const dependencies: VisualReferenceImageTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.characterAspectRatio) {
+      dependencies.characterAspectRatio = overrides.characterAspectRatio;
+    }
+
+    if (overrides?.environmentAspectRatio) {
+      dependencies.environmentAspectRatio = overrides.environmentAspectRatio;
+    }
+
+    if (overrides?.timeoutMs !== undefined) {
+      dependencies.timeoutMs = overrides.timeoutMs;
+    }
+
+    if (overrides?.retry !== undefined) {
+      dependencies.retry = overrides.retry;
     }
 
     const logger = overrides?.logger ?? this.logger;

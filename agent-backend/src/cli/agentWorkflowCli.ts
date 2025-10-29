@@ -47,6 +47,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_VISUAL_REFERENCE',
+  'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
 ];
@@ -249,6 +250,9 @@ async function buildWorkflowDependencies(
     visualReferenceTaskOptions: {
       logger,
     },
+    visualReferenceImageTaskOptions: {
+      logger,
+    },
     audioDesignTaskOptions: {
       logger,
     },
@@ -292,6 +296,22 @@ async function buildWorkflowDependencies(
       logger,
       promptLoader: async () => 'Stub visual reference system prompt',
       geminiClient: new FixtureGeminiClient([visualReferenceResponse]),
+    };
+    workflowOptions.visualReferenceImageTaskOptions = {
+      logger,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-image-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
     };
     const audioResponse = await loadAudioDesignResponse();
     workflowOptions.audioDesignTaskOptions = {

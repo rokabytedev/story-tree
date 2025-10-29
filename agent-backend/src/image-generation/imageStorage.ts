@@ -23,7 +23,7 @@ export class ImageStorageService {
 
   async saveImage(buffer: Buffer, storyId: string, category: ImageStorageCategory, filename: string): Promise<string> {
     ImageStorageService.assertSafeSegment(storyId, 'Story ID');
-    ImageStorageService.assertSafeSegment(category, 'Category');
+    ImageStorageService.assertSafeCategory(category);
     ImageStorageService.assertSafeFilename(filename);
 
     const directoryPath = path.join(this.publicGeneratedRoot, storyId, category);
@@ -51,6 +51,21 @@ export class ImageStorageService {
     }
     if (path.isAbsolute(value) || value.includes('/') || value.includes('\\') || value.includes('..')) {
       throw new Error(`${label} contains invalid path characters.`);
+    }
+  }
+
+  private static assertSafeCategory(category: string): void {
+    if (!category || category.trim().length === 0) {
+      throw new Error('Category must be provided.');
+    }
+
+    if (path.isAbsolute(category) || category.includes('..') || category.includes('\\')) {
+      throw new Error('Category contains invalid path characters.');
+    }
+
+    const segments = category.split('/');
+    if (segments.some((segment) => !segment || segment.trim().length === 0)) {
+      throw new Error('Category contains invalid segments.');
     }
   }
 

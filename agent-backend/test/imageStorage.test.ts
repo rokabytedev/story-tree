@@ -34,6 +34,24 @@ describe('ImageStorageService', () => {
     expect(stored.equals(buffer)).toBe(true);
   });
 
+  it('supports nested category segments when saving images', async () => {
+    const buffer = Buffer.from('nested-image-data');
+
+    const relativePath = await service.saveImage(
+      buffer,
+      'story-456',
+      'visuals/characters/cosmo-the-coder',
+      'model_sheet_1.png'
+    );
+
+    expect(relativePath).toBe('story-456/visuals/characters/cosmo-the-coder/model_sheet_1.png');
+
+    const stored = await readFile(
+      path.join(tempRoot, 'story-456', 'visuals', 'characters', 'cosmo-the-coder', 'model_sheet_1.png')
+    );
+    expect(stored.equals(buffer)).toBe(true);
+  });
+
   it('rejects filenames with path traversal characters', async () => {
     await expect(
       service.saveImage(Buffer.from('test'), 'story-123', 'shots', '../scenelet.png'),

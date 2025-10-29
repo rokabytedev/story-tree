@@ -11,6 +11,10 @@ import type {
   VisualReferenceTaskRunner,
 } from '../visual-reference/types.js';
 import type {
+  VisualReferenceImageTaskDependencies,
+  VisualReferenceImageTaskRunner,
+} from '../visual-reference-image/types.js';
+import type {
   ShotProductionTaskDependencies,
   ShotProductionTaskRunner,
   ShotProductionShotsRepository,
@@ -77,6 +81,8 @@ export interface AgentWorkflowOptions {
   runVisualDesignTask?: VisualDesignTaskRunner;
   visualReferenceTaskOptions?: VisualReferenceTaskOptions;
   runVisualReferenceTask?: VisualReferenceTaskRunner;
+  visualReferenceImageTaskOptions?: VisualReferenceImageTaskOptions;
+  runVisualReferenceImageTask?: VisualReferenceImageTaskRunner;
   audioDesignTaskOptions?: AudioDesignTaskOptions;
   runAudioDesignTask?: AudioDesignTaskRunner;
   shotProductionTaskOptions?: ShotProductionTaskOptions;
@@ -94,6 +100,7 @@ export type StoryWorkflowTask =
   | 'CREATE_INTERACTIVE_SCRIPT'
   | 'CREATE_VISUAL_DESIGN'
   | 'CREATE_VISUAL_REFERENCE'
+  | 'CREATE_VISUAL_REFERENCE_IMAGES'
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION';
 
@@ -109,6 +116,10 @@ export type VisualDesignTaskOptions = Partial<
 
 export type VisualReferenceTaskOptions = Partial<
   Omit<VisualReferenceTaskDependencies, 'storiesRepository' | 'storyTreeLoader'>
+>;
+
+export type VisualReferenceImageTaskOptions = Partial<
+  Omit<VisualReferenceImageTaskDependencies, 'storiesRepository'>
 >;
 
 export type AudioDesignTaskOptions = Partial<
