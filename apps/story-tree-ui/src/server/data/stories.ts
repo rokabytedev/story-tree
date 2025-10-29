@@ -1,12 +1,22 @@
 import "server-only";
 
 import { assembleStoryTreeSnapshot } from "../../../../../agent-backend/src/story-storage/storyTreeAssembler";
+import type {
+  BranchingPointDigest,
+  SceneletDigest,
+  StoryTreeEntry,
+} from "../../../../../agent-backend/src/story-storage/types";
 import { createSceneletsRepository } from "../../../../../supabase/src/sceneletsRepository";
 import {
   createStoriesRepository,
   type StoryRecord,
 } from "../../../../../supabase/src/storiesRepository";
 import { getSupabaseClient } from "../supabase";
+import type {
+  StoryTreeData,
+  StoryboardBranchingPoint,
+  StoryboardScenelet,
+} from "@/components/storyboard/types";
 
 export interface StorySummaryViewModel {
   id: string;
@@ -74,6 +84,29 @@ export async function getStoryTreeScript(storyId: string): Promise<string | null
   }
 }
 
+export async function getStoryTreeData(storyId: string): Promise<StoryTreeData | null> {
+  const trimmed = storyId.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const client = getSupabaseClient();
+  const sceneletsRepository = createSceneletsRepository(client);
+  const scenelets = await sceneletsRepository.listSceneletsByStory(trimmed);
+
+  if (scenelets.length === 0) {
+    return null;
+  }
+
+  try {
+    const snapshot = assembleStoryTreeSnapshot(scenelets);
+    return mapStoryTreeEntriesToStoryboardData(snapshot.entries);
+  } catch (error) {
+    console.error("Failed to assemble story tree snapshot", error);
+    return null;
+  }
+}
+
 const DEFAULT_AUTHOR = "Story Tree Agent";
 const ACCENT_COLORS = ["#6366f1", "#0ea5e9", "#f97316", "#f43f5e", "#22c55e", "#a855f7"] as const;
 
@@ -117,4 +150,46 @@ function extractConstitutionMarkdown(value: unknown): string | null {
   }
 
   return null;
+}
+
+export function mapStoryTreeEntriesToStoryboardData(entries: StoryTreeEntry[]): StoryTreeData {
+  const scenelets: StoryboardScenelet[] = [];
+  const branchingPoints: StoryboardBranchingPoint[] = [];
+
+  for (const entry of entries) {
+    if (entry.kind === "scenelet") {
+      scenelets.push(transformSceneletDigest(entry.data));
+      continue;
+    }
+
+    if (entry.kind === "branching-point") {
+      branchingPoints.push(transformBranchingPointDigest(entry.data));
+    }
+  }
+
+  return { scenelets, branchingPoints };
+}
+
+function transformSceneletDigest(digest: SceneletDigest): StoryboardScenelet {
+  return {
+    id: digest.id,
+    parentId: digest.parentId,
+    role: digest.role,
+    description: digest.description,
+    dialogue: digest.dialogue.map((line) => ({ character: line.character, line: line.line })),
+    shotSuggestions: [...digest.shotSuggestions],
+    choiceLabel: digest.choiceLabel ?? null,
+  };
+}
+
+function transformBranchingPointDigest(digest: BranchingPointDigest): StoryboardBranchingPoint {
+  return {
+    id: digest.id,
+    sourceSceneletId: digest.sourceSceneletId,
+    choicePrompt: digest.choicePrompt,
+    choices: digest.choices.map((choice) => ({
+      label: choice.label,
+      leadsTo: choice.leadsTo,
+    })),
+  };
 }

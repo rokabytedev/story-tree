@@ -5,6 +5,39 @@ This document outlines the ordered implementation tasks for building the interac
 
 ---
 
+## Checklist
+
+- [x] Task 1.1: Install ReactFlow and d3-hierarchy dependencies
+- [x] Task 1.2: Create TypeScript types for storyboard data
+- [x] Task 1.3: Implement getStoryTreeData server function
+- [x] Task 1.4: Write unit tests for data transformation
+- [x] Task 2.1: Create StoryboardCanvas skeleton component
+- [x] Task 2.2: Update storyboard page to use canvas
+- [x] Task 2.3: Implement tree layout calculation utility
+- [x] Task 2.4: Write unit tests for layout utilities
+- [x] Task 2.5: Implement data-to-ReactFlow transformation
+- [x] Task 2.6: Integrate layout into canvas component
+- [x] Task 3.1: Create SceneletNode component
+- [x] Task 3.2: Create BranchingPointNode component
+- [x] Task 3.3: Register custom node types in canvas
+- [x] Task 3.4: Style nodes to match theme
+- [x] Task 4.1: Configure zoom and pan controls
+- [x] Task 4.2: Add edge styling
+- [x] Task 4.3: Improve canvas height and layout
+
+Optionals:
+- [ ] Task 4.4: Add loading state for data fetching
+- [ ] Task 4.5: Handle error states gracefully
+- [ ] Task 5.1: Write integration tests for canvas rendering
+- [ ] Task 5.2: Performance test with large trees
+- [ ] Task 5.3: Optimize bundle size with code splitting
+- [ ] Task 5.4: Manual QA testing across scenarios
+- [ ] Task 5.5: Accessibility audit
+- [ ] Task 6.1: Update component documentation
+- [ ] Task 6.2: Create visual regression tests
+
+---
+
 ## Batch 1: Dependencies and Data Layer (Foundation)
 
 ### Task 1.1: Install ReactFlow and d3-hierarchy dependencies
