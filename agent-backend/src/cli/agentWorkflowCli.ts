@@ -322,7 +322,7 @@ async function buildWorkflowDependencies(
       geminiClient: new FixtureGeminiClient([visualReferenceResponse]),
     };
     workflowOptions.visualReferenceImageTaskOptions = {
-      logger,
+      ...workflowOptions.visualReferenceImageTaskOptions,
       geminiImageClient: {
         async generateImage() {
           return {
@@ -357,7 +357,7 @@ async function buildWorkflowDependencies(
       geminiClient: shotProductionGeminiClient,
     };
     workflowOptions.shotImageTaskOptions = {
-      logger,
+      ...workflowOptions.shotImageTaskOptions,
       geminiImageClient: {
         async generateImage() {
           return {

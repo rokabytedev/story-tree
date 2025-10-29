@@ -505,6 +505,18 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.retry = overrides.retry;
     }
 
+    if (overrides?.targetCharacterName) {
+      dependencies.targetCharacterName = overrides.targetCharacterName;
+    }
+
+    if (overrides?.targetEnvironmentName) {
+      dependencies.targetEnvironmentName = overrides.targetEnvironmentName;
+    }
+
+    if (overrides?.targetIndex !== undefined) {
+      dependencies.targetIndex = overrides.targetIndex;
+    }
+
     const logger = overrides?.logger ?? this.logger;
     if (logger) {
       dependencies.logger = logger;
@@ -586,6 +598,14 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.referenceImageLoader) {
       dependencies.referenceImageLoader = overrides.referenceImageLoader;
+    }
+
+    if (overrides?.targetSceneletId) {
+      dependencies.targetSceneletId = overrides.targetSceneletId;
+    }
+
+    if (overrides?.targetShotIndex !== undefined) {
+      dependencies.targetShotIndex = overrides.targetShotIndex;
     }
 
     const logger = overrides?.logger ?? this.logger;
