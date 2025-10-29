@@ -8,6 +8,8 @@ import { ShotImageTaskError, CharacterReferenceMissingError } from './errors.js'
 import { createReferenceImageLoader } from './referenceImageLoader.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
 
+const DEFAULT_ASPECT_RATIO = '16:9';
+
 interface StoryboardPayload {
   characters?: Array<{ name: string }> | string[];
   character_names?: string[];
@@ -25,6 +27,7 @@ export async function runShotImageTask(
     imageStorage,
     referenceImageLoader = createReferenceImageLoader(),
     logger,
+    aspectRatio = DEFAULT_ASPECT_RATIO,
   } = dependencies;
 
   if (!geminiImageClient) {
@@ -157,6 +160,7 @@ export async function runShotImageTask(
       const firstFrameResult = await geminiImageClient.generateImage({
         userPrompt: shot.firstFramePrompt,
         referenceImages: referenceImageBuffers.slice(0, 3),
+        aspectRatio,
       });
 
       const normalizedSceneletId = normalizeNameForPath(sceneletId);
@@ -182,6 +186,7 @@ export async function runShotImageTask(
       const keyFrameResult = await geminiImageClient.generateImage({
         userPrompt: shot.keyFramePrompt,
         referenceImages: referenceImageBuffers.slice(0, 3),
+        aspectRatio,
       });
 
       const normalizedSceneletId = normalizeNameForPath(sceneletId);

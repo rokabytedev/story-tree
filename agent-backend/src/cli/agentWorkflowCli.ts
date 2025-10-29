@@ -24,6 +24,7 @@ import { createWorkflowFromPrompt, resumeWorkflowFromStoryId } from '../workflow
 import type { SceneletPersistence } from '../interactive-story/types.js';
 import type { InteractiveStoryLogger } from '../interactive-story/types.js';
 import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
+import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
@@ -238,6 +239,11 @@ async function buildWorkflowDependencies(
   const storyTreeLoader = (storyId: string) =>
     loadStoryTreeSnapshot(storyId, { sceneletsRepository });
 
+  // Create gemini image client for real mode with verbose support
+  const geminiImageClient = mode === 'real'
+    ? createGeminiImageClient({ verbose })
+    : undefined;
+
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
     shotsRepository,
@@ -258,6 +264,7 @@ async function buildWorkflowDependencies(
     },
     visualReferenceImageTaskOptions: {
       logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
       ...(options.command === 'run-task' && options.characterName
         ? { targetCharacterName: options.characterName }
         : {}),
@@ -276,6 +283,7 @@ async function buildWorkflowDependencies(
     },
     shotImageTaskOptions: {
       logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
       ...(options.command === 'run-task' && options.sceneletId
         ? { targetSceneletId: options.sceneletId }
         : {}),

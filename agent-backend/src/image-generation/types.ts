@@ -43,6 +43,7 @@ export interface GeminiImageClientOptions {
   defaultTimeoutMs?: number;
   defaultAspectRatio?: ImageAspectRatio;
   transport?: GeminiImageModelTransport;
+  verbose?: boolean;
 }
 
 export interface GeminiImageModelTransport {

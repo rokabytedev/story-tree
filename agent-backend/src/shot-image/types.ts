@@ -2,7 +2,11 @@ import type { ShotProductionShotsRepository } from '../shot-production/types.js'
 import type { AgentWorkflowStoriesRepository } from '../workflow/types.js';
 
 export interface GeminiImageClient {
-  generateImage(request: { userPrompt: string; referenceImages?: ReferenceImage[] }): Promise<{
+  generateImage(request: {
+    userPrompt: string;
+    referenceImages?: ReferenceImage[];
+    aspectRatio?: string;
+  }): Promise<{
     imageData: Buffer;
     mimeType: string;
   }>;
@@ -31,6 +35,7 @@ export interface ShotImageTaskDependencies {
   logger?: ShotImageTaskLogger;
   targetSceneletId?: string;
   targetShotIndex?: number;
+  aspectRatio?: string;
 }
 
 export interface ShotImageTaskLogger {

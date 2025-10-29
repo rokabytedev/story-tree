@@ -31,6 +31,7 @@ export function createGeminiImageClient(options: GeminiImageClientOptions = {}):
   const model = options.model?.trim() || DEFAULT_IMAGE_MODEL;
   const defaultTimeoutMs = options.defaultTimeoutMs ?? ensurePositive(DEFAULT_TIMEOUT_MS, 'GEMINI_IMAGE_TIMEOUT_MS');
   const defaultAspectRatio = options.defaultAspectRatio ?? DEFAULT_ASPECT_RATIO;
+  const verbose = options.verbose ?? false;
 
   return {
     async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
@@ -51,6 +52,9 @@ export function createGeminiImageClient(options: GeminiImageClientOptions = {}):
           timeout: timeoutMs,
         },
         responseModalities: ['IMAGE'],
+        imageConfig: {
+          aspectRatio,
+        },
       };
 
       if (request.systemInstruction?.trim()) {
@@ -64,10 +68,11 @@ export function createGeminiImageClient(options: GeminiImageClientOptions = {}):
         model,
         contents,
         config,
-        imageConfig: {
-          aspectRatio,
-        },
       };
+
+      if (verbose) {
+        console.log('[gemini-image-client] GenerateContentParameters:', JSON.stringify(parameters, null, 2));
+      }
 
       return executeGeminiWithRetry(
         async () => {
