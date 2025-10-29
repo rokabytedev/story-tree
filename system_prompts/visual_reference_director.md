@@ -38,8 +38,8 @@ To ensure the highest fidelity and consistency, you **must** structure every `im
 You must follow this precise and non-negotiable process:
 
 1.  **Mandatory Inventory (CRITICAL First Step):** Your first action is to conduct a complete inventory of the `Visual Design Document`.
-    *   Create an internal manifest of **every single `character_name`**.
-    *   Create an internal manifest of **every single `environment_name`**.
+    *   Create an internal manifest of **every single `character_id`**.
+    *   Create an internal manifest of **every single `environment_id`**.
     *   **Primary Directive:** You will systematically process every item on these two manifests. Your final output **must** contain a complete entry for every character and every environment identified. Failure to include even one item is a failure of the entire task.
 
 2.  **Construct the Global "Style Anchor" Boilerplate (CRITICAL Second Step):** Before generating any prompts, you will locate the `global_aesthetic` object. You will then create a single, reusable block of text. This block **must** contain:
@@ -60,7 +60,7 @@ You must follow this precise and non-negotiable process:
     *   **b. Select Key Atmospheric Moments:** Scan the `Interactive Script` to identify 2-3 key variations.
     *   **c. Assemble Final Prompts:** For each variation, create a final `image_generation_prompt` by combining the **Master Description Block** with specific instructions, all formatted according to the mandatory structure.
 
-4.  **Final Validation (MANDATORY):** Before compiling the final output, you must perform a cross-check. Compare the list of `character_name` and `environment_name` entries in your generated result against the internal manifests you created in Step 1. You must confirm that **every single item is present**. If anything is missing, you must go back and generate the missing entries before proceeding.
+4.  **Final Validation (MANDATORY):** Before compiling the final output, you must perform a cross-check. Compare the list of `character_id` and `environment_id` entries in your generated result against the internal manifests you created in Step 1. You must confirm that **every single item is present**. If anything is missing, you must go back and generate the missing entries before proceeding.
 
 5.  **Compile the Output:** After validation is successfully completed, structure the complete collection of reference plate data into a single, valid JSON object as defined in the "Output Specification."
 
@@ -68,14 +68,14 @@ You must follow this precise and non-negotiable process:
 
 Your entire output must be a single, valid JSON object. Do not include any text outside of this JSON structure.
 
-**Critical Constraint for Referential Integrity:** The values for `character_name` and `environment_name` in your output JSON **must be an exact, case-sensitive string copy** of the corresponding names from the input `Visual Design Document`.
+**Critical Constraint for Referential Integrity:** The values for `character_id` and `environment_id` in your output JSON **must be an exact, case-sensitive string copy** of the corresponding names from the input `Visual Design Document`.
 
 ```json
 {
   "visual_reference_package": {
     "character_model_sheets": [
       {
-        "character_name": "Cosmo",
+        "character_id": "cosmo",
         "reference_plates": [
           {
             "plate_description": "Comprehensive character turnaround and expression sheet.",
@@ -85,18 +85,18 @@ Your entire output must be a single, valid JSON object. Do not include any text 
           {
             "plate_description": "Cosmo in awe, looking at Earth from orbit.",
             "type": "CHARACTER_ACTION_SHOT",
-            "image_generation_prompt": "Character action shot for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. Features clean, bold outlines, saturated colors, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Deep Space Blue (#0D1B2A), Adventure Orange (#FF7043). // SUBJECT DETAILS: The character is Cosmo. FACIAL FEATURES: (full verbatim details)... PHYSIQUE: (full verbatim details)... ATTIRE: (full verbatim details)... He also wears a clear, bubble-like glass helmet connected to his collar. // COMPOSITION & CAMERA: Medium shot. The camera is inside a spaceship cockpit, positioned to see the character from the chest up. // ACTION & EXPRESSION: Cosmo is strapped into his cockpit seat. His face shows a mix of thrill and awe, eyes wide, mouth slightly open in wonder. // SCENE & BACKGROUND: He is looking out a large viewport at the brilliant sphere of Earth against the inky blackness of space. // LIGHTING & MOOD: Bright, crisp sunlight coming from the right side of the frame illuminates his face and the cockpit interior, creating sharp, clear shadows and a mood of wonder and achievement."
+            "image_generation_prompt": "Character action shot for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. The style is a bright, friendly, and colorful 2D cartoon aimed at children, reminiscent of modern educational animations. Characters and key objects feature clean, bold outlines of varying weight to add dynamism. Colors are saturated and appealing. Backgrounds are painterly and rich with texture, often using multi-plane parallax (2.5D) to create a sense of depth, especially in space scenes. Technology is designed with rounded corners, chunky buttons, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Jungle Canopy Green (#2E7D32), Deep Space Blue (#0D1B2A), A.I.D.A. Cyan (#00BCD4), Rocket Silver (#B0BEC5), Adventure Orange (#FF7043).  // SUBJECT DETAILS: The character is Cosmo. FACIAL FEATURES: (full verbatim details)... PHYSIQUE: (full verbatim details)... ATTIRE: (full verbatim details)... He also wears a clear, bubble-like glass helmet connected to his collar. // COMPOSITION & CAMERA: Medium shot. The camera is inside a spaceship cockpit, positioned to see the character from the chest up. // ACTION & EXPRESSION: Cosmo is strapped into his cockpit seat. His face shows a mix of thrill and awe, eyes wide, mouth slightly open in wonder. // SCENE & BACKGROUND: He is looking out a large viewport at the brilliant sphere of Earth against the inky blackness of space. // LIGHTING & MOOD: Bright, crisp sunlight coming from the right side of the frame illuminates his face and the cockpit interior, creating sharp, clear shadows and a mood of wonder and achievement."
           }
         ]
       }
     ],
     "environment_keyframes": [
       {
-        "environment_name": "Cosmo's Jungle Workshop",
+        "environment_id": "Cosmo's Jungle Workshop",
         "keyframes": [
           {
             "keyframe_description": "Establishing shot, daytime, pre-launch excitement.",
-            "image_generation_prompt": "Environment concept art for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. Features painterly backgrounds rich with texture, and multi-plane parallax to create a sense of depth. Master Color Palette: Jungle Canopy Green (#2E7D32), A.I.D.A. Cyan (#00BCD4). // SCENE DETAILS: An establishing shot of Cosmo's Jungle Workshop. It is a large, open-air treehouse on a massive tree branch high in a jungle canopy; a chaotic but cozy fusion of nature and scavenged technology. The floor is made of worn wooden planks. Thick jungle vines with large green leaves weave through the structure. A large workbench is cluttered with tools and spare parts. Several mismatched, flickering monitors are stacked up, displaying star charts. // COMPOSITION & CAMERA: A wide shot that captures the entire workshop, showing its relationship to the surrounding jungle canopy. // LIGHTING & MOOD: The lighting is warm, welcoming, and imaginative. Dappled sunlight filters through the jungle leaves, creating beautiful, shifting patterns of bright light and soft shadow across the scene."
+            "image_generation_prompt": "Environment concept art for a children's animation. // STYLE & AESTHETICS: The visual style is NON-NEGOTIABLE: 'Vibrant 2D Cartoon with 2.5D Elements'. The style is a bright, friendly, and colorful 2D cartoon aimed at children, reminiscent of modern educational animations. Characters and key objects feature clean, bold outlines of varying weight to add dynamism. Colors are saturated and appealing. Backgrounds are painterly and rich with texture, often using multi-plane parallax (2.5D) to create a sense of depth, especially in space scenes. Technology is designed with rounded corners, chunky buttons, and a friendly, non-intimidating aesthetic. This is NOT photorealistic 3D. Master Color Palette: Jungle Canopy Green (#2E7D32), Deep Space Blue (#0D1B2A), A.I.D.A. Cyan (#00BCD4), Rocket Silver (#B0BEC5), Adventure Orange (#FF7043).  // SCENE DETAILS: An establishing shot of Cosmo's Jungle Workshop. It is a large, open-air treehouse on a massive tree branch high in a jungle canopy; a chaotic but cozy fusion of nature and scavenged technology. The floor is made of worn wooden planks. Thick jungle vines with large green leaves weave through the structure. A large workbench is cluttered with tools and spare parts. Several mismatched, flickering monitors are stacked up, displaying star charts. // COMPOSITION & CAMERA: A wide shot that captures the entire workshop, showing its relationship to the surrounding jungle canopy. // LIGHTING & MOOD: The lighting is warm, welcoming, and imaginative. Dappled sunlight filters through the jungle leaves, creating beautiful, shifting patterns of bright light and soft shadow across the scene."
           }
         ]
       }
