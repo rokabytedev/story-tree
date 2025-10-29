@@ -113,6 +113,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly constitutionGenerator: AgentWorkflowConstitutionGenerator;
   private readonly interactiveGenerator: AgentWorkflowInteractiveGenerator;
   private readonly resumeInteractiveScript: boolean;
+  private readonly resumeShotProduction: boolean;
   private readonly constitutionOptions?: StoryConstitutionOptions;
   private readonly interactiveOptions?: Omit<InteractiveStoryGeneratorOptions, 'sceneletPersistence'>;
   private readonly logger?: AgentWorkflowLogger;
@@ -136,6 +137,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.interactiveGenerator =
       dependencies.generateInteractiveStoryTree ?? generateInteractiveStoryTree;
     this.resumeInteractiveScript = Boolean(dependencies.resumeInteractiveScript);
+    this.resumeShotProduction = Boolean(dependencies.resumeShotProduction);
     this.constitutionOptions = dependencies.constitutionOptions
       ? { ...dependencies.constitutionOptions }
       : undefined;
@@ -383,6 +385,10 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.geminiOptions = overrides.geminiOptions;
     }
 
+    if (overrides?.resumeExisting !== undefined) {
+      dependencies.resumeExisting = overrides.resumeExisting;
+    }
+
     const logger = overrides?.logger ?? this.logger;
     if (logger) {
       dependencies.logger = logger;
@@ -455,6 +461,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
       storiesRepository: this.storiesRepository,
       shotsRepository: this.shotsRepository,
       storyTreeLoader: this.storyTreeLoader,
+      resumeExisting: this.resumeShotProduction,
     };
 
     if (overrides?.promptLoader) {

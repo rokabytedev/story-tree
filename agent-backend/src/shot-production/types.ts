@@ -83,6 +83,7 @@ export interface ShotProductionTaskDependencies {
   geminiClient?: GeminiJsonClient;
   geminiOptions?: GeminiGenerateJsonOptions;
   logger?: ShotProductionTaskLogger;
+  resumeExisting?: boolean;
 }
 
 export interface ShotProductionTaskResult {

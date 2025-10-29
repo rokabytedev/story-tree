@@ -15,6 +15,7 @@ import type {
 } from './types.js';
 
 const DEFAULT_TARGET_SCENELETS_PER_PATH = 12;
+const DEFAULT_VALIDATION_ATTEMPTS = 3;
 
 interface StoryConstitutionPayload {
   proposedStoryTitle: string;
@@ -91,13 +92,26 @@ export async function runShotProductionTask(
   const missingSceneletIds = await shotsRepository.findSceneletIdsMissingShots(trimmedStoryId, sceneletIds);
   const missingSet = new Set(missingSceneletIds);
 
+  const resumeExisting = Boolean(dependencies.resumeExisting);
+
   if (missingSceneletIds.length === 0) {
+    if (resumeExisting) {
+      logger?.debug?.('Shot production resume detected no pending scenelets; skipping generation.', {
+        storyId: trimmedStoryId,
+      });
+      return {
+        storyId: trimmedStoryId,
+        scenelets: [],
+        totalShots: 0,
+      };
+    }
+
     throw new ShotProductionTaskError(
       `Story ${trimmedStoryId} already has stored shots for every scenelet. Delete them before rerunning shot production.`
     );
   }
 
-  if (missingSceneletIds.length !== sceneletIds.length) {
+  if (!resumeExisting && missingSceneletIds.length !== sceneletIds.length) {
     const covered = sceneletIds.filter((id) => !missingSet.has(id));
     throw new ShotProductionTaskError(
       `Shot production currently requires regenerating the full story. Remove existing shots for scenelets: ${covered.join(', ')}.`
@@ -114,10 +128,21 @@ export async function runShotProductionTask(
 
   const results: ShotProductionSceneletResult[] = [];
   let totalShots = 0;
+  const validationAttempts = DEFAULT_VALIDATION_ATTEMPTS;
 
   for (const [index, sceneletEntry] of sceneletsInOrder.entries()) {
     const scenelet = sceneletEntry.data;
     const sceneletSequence = index + 1;
+
+    if (!missingSet.has(scenelet.id)) {
+      if (resumeExisting) {
+        logger?.debug?.('Skipping scenelet with existing shots during resume.', {
+          storyId: trimmedStoryId,
+          sceneletId: scenelet.id,
+        });
+      }
+      continue;
+    }
 
     const userPrompt = buildShotProductionUserPrompt({
       constitutionMarkdown: constitution.storyConstitutionMarkdown,
@@ -127,35 +152,74 @@ export async function runShotProductionTask(
       scenelet,
     });
 
-    logger?.debug?.('Invoking Gemini for shot production', {
-      storyId: trimmedStoryId,
-      sceneletId: scenelet.id,
-      geminiRequest: {
-        systemInstruction,
-        userContent: userPrompt,
-      },
-    });
+    let attempt = 1;
+    let parsed: ReturnType<typeof parseShotProductionResponse> | null = null;
+    let lastValidationError: ShotProductionTaskError | undefined;
 
-    const startedAt = Date.now();
-    const rawResponse = await geminiClient.generateJson(
-      {
-        systemInstruction,
-        userContent: userPrompt,
-      },
-      dependencies.geminiOptions
-    );
-    const elapsedMs = Date.now() - startedAt;
+    while (attempt <= validationAttempts) {
+      logger?.debug?.('Invoking Gemini for shot production', {
+        storyId: trimmedStoryId,
+        sceneletId: scenelet.id,
+        attempt,
+        maxAttempts: validationAttempts,
+        geminiRequest: {
+          systemInstruction,
+          userContent: userPrompt,
+        },
+      });
 
-    logger?.debug?.('Received Gemini shot production response', {
-      storyId: trimmedStoryId,
-      sceneletId: scenelet.id,
-      elapsedMs,
-    });
+      try {
+        const startedAt = Date.now();
+        const rawResponse = await geminiClient.generateJson(
+          {
+            systemInstruction,
+            userContent: userPrompt,
+          },
+          dependencies.geminiOptions
+        );
+        const elapsedMs = Date.now() - startedAt;
 
-    const parsed = parseShotProductionResponse(rawResponse, {
-      scenelet,
-      visualDesignDocument: story.visualDesignDocument,
-    });
+        logger?.debug?.('Received Gemini shot production response', {
+          storyId: trimmedStoryId,
+          sceneletId: scenelet.id,
+          attempt,
+          elapsedMs,
+        });
+
+        parsed = parseShotProductionResponse(rawResponse, {
+          scenelet,
+          visualDesignDocument: story.visualDesignDocument,
+        });
+        break;
+      } catch (error) {
+        if (error instanceof ShotProductionTaskError) {
+          lastValidationError = error;
+          const willRetry = attempt < validationAttempts;
+
+          logger?.debug?.('Gemini shot production response failed validation', {
+            storyId: trimmedStoryId,
+            sceneletId: scenelet.id,
+            attempt,
+            maxAttempts: validationAttempts,
+            willRetry,
+            errorMessage: error.message,
+          });
+
+          if (willRetry) {
+            attempt += 1;
+            continue;
+          }
+
+          break;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!parsed) {
+      throw lastValidationError ?? new ShotProductionTaskError('Gemini shot production response failed validation for all retry attempts.');
+    }
 
     const shotInputs = parsed.shots.map<ShotCreationInput>((shot) => ({
       shotIndex: shot.shotIndex,
