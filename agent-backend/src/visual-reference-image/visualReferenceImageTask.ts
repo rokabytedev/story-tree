@@ -103,8 +103,17 @@ export async function runVisualReferenceImageTask(
         continue;
       }
 
+      // Track sequence numbers per plate type for this character
+      const typeSequences = new Map<string, number>();
+
       for (let plateIndex = 0; plateIndex < sheet.reference_plates.length; plateIndex += 1) {
         const plate = sheet.reference_plates[plateIndex]!;
+        const plateType = plate.type;
+
+        // Get or initialize sequence number for this plate type
+        const currentSequence = typeSequences.get(plateType) ?? 0;
+        const sequenceNumber = currentSequence + 1;
+        typeSequences.set(plateType, sequenceNumber);
 
         // Skip if targeting a specific index
         if (targetCharacterId && targetIndex !== undefined && plateIndex + 1 !== targetIndex) {
@@ -116,7 +125,13 @@ export async function runVisualReferenceImageTask(
         }
 
         const userPrompt = plate.image_generation_prompt;
-        const targetPath = buildVisualReferencePath(trimmedStoryId, 'characters', sheet.character_id, plateIndex + 1);
+        const targetPath = buildVisualReferencePath(
+          trimmedStoryId,
+          'characters',
+          sheet.character_id,
+          sequenceNumber,
+          plateType
+        );
         const { category, filename } = splitRelativePath(trimmedStoryId, targetPath);
 
         logger?.debug?.('Generating character visual reference image', {
@@ -124,6 +139,8 @@ export async function runVisualReferenceImageTask(
           characterId: sheet.character_id,
           sheetIndex: sheetIndex + 1,
           plateIndex: plateIndex + 1,
+          plateType,
+          sequenceNumber,
           filename,
         });
 
@@ -138,7 +155,7 @@ export async function runVisualReferenceImageTask(
           imageData = result.imageData;
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to generate image for character "${sheet.character_id}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to generate image for character "${sheet.character_id}" plate #${plateIndex + 1} (${plateType}). ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }
@@ -148,7 +165,7 @@ export async function runVisualReferenceImageTask(
           savedPath = await imageStorage.saveImage(imageData, trimmedStoryId, category, filename);
         } catch (error) {
           throw new VisualReferenceImageTaskError(
-            `Failed to persist image for character "${sheet.character_id}" plate #${plateIndex + 1}. ${extractErrorMessage(error)}`,
+            `Failed to persist image for character "${sheet.character_id}" plate #${plateIndex + 1} (${plateType}). ${extractErrorMessage(error)}`,
             { cause: error }
           );
         }

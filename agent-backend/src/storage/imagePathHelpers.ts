@@ -11,15 +11,29 @@ export function buildVisualReferencePath(
   storyId: string,
   category: VisualCategory,
   name: string,
-  index: number
+  index: number,
+  plateType?: string
 ): string {
   assertSafeSegment(storyId, 'Story ID');
   assertVisualCategory(category);
   const normalizedIndex = ensurePositiveIndex(index);
   const normalizedName = normalizeNameForPath(name);
-  const fileName = category === 'characters' ? `model_sheet_${normalizedIndex}.png` : `keyframe_${normalizedIndex}.png`;
+
+  let fileName: string;
+  if (category === 'characters' && plateType) {
+    const normalizedType = convertToKebabCase(plateType);
+    fileName = `${normalizedType}-${normalizedIndex}.png`;
+  } else if (category === 'characters') {
+    fileName = `model_sheet_${normalizedIndex}.png`;
+  } else {
+    fileName = `keyframe_${normalizedIndex}.png`;
+  }
 
   return path.posix.join(storyId, 'visuals', category, normalizedName, fileName);
+}
+
+function convertToKebabCase(value: string): string {
+  return value.toLowerCase().replace(/_/g, '-');
 }
 
 export function buildShotImagePath(
