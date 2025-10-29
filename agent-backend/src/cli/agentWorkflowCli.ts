@@ -71,12 +71,15 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   storyId: string;
   task: StoryWorkflowTask;
   resumeInteractiveScript?: boolean;
+  resumeShotProduction?: boolean;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
   command: 'run-all';
   prompt?: string;
   storyId?: string;
+  resumeInteractiveScript?: boolean;
+  resumeShotProduction?: boolean;
 }
 
 type ParsedCliCommand = CreateCommandOptions | RunTaskCommandOptions | RunAllCommandOptions;
@@ -254,8 +257,18 @@ async function buildWorkflowDependencies(
     },
   };
 
-  if (options.command === 'run-task' && options.resumeInteractiveScript) {
+  if (
+    (options.command === 'run-task' || options.command === 'run-all') &&
+    options.resumeInteractiveScript
+  ) {
     workflowOptions.resumeInteractiveScript = true;
+  }
+
+  if (
+    (options.command === 'run-task' || options.command === 'run-all') &&
+    options.resumeShotProduction
+  ) {
+    workflowOptions.resumeShotProduction = true;
   }
 
   if (mode === 'stub') {
@@ -320,7 +333,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let prompt: string | undefined;
   let storyId: string | undefined;
   let taskName: string | undefined;
-  let resumeInteractiveScript = false;
+  let resumeFlag = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -370,8 +383,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '-v':
         modeOptions.verbose = true;
         break;
-      case '--resume-interactive-script':
-        resumeInteractiveScript = true;
+      case '--resume':
+        resumeFlag = true;
         break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
@@ -396,14 +409,18 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         throw new CliParseError('Provide --story-id when running a task.');
       }
       const task = normalizeTask(taskName);
-      if (resumeInteractiveScript && task !== 'CREATE_INTERACTIVE_SCRIPT') {
-        throw new CliParseError('--resume-interactive-script can only be used with CREATE_INTERACTIVE_SCRIPT.');
+      const resumeInteractiveScript = resumeFlag && task === 'CREATE_INTERACTIVE_SCRIPT';
+      const resumeShotProduction = resumeFlag && task === 'CREATE_SHOT_PRODUCTION';
+
+      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction) {
+        throw new CliParseError('--resume can only be used with CREATE_INTERACTIVE_SCRIPT or CREATE_SHOT_PRODUCTION.');
       }
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
         task,
         resumeInteractiveScript,
+        resumeShotProduction,
         ...modeOptions,
       };
     }
@@ -417,6 +434,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         command: 'run-all',
         prompt: trimmedPrompt || undefined,
         storyId: trimmedStoryId || undefined,
+        resumeInteractiveScript: resumeFlag || undefined,
+        resumeShotProduction: resumeFlag || undefined,
         ...modeOptions,
       };
     }
@@ -630,6 +649,7 @@ function printHelp(): void {
   console.log('  --supabase-key <key>    Supabase service role key override (falls back to env).');
   console.log('  --remote                Use remote Supabase credentials (default is local).');
   console.log('  --verbose (-v)          Print debug logs.');
+  console.log('  --resume                Resume pending interactive script or shot production tasks.');
   console.log('  --help (-h)             Show this help message.');
 }
 

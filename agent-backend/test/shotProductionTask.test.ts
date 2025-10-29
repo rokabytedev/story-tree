@@ -122,7 +122,7 @@ function createDependencies(overrides: Partial<ShotProductionTaskDependencies> =
     throw new Error('shotsRepository must be provided.');
   }
 
-  return {
+  const dependencies: ShotProductionTaskDependencies = {
     shotsRepository: overrides.shotsRepository,
     storiesRepository: overrides.storiesRepository,
     storyTreeLoader: overrides.storyTreeLoader ?? (async () => STORY_TREE),
@@ -158,6 +158,48 @@ function createDependencies(overrides: Partial<ShotProductionTaskDependencies> =
     geminiOptions: overrides.geminiOptions,
     logger: overrides.logger,
   } satisfies ShotProductionTaskDependencies;
+
+  if (overrides.resumeExisting !== undefined) {
+    dependencies.resumeExisting = overrides.resumeExisting;
+  }
+
+  return dependencies;
+}
+
+function buildValidShotResponse(sceneletId: string, dialogueLine: string): string {
+  return JSON.stringify({
+    scenelet_id: sceneletId,
+    shots: [
+      {
+        shot_index: 1,
+        storyboard_entry: {
+          framing_and_angle:
+            'Detailed framing description over eighty characters to satisfy validation steps successfully.',
+          composition_and_content:
+            'Richly described composition for the shot meeting length checks for validation path requirements.',
+          character_action_and_emotion:
+            'Character expression and action articulated in lengthy prose to clear validations consistently throughout.',
+          dialogue: [
+            { character: 'Narrator', line: dialogueLine },
+          ],
+          camera_dynamics:
+            'Camera motion discussed in depth including motivation, start and end beats, and timing nuance beyond minimums.',
+          lighting_and_atmosphere:
+            'Lighting description elaborating on mood, highlights, and shadows beyond the constraints set by validators.',
+          continuity_notes:
+            'Continuity notes cover props and staging ensuring textual length requirements are met alongside blocking.',
+        },
+        generation_prompts: {
+          first_frame_prompt:
+            'First frame prompt elaborating on composition, materials, and color theory over eighty characters for compliance.',
+          key_frame_storyboard_prompt:
+            'Storyboard prompt covering blocking, lens, and mise-en-scene across detailed prose beyond the validation limit.',
+          video_clip_prompt:
+            'Video prompt establishing pacing, transitions, and tonal guidance at sufficient length to pass checks. No background music.',
+        },
+      },
+    ],
+  });
 }
 
 describe('runShotProductionTask', () => {
@@ -248,6 +290,95 @@ describe('runShotProductionTask', () => {
       shotIndices: [1],
     });
     expect(geminiClient.generateJson).toHaveBeenCalledTimes(2);
+  });
+
+  it('resumes remaining scenelets when resumeExisting enabled', async () => {
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+    const existing = new Set<string>(['story-1:scenelet-1']);
+    const shotsRepository = createShotsRepository(existing);
+    const geminiClient = {
+      generateJson: vi
+        .fn()
+        .mockResolvedValueOnce(buildValidShotResponse('scenelet-2', 'Continue.')),
+    };
+
+    const result = await runShotProductionTask(
+      'story-1',
+      createDependencies({
+        storiesRepository,
+        shotsRepository,
+        geminiClient,
+        resumeExisting: true,
+      })
+    );
+
+    expect(result).toEqual<ShotProductionTaskResult>({
+      storyId: 'story-1',
+      scenelets: [{ sceneletId: 'scenelet-2', shotCount: 1 }],
+      totalShots: 1,
+    });
+    expect(shotsRepository.inserts).toHaveLength(1);
+    expect(shotsRepository.inserts[0]).toMatchObject({
+      sceneletId: 'scenelet-2',
+      sequence: 2,
+      shotIndices: [1],
+    });
+    expect(geminiClient.generateJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries Gemini validation failures before succeeding', async () => {
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+    const shotsRepository = createShotsRepository();
+    const geminiClient = {
+      generateJson: vi
+        .fn()
+        .mockResolvedValueOnce('{}')
+        .mockResolvedValueOnce(buildValidShotResponse('scenelet-1', 'Welcome.'))
+        .mockResolvedValueOnce(buildValidShotResponse('scenelet-2', 'Continue.')),
+    };
+
+    const result = await runShotProductionTask(
+      'story-1',
+      createDependencies({
+        storiesRepository,
+        shotsRepository,
+        geminiClient,
+      })
+    );
+
+    expect(result.totalShots).toBe(2);
+    expect(shotsRepository.inserts).toHaveLength(2);
+    expect(geminiClient.generateJson).toHaveBeenCalledTimes(3);
+  });
+
+  it('skips generation when resumeExisting is true and all scenelets covered', async () => {
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+    const existing = new Set<string>(['story-1:scenelet-1', 'story-1:scenelet-2']);
+    const shotsRepository = createShotsRepository(existing);
+    const geminiClient = {
+      generateJson: vi.fn(),
+    };
+
+    const result = await runShotProductionTask(
+      'story-1',
+      createDependencies({
+        storiesRepository,
+        shotsRepository,
+        geminiClient,
+        resumeExisting: true,
+      })
+    );
+
+    expect(result).toEqual<ShotProductionTaskResult>({
+      storyId: 'story-1',
+      scenelets: [],
+      totalShots: 0,
+    });
+    expect(shotsRepository.inserts).toHaveLength(0);
+    expect(geminiClient.generateJson).not.toHaveBeenCalled();
   });
 
   it('throws when constitution is missing', async () => {

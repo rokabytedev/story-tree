@@ -442,7 +442,7 @@ describe('agentWorkflow CLI', () => {
         storyId,
         '--mode',
         'stub',
-        '--resume-interactive-script',
+        '--resume',
       ],
       env
     );
@@ -474,7 +474,7 @@ describe('agentWorkflow CLI', () => {
         'CREATE_CONSTITUTION',
         '--story-id',
         'story-1',
-        '--resume-interactive-script',
+        '--resume',
       ],
       {
         SUPABASE_URL: 'http://localhost:54321',
@@ -483,7 +483,7 @@ describe('agentWorkflow CLI', () => {
     );
 
     expect(process.exitCode).toBe(1);
-    expect(errors.join(' ')).toContain('--resume-interactive-script can only be used with CREATE_INTERACTIVE_SCRIPT.');
+    expect(errors.join(' ')).toContain('--resume can only be used with CREATE_INTERACTIVE_SCRIPT or CREATE_SHOT_PRODUCTION.');
   });
 
   it('fails gracefully when story missing for run-task', async () => {
