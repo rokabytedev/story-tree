@@ -54,6 +54,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
   'CREATE_SHOT_IMAGES',
+  'CREATE_CHARACTER_MODEL_SHEETS',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -82,6 +83,8 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   imageIndex?: number;
   sceneletId?: string;
   shotIndex?: number;
+  override?: boolean;
+  resume?: boolean;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -255,10 +258,12 @@ async function buildWorkflowDependencies(
   // Extract run-task specific options with proper type narrowing
   let visualRefImageOptions = {};
   let shotImageOptions = {};
+  let characterModelSheetOptions = {};
 
   if (options.command === 'run-task') {
     if (options.characterId) {
       visualRefImageOptions = { ...visualRefImageOptions, targetCharacterId: options.characterId };
+      characterModelSheetOptions = { ...characterModelSheetOptions, targetCharacterId: options.characterId };
     }
     if (options.environmentId) {
       visualRefImageOptions = { ...visualRefImageOptions, targetEnvironmentId: options.environmentId };
@@ -271,6 +276,12 @@ async function buildWorkflowDependencies(
     }
     if (options.shotIndex !== undefined) {
       shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
+    }
+    if (options.override !== undefined) {
+      characterModelSheetOptions = { ...characterModelSheetOptions, override: options.override };
+    }
+    if (options.resume !== undefined) {
+      characterModelSheetOptions = { ...characterModelSheetOptions, resume: options.resume };
     }
   }
 
@@ -315,6 +326,13 @@ async function buildWorkflowDependencies(
       ...(geminiImageClient ? { geminiImageClient } : {}),
       ...(imageStorage ? { imageStorage } : {}),
       ...shotImageOptions,
+    },
+    characterModelSheetTaskOptions: {
+      logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
+      verbose,
+      ...characterModelSheetOptions,
     },
   };
 
@@ -405,6 +423,22 @@ async function buildWorkflowDependencies(
         },
       },
     };
+    workflowOptions.characterModelSheetTaskOptions = {
+      ...workflowOptions.characterModelSheetTaskOptions,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-character-model-sheet-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
+    };
   }
 
   return workflowOptions;
@@ -432,6 +466,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let imageIndex: number | undefined;
   let sceneletId: string | undefined;
   let shotIndex: number | undefined;
+  let overrideFlag: boolean | undefined;
+  let resumeModelSheetsFlag = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -511,6 +547,24 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         shotIndex = parsed;
         break;
       }
+      case '--override': {
+        const value = rest[++index];
+        if (!value) {
+          throw new CliParseError('Missing value for --override flag. Use "true" or "false".');
+        }
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') {
+          overrideFlag = true;
+        } else if (normalized === 'false') {
+          overrideFlag = false;
+        } else {
+          throw new CliParseError('Invalid value for --override. Use "true" or "false".');
+        }
+        break;
+      }
+      case '--resume-model-sheets':
+        resumeModelSheetsFlag = true;
+        break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -536,10 +590,22 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       const task = normalizeTask(taskName);
       const resumeInteractiveScript = resumeFlag && task === 'CREATE_INTERACTIVE_SCRIPT';
       const resumeShotProduction = resumeFlag && task === 'CREATE_SHOT_PRODUCTION';
+      const resumeModelSheets = resumeModelSheetsFlag && task === 'CREATE_CHARACTER_MODEL_SHEETS';
 
       if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction) {
         throw new CliParseError('--resume can only be used with CREATE_INTERACTIVE_SCRIPT or CREATE_SHOT_PRODUCTION.');
       }
+
+      // Validate --resume-model-sheets is used with CREATE_CHARACTER_MODEL_SHEETS
+      if (resumeModelSheetsFlag && task !== 'CREATE_CHARACTER_MODEL_SHEETS') {
+        throw new CliParseError('--resume-model-sheets can only be used with CREATE_CHARACTER_MODEL_SHEETS task.');
+      }
+
+      // Warn if --resume-model-sheets is used with --character-id
+      if (resumeModelSheetsFlag && characterId) {
+        console.warn('Warning: --resume-model-sheets is ignored when --character-id is specified (single-character mode).');
+      }
+
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
@@ -551,6 +617,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         imageIndex,
         sceneletId,
         shotIndex,
+        override: overrideFlag,
+        resume: resumeModelSheets,
         ...modeOptions,
       };
     }

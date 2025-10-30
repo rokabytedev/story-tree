@@ -23,6 +23,10 @@ import type {
   ShotImageTaskDependencies,
   ShotImageTaskRunner,
 } from '../shot-image/types.js';
+import type {
+  CharacterModelSheetTaskDependencies,
+  CharacterModelSheetTaskRunner,
+} from '../character-model-sheet/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -93,6 +97,8 @@ export interface AgentWorkflowOptions {
   runShotProductionTask?: ShotProductionTaskRunner;
   shotImageTaskOptions?: ShotImageTaskOptions;
   runShotImageTask?: ShotImageTaskRunner;
+  characterModelSheetTaskOptions?: CharacterModelSheetTaskOptions;
+  runCharacterModelSheetTask?: CharacterModelSheetTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -109,7 +115,8 @@ export type StoryWorkflowTask =
   | 'CREATE_VISUAL_REFERENCE_IMAGES'
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION'
-  | 'CREATE_SHOT_IMAGES';
+  | 'CREATE_SHOT_IMAGES'
+  | 'CREATE_CHARACTER_MODEL_SHEETS';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -139,4 +146,8 @@ export type ShotProductionTaskOptions = Partial<
 
 export type ShotImageTaskOptions = Partial<
   Omit<ShotImageTaskDependencies, 'storiesRepository' | 'shotsRepository'>
+>;
+
+export type CharacterModelSheetTaskOptions = Partial<
+  Omit<CharacterModelSheetTaskDependencies, 'storiesRepository'>
 >;

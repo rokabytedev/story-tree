@@ -44,6 +44,12 @@ import type {
   ShotImageTaskRunner,
   ShotImageTaskDependencies,
 } from '../shot-image/types.js';
+import { runCharacterModelSheetTask } from '../character-model-sheet/characterModelSheetTask.js';
+import type {
+  CharacterModelSheetTaskOptions,
+  CharacterModelSheetTaskRunner,
+  CharacterModelSheetTaskDependencies,
+} from '../character-model-sheet/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -145,6 +151,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly shotProductionOptions?: ShotProductionTaskOptions;
   private readonly shotImageTaskRunner: ShotImageTaskRunner;
   private readonly shotImageOptions?: ShotImageTaskOptions;
+  private readonly characterModelSheetTaskRunner: CharacterModelSheetTaskRunner;
+  private readonly characterModelSheetOptions?: CharacterModelSheetTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -194,6 +202,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.shotImageOptions = dependencies.shotImageTaskOptions
       ? { ...dependencies.shotImageTaskOptions }
       : undefined;
+    this.characterModelSheetTaskRunner =
+      dependencies.runCharacterModelSheetTask ?? runCharacterModelSheetTask;
+    this.characterModelSheetOptions = dependencies.characterModelSheetTaskOptions
+      ? { ...dependencies.characterModelSheetTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -222,6 +235,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_SHOT_IMAGES':
         await this.runShotImagesTask();
+        return;
+      case 'CREATE_CHARACTER_MODEL_SHEETS':
+        await this.runCharacterModelSheetsTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -411,6 +427,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private async runShotImagesTask(): Promise<void> {
     const dependencies = this.buildShotImageDependencies();
     await this.shotImageTaskRunner(this.storyId, dependencies);
+  }
+
+  private async runCharacterModelSheetsTask(): Promise<void> {
+    const dependencies = this.buildCharacterModelSheetDependencies();
+    await this.characterModelSheetTaskRunner(this.storyId, dependencies);
   }
 
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
@@ -606,6 +627,52 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.targetShotIndex !== undefined) {
       dependencies.targetShotIndex = overrides.targetShotIndex;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildCharacterModelSheetDependencies(): CharacterModelSheetTaskDependencies {
+    const overrides = this.characterModelSheetOptions;
+    const dependencies: CharacterModelSheetTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.timeoutMs !== undefined) {
+      dependencies.timeoutMs = overrides.timeoutMs;
+    }
+
+    if (overrides?.retry) {
+      dependencies.retry = overrides.retry;
+    }
+
+    if (overrides?.targetCharacterId) {
+      dependencies.targetCharacterId = overrides.targetCharacterId;
+    }
+
+    if (overrides?.override !== undefined) {
+      dependencies.override = overrides.override;
+    }
+
+    if (overrides?.resume !== undefined) {
+      dependencies.resume = overrides.resume;
+    }
+
+    if (overrides?.verbose !== undefined) {
+      dependencies.verbose = overrides.verbose;
     }
 
     const logger = overrides?.logger ?? this.logger;
