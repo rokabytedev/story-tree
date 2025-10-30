@@ -17,10 +17,10 @@
   - [x] Task 3.3: Create shot image task implementation
   - [x] Task 3.4: Create system prompt for visual renderer
   - [x] Task 3.5: Integrate CREATE_SHOT_IMAGES into workflow
-  - [ ] Task 3.6: Add shot image task to CLI
-- [ ] Batch 4: Individual Image Generation & CLI Enhancements (2 tasks)
-  - [ ] Task 4.1: Add individual visual reference image generation support
-  - [ ] Task 4.2: Add individual shot image generation support
+  - [x] Task 3.6: Add shot image task to CLI
+- [x] Batch 4: Individual Image Generation & CLI Enhancements (2 tasks)
+  - [x] Task 4.1: Add individual visual reference image generation support
+  - [x] Task 4.2: Add individual shot image generation support
 Optional - DO NOT IMPLEMENT YET:
 - [ ] Batch 5: Integration Testing & Documentation (4 tasks)
   - [ ] Task 5.1: Add integration tests with fixtures
