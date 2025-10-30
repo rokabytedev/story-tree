@@ -5,5 +5,6 @@ export * from './workflow/index.js';
 export * from './story-storage/index.js';
 export * from './visual-design/index.js';
 export * from './visual-reference/index.js';
+export * from './visual-reference-image/index.js';
 export * from './audio-design/index.js';
 export * from './shot-production/index.js';

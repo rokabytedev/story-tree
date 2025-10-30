@@ -22,8 +22,8 @@ const TARGET_SCENELET: SceneletDigest = {
 
 const VISUAL_DESIGN_DOCUMENT = {
   character_designs: [
-    { character_name: 'Finn' },
-    { character_name: 'Rhea' },
+    { character_id: 'finn' },
+    { character_id: 'rhea' },
   ],
 };
 

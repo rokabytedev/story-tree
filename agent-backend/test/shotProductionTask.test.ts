@@ -24,7 +24,7 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
       },
     visualDesignDocument:
       overrides.visualDesignDocument ?? {
-        character_designs: [{ character_name: 'Narrator' }],
+        character_designs: [{ character_id: 'narrator' }],
       },
     audioDesignDocument:
       overrides.audioDesignDocument ?? { audio_design_document: { cues: [] } },
@@ -78,6 +78,15 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
     },
     async findSceneletIdsMissingShots(storyId, sceneletIds) {
       return sceneletIds.filter((id) => !existingKeys.has(`${storyId}:${id}`));
+    },
+    async getShotsByStory(_storyId) {
+      return {};
+    },
+    async findShotsMissingImages(_storyId) {
+      return [];
+    },
+    async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
+      // Mock implementation
     },
   };
 }

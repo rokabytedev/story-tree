@@ -9,7 +9,7 @@ const STORY_TREE: StoryTreeSnapshot = {
 };
 
 const VISUAL_DESIGN_DOCUMENT = {
-  character_designs: [{ character_name: 'Rhea' }],
+  character_designs: [{ character_id: 'rhea' }],
 };
 
 describe('buildAudioDesignUserPrompt', () => {

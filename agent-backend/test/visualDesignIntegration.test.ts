@@ -69,7 +69,6 @@ describe('visual design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -125,7 +124,6 @@ describe('visual design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -158,7 +156,6 @@ describe('visual design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,

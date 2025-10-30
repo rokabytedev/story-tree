@@ -179,9 +179,9 @@ export function StorySidebar({ storyId, className = "" }: StorySidebarProps) {
       </div>
       <footer className="text-xs text-text-muted/70">
         <p className="font-semibold uppercase tracking-[0.2em] text-text-muted">
-          Upcoming
+          Preview Version
         </p>
-        <p>Storyboard canvas · Live data binding</p>
+        <p>AI may make mistake. Double check the result.</p>
       </footer>
     </nav>
   );

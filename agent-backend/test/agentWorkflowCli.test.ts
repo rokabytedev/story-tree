@@ -211,6 +211,9 @@ function createShotsRepositoryStub() {
       });
     }),
     findSceneletIdsMissingShots: vi.fn(async (_storyId: string, sceneletIds: string[]) => sceneletIds),
+    getShotsByStory: vi.fn(async (_storyId: string) => ({})),
+    findShotsMissingImages: vi.fn(async (_storyId: string) => []),
+    updateShotImagePaths: vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number, _paths: unknown) => {}),
   } satisfies ShotProductionShotsRepository & {
     created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
   };

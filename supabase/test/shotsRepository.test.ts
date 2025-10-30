@@ -17,6 +17,8 @@ type ShotRow = {
   first_frame_prompt: string;
   key_frame_prompt: string;
   video_clip_prompt: string;
+  first_frame_image_path: string | null;
+  key_frame_image_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -34,11 +36,14 @@ interface FakeResponses {
   selectExisting?: FakeResponse<Array<Pick<ShotRow, 'id'>>>;
   selectStoryShots?: FakeResponse<ShotRow[]>;
   selectSceneletIds?: FakeResponse<Array<{ scenelet_id: string }>>;
+  selectShotsMissingImages?: FakeResponse<Array<Pick<ShotRow, 'scenelet_id' | 'shot_index' | 'first_frame_image_path' | 'key_frame_image_path'>>>;
   insert?: FakeResponse<ShotRow[]>;
+  update?: FakeResponse<null>;
 }
 
 class FakeShotsTable {
   public readonly inserted: Array<Record<string, unknown>>[] = [];
+  public readonly updated: Array<{ data: Record<string, unknown>; filters: SelectFilters[] }> = [];
   public readonly selectCalls: Array<{
     columns?: string;
     filters: SelectFilters[];
@@ -51,6 +56,28 @@ class FakeShotsTable {
     this.inserted.push(rows);
     const response = this.responses.insert ?? { data: rows as ShotRow[], error: null };
     return Promise.resolve(response);
+  }
+
+  update(data: Record<string, unknown>) {
+    const context = {
+      data,
+      filters: [] as SelectFilters[],
+    };
+    const response = this.responses.update ?? { data: null, error: null };
+    const promise = Promise.resolve(response);
+
+    const builder: any = {
+      eq: (column: string, value: string | number) => {
+        context.filters.push({ type: 'eq', column, value });
+        return builder;
+      },
+      then: promise.then.bind(promise),
+      catch: promise.catch.bind(promise),
+      finally: promise.finally?.bind(promise),
+    };
+
+    this.updated.push(context);
+    return builder;
   }
 
   select(columns?: string) {
@@ -99,6 +126,10 @@ function resolveSelectResponse(
     return responses.selectSceneletIds ?? { data: [], error: null };
   }
 
+  if (columns === 'scenelet_id, shot_index, first_frame_image_path, key_frame_image_path') {
+    return responses.selectShotsMissingImages ?? { data: [], error: null };
+  }
+
   return responses.selectStoryShots ?? { data: [], error: null };
 }
 
@@ -124,6 +155,12 @@ function makeShotRow(overrides: Partial<ShotRow> = {}): ShotRow {
     first_frame_prompt: overrides.first_frame_prompt ?? 'First frame prompt',
     key_frame_prompt: overrides.key_frame_prompt ?? 'Key frame prompt',
     video_clip_prompt: overrides.video_clip_prompt ?? 'Video clip prompt. No background music.',
+    first_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'first_frame_image_path')
+      ? overrides.first_frame_image_path ?? null
+      : null,
+    key_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'key_frame_image_path')
+      ? overrides.key_frame_image_path ?? null
+      : null,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00.000Z',
     updated_at: overrides.updated_at ?? '2025-01-01T00:00:00.000Z',
   };
@@ -386,5 +423,243 @@ describe('shotsRepository.findSceneletIdsMissingShots', () => {
     await expect(
       repo.findSceneletIdsMissingShots('story-123', ['scenelet-1'])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+});
+
+describe('shotsRepository.updateShotImagePaths', () => {
+  it('updates both image paths when provided', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+    });
+
+    await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
+      firstFrameImagePath: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+      keyFrameImagePath: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+    });
+
+    expect(table.updated).toHaveLength(1);
+    expect(table.updated[0]?.data).toEqual({
+      first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+      key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+    });
+    expect(table.updated[0]?.filters).toEqual([
+      { type: 'eq', column: 'story_id', value: 'story-123' },
+      { type: 'eq', column: 'scenelet_id', value: 'scenelet-1' },
+      { type: 'eq', column: 'shot_index', value: 1 },
+    ]);
+  });
+
+  it('updates only first frame image path when provided', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+    });
+
+    await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
+      firstFrameImagePath: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+    });
+
+    expect(table.updated[0]?.data).toEqual({
+      first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+    });
+  });
+
+  it('updates only key frame image path when provided', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+    });
+
+    await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
+      keyFrameImagePath: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+    });
+
+    expect(table.updated[0]?.data).toEqual({
+      key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+    });
+  });
+
+  it('throws when no image paths are provided', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(
+      repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {})
+    ).rejects.toThrow(/at least one image path/i);
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(
+      repo.updateShotImagePaths('  ', 'scenelet-1', 1, {
+        firstFrameImagePath: 'path.png',
+      })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when scenelet id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(
+      repo.updateShotImagePaths('story-123', '  ', 1, {
+        firstFrameImagePath: 'path.png',
+      })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when shot index is invalid', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(
+      repo.updateShotImagePaths('story-123', 'scenelet-1', 0, {
+        firstFrameImagePath: 'path.png',
+      })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      update: { data: null, error: { message: 'constraint violation' } },
+    });
+
+    await expect(
+      repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
+        firstFrameImagePath: 'path.png',
+      })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+});
+
+describe('shotsRepository.findShotsMissingImages', () => {
+  it('returns shots missing both image paths', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            first_frame_image_path: null,
+            key_frame_image_path: null,
+          },
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 2,
+            first_frame_image_path: null,
+            key_frame_image_path: null,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingImages('story-123');
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      sceneletId: 'scenelet-1',
+      shotIndex: 1,
+      missingFirstFrame: true,
+      missingKeyFrame: true,
+    });
+    expect(result[1]).toEqual({
+      sceneletId: 'scenelet-1',
+      shotIndex: 2,
+      missingFirstFrame: true,
+      missingKeyFrame: true,
+    });
+  });
+
+  it('returns shots missing only first frame image', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            first_frame_image_path: null,
+            key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingImages('story-123');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      sceneletId: 'scenelet-1',
+      shotIndex: 1,
+      missingFirstFrame: true,
+      missingKeyFrame: false,
+    });
+  });
+
+  it('returns shots missing only key frame image', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+            key_frame_image_path: null,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingImages('story-123');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      sceneletId: 'scenelet-1',
+      shotIndex: 1,
+      missingFirstFrame: false,
+      missingKeyFrame: true,
+    });
+  });
+
+  it('returns empty array when all shots have images', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+            key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingImages('story-123');
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns empty array when no shots exist', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: { data: [], error: null },
+    });
+
+    const result = await repo.findShotsMissingImages('story-123');
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.findShotsMissingImages('  ')).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingImages: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.findShotsMissingImages('story-123')).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
 });

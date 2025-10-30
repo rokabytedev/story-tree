@@ -5,11 +5,11 @@ import { VisualReferenceTaskError } from '../src/visual-reference/errors.js';
 
 const VISUAL_DESIGN_DOCUMENT = {
   character_designs: [
-    { character_name: 'Rhea' },
-    { character_name: 'Narrator' },
+    { character_id: 'rhea' },
+    { character_id: 'narrator' },
   ],
   environment_designs: [
-    { environment_name: 'Choice Clearing' },
+    { environment_id: 'choice-clearing' },
   ],
 };
 
@@ -17,7 +17,7 @@ const VALID_RESPONSE = JSON.stringify({
   visual_reference_package: {
     character_model_sheets: [
       {
-        character_name: 'Rhea',
+        character_id: 'rhea',
         reference_plates: [
           {
             plate_description: 'Rhea model sheet',
@@ -28,7 +28,7 @@ const VALID_RESPONSE = JSON.stringify({
         ],
       },
       {
-        character_name: 'Narrator',
+        character_id: 'narrator',
         reference_plates: [
           {
             plate_description: 'Narrator model sheet',
@@ -41,7 +41,7 @@ const VALID_RESPONSE = JSON.stringify({
     ],
     environment_keyframes: [
       {
-        environment_name: 'Choice Clearing',
+        environment_id: 'choice-clearing',
         keyframes: [
           {
             keyframe_description: 'Dusk ambiance',
@@ -72,7 +72,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -85,7 +85,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Nighttime',
@@ -111,7 +111,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -124,7 +124,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Atmosphere',
@@ -150,7 +150,7 @@ describe('validateVisualReferenceResponse', () => {
       visual_reference_package: {
         character_model_sheets: [
           {
-            character_name: 'Rhea',
+            character_id: 'rhea',
             reference_plates: [
               {
                 plate_description: 'Rhea model sheet',
@@ -161,7 +161,7 @@ describe('validateVisualReferenceResponse', () => {
             ],
           },
           {
-            character_name: 'Narrator',
+            character_id: 'narrator',
             reference_plates: [
               {
                 plate_description: 'Narrator model sheet',
@@ -174,7 +174,7 @@ describe('validateVisualReferenceResponse', () => {
         ],
         environment_keyframes: [
           {
-            environment_name: 'Choice Clearing',
+            environment_id: 'choice-clearing',
             keyframes: [
               {
                 keyframe_description: 'Neutral view',
@@ -193,5 +193,195 @@ describe('validateVisualReferenceResponse', () => {
         minimumPromptLength: 80,
       })
     ).toThrow(/lighting or atmosphere/i);
+  });
+
+  describe('normalized ID matching', () => {
+    it('accepts environment names with apostrophes when prompt uses similar variations', () => {
+      const visualDesign = {
+        character_designs: [{ character_id: 'cosmo' }],
+        environment_designs: [{ environment_id: 'cosmos-jungle-workshop' }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_id: 'cosmo',
+              reference_plates: [
+                {
+                  plate_description: 'Cosmo model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  image_generation_prompt:
+                    'Cosmo character design with vibrant lighting, showing the inventor in their natural habitat with glowing details.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_id: 'cosmos-jungle-workshop',
+              keyframes: [
+                {
+                  keyframe_description: 'Main workshop view',
+                  // Prompt uses "Cosmos" instead of "Cosmo's" - should still match via normalization
+                  image_generation_prompt:
+                    'Cosmos Jungle Workshop interior with warm ambient lighting, tropical vines, and mechanical contraptions illuminated by sunset rays.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('accepts character names with case variations', () => {
+      const visualDesign = {
+        character_designs: [{ character_id: 'rhea-the-explorer' }],
+        environment_designs: [{ environment_id: 'test-zone' }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_id: 'rhea-the-explorer',
+              reference_plates: [
+                {
+                  plate_description: 'Rhea model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  // Uses "RHEA THE EXPLORER" in caps - should still match
+                  image_generation_prompt:
+                    'RHEA THE EXPLORER character model sheet, full body view with dramatic studio lighting and confident pose.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_id: 'test-zone',
+              keyframes: [
+                {
+                  keyframe_description: 'Zone overview',
+                  image_generation_prompt:
+                    'test zone environment with bright daylight illumination and clear atmospheric conditions for testing purposes.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('accepts names with special characters when prompt uses normalized versions', () => {
+      const visualDesign = {
+        character_designs: [{ character_id: 'agent-007' }],
+        environment_designs: [{ environment_id: 'level-2-hub' }],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_id: 'agent-007',
+              reference_plates: [
+                {
+                  plate_description: 'Agent model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  // Uses "Agent 007" without hyphen - should match
+                  image_generation_prompt:
+                    'Agent 007 character design showing sleek tactical gear with moody dramatic lighting and action-ready stance.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_id: 'level-2-hub',
+              keyframes: [
+                {
+                  keyframe_description: 'Hub entrance',
+                  // Uses "Level 2 Hub" without @ symbol - should match
+                  image_generation_prompt:
+                    'Level 2 Hub entrance area with neon lighting and futuristic atmosphere, glowing panels and cool blue illumination.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
+
+    it('works with pre-normalized IDs in visual design document', () => {
+      const visualDesign = {
+        character_designs: [
+          {
+            character_id: 'cosmos-helper',
+          },
+        ],
+        environment_designs: [
+          {
+            environment_id: 'the-workshop',
+          },
+        ],
+      };
+
+      const response = JSON.stringify({
+        visual_reference_package: {
+          character_model_sheets: [
+            {
+              character_id: 'cosmos-helper',
+              reference_plates: [
+                {
+                  plate_description: 'Helper model sheet',
+                  type: 'CHARACTER_MODEL_SHEET',
+                  image_generation_prompt:
+                    'Cosmos Helper character showing a friendly robotic companion with glowing circuits and soft ambient lighting effects.',
+                },
+              ],
+            },
+          ],
+          environment_keyframes: [
+            {
+              environment_id: 'the-workshop',
+              keyframes: [
+                {
+                  keyframe_description: 'Workshop interior',
+                  image_generation_prompt:
+                    'the workshop interior space with industrial lighting, workbenches, and tools scattered about in warm atmosphere.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(() =>
+        validateVisualReferenceResponse(response, {
+          visualDesignDocument: visualDesign,
+          minimumPromptLength: 80,
+        })
+      ).not.toThrow();
+    });
   });
 });

@@ -42,3 +42,5 @@ supabase/storage/
 supabase/.branches
 supabase/config.toml
 **/dist/
+
+apps/story-tree-ui/public/generated/

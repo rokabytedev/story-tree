@@ -18,8 +18,8 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
     },
     visualDesignDocument: {
       character_designs: [
-        { character_name: 'Rhea' },
-        { character_name: 'Narrator' },
+        { character_id: 'rhea' },
+        { character_id: 'narrator' },
       ],
     },
     audioDesignDocument: null,
@@ -106,7 +106,6 @@ describe('audio design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -121,7 +120,6 @@ describe('audio design task integration', () => {
       },
       {
         id: 'scenelet-branch',
-        storyId: 'story-1',
         parentId: 'scenelet-root',
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -176,7 +174,6 @@ describe('audio design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -191,7 +188,6 @@ describe('audio design task integration', () => {
       },
       {
         id: 'scenelet-branch',
-        storyId: 'story-1',
         parentId: 'scenelet-root',
         choiceLabelFromParent: null,
         choicePrompt: null,
@@ -235,7 +231,6 @@ describe('audio design task integration', () => {
     const scenelets: StoryTreeSceneletSource[] = [
       {
         id: 'scenelet-root',
-        storyId: 'story-1',
         parentId: null,
         choiceLabelFromParent: null,
         choicePrompt: null,

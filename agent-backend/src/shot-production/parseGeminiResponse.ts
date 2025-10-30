@@ -9,6 +9,7 @@ import {
   type ShotProductionValidationResult,
   type ShotGenerationPrompts,
 } from './types.js';
+import { normalizeNameToId } from '../visual-design/utils.js';
 
 interface RawShotRecord {
   shot_index?: unknown;
@@ -234,7 +235,9 @@ function sanitizeDialogue(
       throw new ShotProductionTaskError('storyboard_entry.dialogue entries must include character and line strings.');
     }
 
-    if (!context.roster.has(character)) {
+    // Normalize character name to ID for matching against visual design document
+    const characterId = normalizeNameToId(character);
+    if (!context.roster.has(characterId)) {
       throw new ShotProductionTaskError(`Dialogue references unknown character ${character}.`);
     }
 
@@ -383,14 +386,14 @@ function extractCharacterRoster(document: unknown): Set<string> {
       continue;
     }
 
-    const name = toTrimmedString((candidate as Record<string, unknown>).character_name ?? (candidate as Record<string, unknown>).characterName);
-    if (name) {
-      roster.add(name);
+    const id = toTrimmedString((candidate as Record<string, unknown>).character_id ?? (candidate as Record<string, unknown>).characterId);
+    if (id) {
+      roster.add(id);
     }
   }
 
   if (roster.size === 0) {
-    throw new ShotProductionTaskError('Visual design document must include character_name fields.');
+    throw new ShotProductionTaskError('Visual design document must include character_id fields.');
   }
 
   return roster;

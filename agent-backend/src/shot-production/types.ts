@@ -5,6 +5,31 @@ import type {
   AgentWorkflowStoryRecord,
 } from '../workflow/types.js';
 
+export interface UpdateShotImagePathsInput {
+  firstFrameImagePath?: string;
+  keyFrameImagePath?: string;
+}
+
+export interface ShotsMissingImages {
+  sceneletId: string;
+  shotIndex: number;
+  missingFirstFrame: boolean;
+  missingKeyFrame: boolean;
+}
+
+export interface ShotRecord {
+  sceneletSequence: number;
+  shotIndex: number;
+  storyboardPayload: unknown;
+  firstFramePrompt: string;
+  keyFramePrompt: string;
+  videoClipPrompt: string;
+  firstFrameImagePath?: string;
+  keyFrameImagePath?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ShotProductionShotsRepository {
   createSceneletShots(
     storyId: string,
@@ -13,6 +38,14 @@ export interface ShotProductionShotsRepository {
     shots: ShotCreationInput[]
   ): Promise<void>;
   findSceneletIdsMissingShots(storyId: string, sceneletIds: string[]): Promise<string[]>;
+  getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>>;
+  findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]>;
+  updateShotImagePaths(
+    storyId: string,
+    sceneletId: string,
+    shotIndex: number,
+    paths: UpdateShotImagePathsInput
+  ): Promise<void>;
 }
 
 export const REQUIRED_VIDEO_CLIP_PHRASE = 'No background music.';

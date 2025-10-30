@@ -24,6 +24,9 @@ import { createWorkflowFromPrompt, resumeWorkflowFromStoryId } from '../workflow
 import type { SceneletPersistence } from '../interactive-story/types.js';
 import type { InteractiveStoryLogger } from '../interactive-story/types.js';
 import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
+import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
+import { createGeminiJsonClient } from '../gemini/client.js';
+import { ImageStorageService } from '../image-generation/imageStorage.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
@@ -47,8 +50,10 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_VISUAL_REFERENCE',
+  'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
+  'CREATE_SHOT_IMAGES',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -72,6 +77,11 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   task: StoryWorkflowTask;
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
+  characterId?: string;
+  environmentId?: string;
+  imageIndex?: number;
+  sceneletId?: string;
+  shotIndex?: number;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -231,6 +241,39 @@ async function buildWorkflowDependencies(
   const storyTreeLoader = (storyId: string) =>
     loadStoryTreeSnapshot(storyId, { sceneletsRepository });
 
+  // Create gemini clients and image storage for real mode with verbose support
+  const geminiImageClient = mode === 'real'
+    ? createGeminiImageClient({ verbose })
+    : undefined;
+  const geminiJsonClient = mode === 'real'
+    ? createGeminiJsonClient({ verbose })
+    : undefined;
+  const imageStorage = mode === 'real'
+    ? new ImageStorageService()
+    : undefined;
+
+  // Extract run-task specific options with proper type narrowing
+  let visualRefImageOptions = {};
+  let shotImageOptions = {};
+
+  if (options.command === 'run-task') {
+    if (options.characterId) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetCharacterId: options.characterId };
+    }
+    if (options.environmentId) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetEnvironmentId: options.environmentId };
+    }
+    if (options.imageIndex !== undefined) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetIndex: options.imageIndex };
+    }
+    if (options.sceneletId) {
+      shotImageOptions = { ...shotImageOptions, targetSceneletId: options.sceneletId };
+    }
+    if (options.shotIndex !== undefined) {
+      shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
+    }
+  }
+
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
     shotsRepository,
@@ -238,22 +281,40 @@ async function buildWorkflowDependencies(
     logger,
     constitutionOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     interactiveStoryOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     storyTreeLoader,
     visualDesignTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     visualReferenceTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
+    },
+    visualReferenceImageTaskOptions: {
+      logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
+      ...visualRefImageOptions,
     },
     audioDesignTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
     },
     shotProductionTaskOptions: {
       logger,
+      ...(geminiJsonClient ? { geminiClient: geminiJsonClient } : {}),
+    },
+    shotImageTaskOptions: {
+      logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
+      ...shotImageOptions,
     },
   };
 
@@ -293,6 +354,22 @@ async function buildWorkflowDependencies(
       promptLoader: async () => 'Stub visual reference system prompt',
       geminiClient: new FixtureGeminiClient([visualReferenceResponse]),
     };
+    workflowOptions.visualReferenceImageTaskOptions = {
+      ...workflowOptions.visualReferenceImageTaskOptions,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-image-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
+    };
     const audioResponse = await loadAudioDesignResponse();
     workflowOptions.audioDesignTaskOptions = {
       logger,
@@ -311,6 +388,22 @@ async function buildWorkflowDependencies(
       logger,
       promptLoader: async () => 'Stub shot production system prompt',
       geminiClient: shotProductionGeminiClient,
+    };
+    workflowOptions.shotImageTaskOptions = {
+      ...workflowOptions.shotImageTaskOptions,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-image-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
     };
   }
 
@@ -334,6 +427,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let storyId: string | undefined;
   let taskName: string | undefined;
   let resumeFlag = false;
+  let characterId: string | undefined;
+  let environmentId: string | undefined;
+  let imageIndex: number | undefined;
+  let sceneletId: string | undefined;
+  let shotIndex: number | undefined;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -386,6 +484,33 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '--resume':
         resumeFlag = true;
         break;
+      case '--character-id':
+        characterId = rest[++index];
+        break;
+      case '--environment-id':
+        environmentId = rest[++index];
+        break;
+      case '--image-index': {
+        const value = rest[++index];
+        const parsed = value ? Number.parseInt(value, 10) : NaN;
+        if (Number.isNaN(parsed) || parsed < 1) {
+          throw new CliParseError('--image-index must be a positive integer.');
+        }
+        imageIndex = parsed;
+        break;
+      }
+      case '--scenelet-id':
+        sceneletId = rest[++index];
+        break;
+      case '--shot-index': {
+        const value = rest[++index];
+        const parsed = value ? Number.parseInt(value, 10) : NaN;
+        if (Number.isNaN(parsed) || parsed < 1) {
+          throw new CliParseError('--shot-index must be a positive integer.');
+        }
+        shotIndex = parsed;
+        break;
+      }
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -421,6 +546,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         task,
         resumeInteractiveScript,
         resumeShotProduction,
+        characterId,
+        environmentId,
+        imageIndex,
+        sceneletId,
+        shotIndex,
         ...modeOptions,
       };
     }
@@ -644,13 +774,37 @@ function printHelp(): void {
   );
   console.log('');
   console.log('Flags:');
-  console.log('  --mode <stub|real>      Choose Gemini mode (stub uses fixtures). Default: stub.');
-  console.log('  --supabase-url <url>    Supabase URL override (falls back to SUPABASE_URL env).');
-  console.log('  --supabase-key <key>    Supabase service role key override (falls back to env).');
-  console.log('  --remote                Use remote Supabase credentials (default is local).');
-  console.log('  --verbose (-v)          Print debug logs.');
-  console.log('  --resume                Resume pending interactive script or shot production tasks.');
-  console.log('  --help (-h)             Show this help message.');
+  console.log('  --mode <stub|real>           Choose Gemini mode (stub uses fixtures). Default: stub.');
+  console.log('  --supabase-url <url>         Supabase URL override (falls back to SUPABASE_URL env).');
+  console.log('  --supabase-key <key>         Supabase service role key override (falls back to env).');
+  console.log('  --remote                     Use remote Supabase credentials (default is local).');
+  console.log('  --verbose (-v)               Print debug logs.');
+  console.log('  --resume                     Resume pending interactive script or shot production tasks.');
+  console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --environment-id <id>        Generate only images for specific environment (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
+  console.log('  --scenelet-id <id>           Generate only images for specific scenelet (CREATE_SHOT_IMAGES).');
+  console.log('  --shot-index <number>        Generate only images for specific shot (1-based, use with --scenelet-id).');
+  console.log('  --help (-h)                  Show this help message.');
+  console.log('');
+  console.log('Examples:');
+  console.log('  # Generate all visual reference images for a story');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Generate only character "cosmo-the-fox" reference images');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-id "cosmo-the-fox" --mode stub');
+  console.log('');
+  console.log('  # Generate only first plate for character "cosmo-the-fox"');
+  console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-id "cosmo-the-fox" --image-index 1 --mode stub');
+  console.log('');
+  console.log('  # Generate all shot images for a story');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Generate only shot images for scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --mode stub');
+  console.log('');
+  console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
 }
 
 function loadEnvironmentVariables(): void {

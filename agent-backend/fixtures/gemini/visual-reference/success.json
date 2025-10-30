@@ -2,7 +2,7 @@
   "visual_reference_package": {
     "character_model_sheets": [
       {
-        "character_name": "Rhea",
+        "character_id": "rhea",
         "reference_plates": [
           {
             "plate_description": "Comprehensive turnaround highlighting Rhea's explorer gear and expressions.",
@@ -17,7 +17,7 @@
         ]
       },
       {
-        "character_name": "Narrator",
+        "character_id": "narrator",
         "reference_plates": [
           {
             "plate_description": "Model sheet establishing the Narrator's abstract ribbon form.",
@@ -27,7 +27,7 @@
         ]
       },
       {
-        "character_name": "Testing Agent",
+        "character_id": "testing-agent",
         "reference_plates": [
           {
             "plate_description": "Model sheet covering Testing Agent's floating orb chassis.",
@@ -39,7 +39,7 @@
     ],
     "environment_keyframes": [
       {
-        "environment_name": "Choice Clearing",
+        "environment_id": "choice-clearing",
         "keyframes": [
           {
             "keyframe_description": "Establishing view of the Choice Clearing during dusk.",

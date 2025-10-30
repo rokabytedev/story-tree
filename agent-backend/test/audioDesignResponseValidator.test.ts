@@ -52,8 +52,8 @@ const STORY_TREE: StoryTreeSnapshot = {
 
 const VISUAL_DESIGN = {
   character_designs: [
-    { character_name: 'Rhea' },
-    { character_name: 'Narrator' },
+    { character_id: 'rhea' },
+    { character_id: 'narrator' },
   ],
 };
 

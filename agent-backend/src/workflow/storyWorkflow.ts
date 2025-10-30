@@ -25,6 +25,12 @@ import type {
   VisualReferenceTaskRunner,
   VisualReferenceTaskDependencies,
 } from '../visual-reference/types.js';
+import { runVisualReferenceImageTask as runVisualReferenceImageTaskImpl } from '../visual-reference-image/visualReferenceImageTask.js';
+import type {
+  VisualReferenceImageTaskOptions,
+  VisualReferenceImageTaskRunner,
+  VisualReferenceImageTaskDependencies,
+} from '../visual-reference-image/types.js';
 import { runShotProductionTask } from '../shot-production/shotProductionTask.js';
 import type {
   ShotProductionTaskOptions,
@@ -32,6 +38,12 @@ import type {
   ShotProductionTaskDependencies,
   ShotProductionShotsRepository,
 } from '../shot-production/types.js';
+import { runShotImageTask } from '../shot-image/shotImageTask.js';
+import type {
+  ShotImageTaskOptions,
+  ShotImageTaskRunner,
+  ShotImageTaskDependencies,
+} from '../shot-image/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -52,8 +64,10 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_INTERACTIVE_SCRIPT',
   'CREATE_VISUAL_DESIGN',
   'CREATE_VISUAL_REFERENCE',
+  'CREATE_VISUAL_REFERENCE_IMAGES',
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
+  'CREATE_SHOT_IMAGES',
 ];
 
 interface StoryWorkflowDependencies extends AgentWorkflowOptions {
@@ -123,10 +137,14 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly visualDesignOptions?: VisualDesignTaskOptions;
   private readonly visualReferenceTaskRunner: VisualReferenceTaskRunner;
   private readonly visualReferenceOptions?: VisualReferenceTaskOptions;
+  private readonly visualReferenceImageTaskRunner: VisualReferenceImageTaskRunner;
+  private readonly visualReferenceImageOptions?: VisualReferenceImageTaskOptions;
   private readonly audioDesignTaskRunner: AudioDesignTaskRunner;
   private readonly audioDesignOptions?: AudioDesignTaskOptions;
   private readonly shotProductionTaskRunner: ShotProductionTaskRunner;
   private readonly shotProductionOptions?: ShotProductionTaskOptions;
+  private readonly shotImageTaskRunner: ShotImageTaskRunner;
+  private readonly shotImageOptions?: ShotImageTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -156,6 +174,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.visualReferenceOptions = dependencies.visualReferenceTaskOptions
       ? { ...dependencies.visualReferenceTaskOptions }
       : undefined;
+    this.visualReferenceImageTaskRunner =
+      dependencies.runVisualReferenceImageTask ?? runVisualReferenceImageTaskImpl;
+    this.visualReferenceImageOptions = dependencies.visualReferenceImageTaskOptions
+      ? { ...dependencies.visualReferenceImageTaskOptions }
+      : undefined;
     this.audioDesignTaskRunner =
       dependencies.runAudioDesignTask ?? runAudioDesignTask;
     this.audioDesignOptions = dependencies.audioDesignTaskOptions
@@ -165,6 +188,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.runShotProductionTask ?? runShotProductionTask;
     this.shotProductionOptions = dependencies.shotProductionTaskOptions
       ? { ...dependencies.shotProductionTaskOptions }
+      : undefined;
+    this.shotImageTaskRunner =
+      dependencies.runShotImageTask ?? runShotImageTask;
+    this.shotImageOptions = dependencies.shotImageTaskOptions
+      ? { ...dependencies.shotImageTaskOptions }
       : undefined;
     this.logger = dependencies.logger;
   }
@@ -183,11 +211,17 @@ class StoryWorkflowImpl implements StoryWorkflow {
       case 'CREATE_VISUAL_REFERENCE':
         await this.runVisualReferenceTask();
         return;
+      case 'CREATE_VISUAL_REFERENCE_IMAGES':
+        await this.runVisualReferenceImagesTask();
+        return;
       case 'CREATE_AUDIO_DESIGN':
         await this.runAudioDesignTask();
         return;
       case 'CREATE_SHOT_PRODUCTION':
         await this.runShotProductionTask();
+        return;
+      case 'CREATE_SHOT_IMAGES':
+        await this.runShotImagesTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -216,6 +250,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_SHOT_PRODUCTION':
           await this.runShotProductionTask();
+          break;
+        case 'CREATE_SHOT_IMAGES':
+          await this.runShotImagesTask();
           break;
         default:
           break;
@@ -356,6 +393,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     await this.visualReferenceTaskRunner(this.storyId, dependencies);
   }
 
+  private async runVisualReferenceImagesTask(): Promise<void> {
+    const dependencies = this.buildVisualReferenceImageDependencies();
+    await this.visualReferenceImageTaskRunner(this.storyId, dependencies);
+  }
+
   private async runAudioDesignTask(): Promise<void> {
     const dependencies = this.buildAudioDesignDependencies();
     await this.audioDesignTaskRunner(this.storyId, dependencies);
@@ -364,6 +406,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private async runShotProductionTask(): Promise<void> {
     const dependencies = this.buildShotProductionDependencies();
     await this.shotProductionTaskRunner(this.storyId, dependencies);
+  }
+
+  private async runShotImagesTask(): Promise<void> {
+    const dependencies = this.buildShotImageDependencies();
+    await this.shotImageTaskRunner(this.storyId, dependencies);
   }
 
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
@@ -428,6 +475,56 @@ class StoryWorkflowImpl implements StoryWorkflow {
     return dependencies;
   }
 
+  private buildVisualReferenceImageDependencies(): VisualReferenceImageTaskDependencies {
+    const overrides = this.visualReferenceImageOptions;
+    const dependencies: VisualReferenceImageTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.characterAspectRatio) {
+      dependencies.characterAspectRatio = overrides.characterAspectRatio;
+    }
+
+    if (overrides?.environmentAspectRatio) {
+      dependencies.environmentAspectRatio = overrides.environmentAspectRatio;
+    }
+
+    if (overrides?.timeoutMs !== undefined) {
+      dependencies.timeoutMs = overrides.timeoutMs;
+    }
+
+    if (overrides?.retry !== undefined) {
+      dependencies.retry = overrides.retry;
+    }
+
+    if (overrides?.targetCharacterId) {
+      dependencies.targetCharacterId = overrides.targetCharacterId;
+    }
+
+    if (overrides?.targetEnvironmentId) {
+      dependencies.targetEnvironmentId = overrides.targetEnvironmentId;
+    }
+
+    if (overrides?.targetIndex !== undefined) {
+      dependencies.targetIndex = overrides.targetIndex;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
   private buildAudioDesignDependencies(): AudioDesignTaskDependencies {
     const overrides = this.audioDesignOptions;
     const dependencies: AudioDesignTaskDependencies = {
@@ -474,6 +571,41 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.geminiOptions) {
       dependencies.geminiOptions = overrides.geminiOptions;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildShotImageDependencies(): ShotImageTaskDependencies {
+    const overrides = this.shotImageOptions;
+    const dependencies: ShotImageTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      shotsRepository: this.shotsRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.referenceImageLoader) {
+      dependencies.referenceImageLoader = overrides.referenceImageLoader;
+    }
+
+    if (overrides?.targetSceneletId) {
+      dependencies.targetSceneletId = overrides.targetSceneletId;
+    }
+
+    if (overrides?.targetShotIndex !== undefined) {
+      dependencies.targetShotIndex = overrides.targetShotIndex;
     }
 
     const logger = overrides?.logger ?? this.logger;
