@@ -51,7 +51,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
           <button
             type="button"
             onClick={() => scroll("left")}
-            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface/90 p-2 shadow-lg ring-1 ring-border/50 transition-all hover:bg-surface hover:shadow-xl"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface p-2 shadow-lg ring-1 ring-border transition-all hover:bg-surface-muted hover:shadow-xl"
             aria-label="Scroll left"
           >
             <svg
@@ -79,32 +79,30 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
               key={shot.shotIndex}
               type="button"
               onClick={() => onShotClick(shot)}
-              className="group relative flex w-40 min-w-[10rem] shrink-0 flex-col rounded-2xl bg-surface-muted/70 p-3 ring-1 ring-border/50 transition-all hover:bg-surface-muted hover:shadow-md hover:ring-highlight/50"
+              className="group relative aspect-video w-40 min-w-[10rem] shrink-0 overflow-hidden rounded-lg bg-border/40 transition-all hover:shadow-md"
               style={{ scrollSnapAlign: "start" }}
             >
-              <div className="aspect-video w-full overflow-hidden rounded-xl bg-border/40">
-                {shot.keyFrameImagePath ? (
-                  <img
-                    src={shot.keyFrameImagePath}
-                    alt={`Shot ${shot.shotIndex}`}
-                    loading={index === 0 ? "eager" : "lazy"}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      const parent = target.parentElement;
-                      if (parent) {
-                        parent.classList.add("flex", "items-center", "justify-center");
-                        parent.innerHTML = `<span class="text-xs text-text-muted/60">Image not available</span>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <span className="text-xs text-text-muted/60">No image</span>
-                  </div>
-                )}
-              </div>
+              {shot.keyFrameImagePath ? (
+                <img
+                  src={shot.keyFrameImagePath}
+                  alt={`Shot ${shot.shotIndex}`}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-80"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.classList.add("flex", "items-center", "justify-center");
+                      parent.innerHTML = `<span class="text-xs text-text-muted/60">Image not available</span>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <span className="text-xs text-text-muted/60">No image</span>
+                </div>
+              )}
               <div className="absolute right-2 top-2 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-text opacity-0 shadow-sm ring-1 ring-border/30 transition-opacity group-hover:opacity-100">
                 Shot {shot.shotIndex}
               </div>
@@ -115,7 +113,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
           <button
             type="button"
             onClick={() => scroll("right")}
-            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface/90 p-2 shadow-lg ring-1 ring-border/50 transition-all hover:bg-surface hover:shadow-xl"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface p-2 shadow-lg ring-1 ring-border transition-all hover:bg-surface-muted hover:shadow-xl"
             aria-label="Scroll right"
           >
             <svg

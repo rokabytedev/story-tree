@@ -86,7 +86,7 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
 
         <div className="space-y-6 p-6">
           {/* Key Frame Image */}
-          <div className="overflow-hidden rounded-xl bg-border/40">
+          <div className="overflow-hidden rounded-lg bg-border/40">
             {shot.keyFrameImagePath ? (
               <img
                 src={shot.keyFrameImagePath}
