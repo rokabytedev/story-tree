@@ -1,5 +1,7 @@
 # Design: Character Model Sheet Generation Task
 
+Read openspec/changes/add-character-model-sheet-task/CRITICAL_REQUIREMENTS.md
+
 ## Architecture
 
 ### Component Structure
