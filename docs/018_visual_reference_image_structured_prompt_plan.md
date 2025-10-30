@@ -9,15 +9,15 @@ requirement:
 - this is an image generation task.
 - it can be invoked from cli. but it will be called from the web app ui in the future. so design it as a general task like other tasks. cli is just a thin client.
 - the task support generating model sheet reference image in two modes:
-    - generate image for all characters of a given story-id
+    - batch mode: generate image for all characters of a given story-id
         - support --resume flag - only generate image for characters without model sheet image yet.
-    - generate a single image for a single character (identified by id) for a given story-id
+    - single mode: generate a single image for a single character (identified by id) for a given story-id
 - the task support a --override flag (can be passed from cli).
     - if --override=false: do nothing if the image for a character already exists.
     - if --override=true: replace the old image with new one even it already exists.
 
 the image generation has the following requirements:
-- aspect ratio must be 1:1
+- aspect ratio must be 1:1 (not the default 16:9)
 - use the same gemini image client. do not reinvent new one
 - no system prompt
 - use the following prompt:
@@ -50,8 +50,11 @@ the code should handle getting that data and insert in the prompt before sending
 the generated image should be saved in:
 `apps/story-tree-ui/public/generated/<story-id>/visuals/characters/<character-id>/character-model-sheet.png`
 note: no sequence number at the end.
+the saved file path should be persisted into db in the visual design doc json, under `character_designs` -> the character object, adding a new field called: `character_model_sheet_image_path`. this field will be used to: fetch the url for the web app ui, determine if model sheet image already generated for a character, etc.
+no db schema change is needed since this is just a json schema update.
+the path should be saved to db immediately after the image is generated successfully (this is important for the batch mode generation, so that the db won't be out of sync by too much with the actual generated images when multiple images are generated in a batch).
 
-your task
+your task:
 - expand this doc into detailed openspec spec doc + design doc + other docs
     - make sure the tasks doc has checklist
     - tasks should be batched into major milestones
