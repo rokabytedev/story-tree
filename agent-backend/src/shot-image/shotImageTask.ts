@@ -7,12 +7,16 @@ import type {
 import { ShotImageTaskError, CharacterReferenceMissingError } from './errors.js';
 import { createReferenceImageLoader } from './referenceImageLoader.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
+import { recommendReferenceImages, ReferenceImageRecommenderError } from '../reference-images/index.js';
+import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
+import type { ReferencedDesigns } from '../shot-production/types.js';
 
 const DEFAULT_ASPECT_RATIO = '16:9';
 
 interface StoryboardPayload {
   characters?: Array<{ name: string }> | string[];
   character_names?: string[];
+  referencedDesigns?: ReferencedDesigns;
   [key: string]: unknown;
 }
 
@@ -115,43 +119,82 @@ export async function runShotImageTask(
       continue;
     }
 
-    // Extract character names from storyboard payload
-    const characterNames = extractCharacterNames(shot.storyboardPayload);
+    // Extract referencedDesigns from storyboard payload
+    const storyboardPayload = shot.storyboardPayload as StoryboardPayload;
+    const referencedDesigns = storyboardPayload?.referencedDesigns;
 
-    // Load character reference images (max 3)
-    let characterReferences: Map<string, string[]>;
-    try {
-      characterReferences = await referenceImageLoader.loadCharacterReferences(
-        storyId,
-        characterNames,
-        3
+    let referenceImageBuffers: Array<{ data: Buffer; mimeType: 'image/png' | 'image/jpeg' }> = [];
+
+    if (referencedDesigns) {
+      // Use new reference image recommender (with referencedDesigns field)
+      try {
+        const recommendations = recommendReferenceImages({
+          storyId,
+          referencedDesigns,
+          maxImages: 5,
+        });
+
+        if (dependencies.verbose && recommendations.length > 0) {
+          console.log(`[Shot ${sceneletId} #${shotIndex}] Using reference images:`);
+          for (const rec of recommendations) {
+            console.log(`  - ${rec.type}: ${rec.id} -> ${rec.path}`);
+          }
+        }
+
+        const referenceImagePaths = recommendations.map((rec) => rec.path);
+        referenceImageBuffers = loadReferenceImagesFromPaths(referenceImagePaths);
+      } catch (error) {
+        if (error instanceof ReferenceImageRecommenderError || error instanceof ReferenceImageLoadError) {
+          logger?.debug?.('Failed to load reference images from referencedDesigns', {
+            sceneletId,
+            shotIndex,
+            referencedDesigns,
+            error: error.message,
+          });
+          throw new ShotImageTaskError(
+            `Failed to load reference images for shot ${sceneletId}#${shotIndex}: ${error.message}`
+          );
+        }
+        throw error;
+      }
+    } else {
+      // Fall back to existing character-based approach (backward compatibility)
+      const characterNames = extractCharacterNames(shot.storyboardPayload);
+
+      let characterReferences: Map<string, string[]>;
+      try {
+        characterReferences = await referenceImageLoader.loadCharacterReferences(
+          storyId,
+          characterNames,
+          3
+        );
+      } catch (error) {
+        logger?.debug?.('Failed to load character references', {
+          sceneletId,
+          shotIndex,
+          characterNames,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new CharacterReferenceMissingError(characterNames.join(', '), storyId);
+      }
+
+      // Collect all reference image paths
+      const referenceImagePaths: string[] = [];
+      for (const paths of characterReferences.values()) {
+        referenceImagePaths.push(...paths);
+      }
+
+      // Read reference images as buffers
+      referenceImageBuffers = await Promise.all(
+        referenceImagePaths.map(async (imagePath) => {
+          const buffer = await fs.readFile(imagePath);
+          return {
+            data: buffer,
+            mimeType: imagePath.endsWith('.png') ? ('image/png' as const) : ('image/jpeg' as const),
+          };
+        })
       );
-    } catch (error) {
-      logger?.debug?.('Failed to load character references', {
-        sceneletId,
-        shotIndex,
-        characterNames,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new CharacterReferenceMissingError(characterNames.join(', '), storyId);
     }
-
-    // Collect all reference image paths
-    const referenceImagePaths: string[] = [];
-    for (const paths of characterReferences.values()) {
-      referenceImagePaths.push(...paths);
-    }
-
-    // Read reference images as buffers
-    const referenceImageBuffers = await Promise.all(
-      referenceImagePaths.map(async (imagePath) => {
-        const buffer = await fs.readFile(imagePath);
-        return {
-          data: buffer,
-          mimeType: imagePath.endsWith('.png') ? ('image/png' as const) : ('image/jpeg' as const),
-        };
-      })
-    );
 
     // Generate first frame image if missing
     if (missingFirstFrame) {

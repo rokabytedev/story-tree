@@ -77,6 +77,11 @@ export interface ShotProductionDialogueLine {
   line: string;
 }
 
+export interface ReferencedDesigns {
+  characters: string[];
+  environments: string[];
+}
+
 export interface ShotProductionStoryboardEntry {
   framingAndAngle: string;
   compositionAndContent: string;
@@ -85,6 +90,7 @@ export interface ShotProductionStoryboardEntry {
   cameraDynamics: string;
   lightingAndAtmosphere: string;
   continuityNotes: string;
+  referencedDesigns?: ReferencedDesigns;
 }
 
 export interface ShotGenerationPrompts {

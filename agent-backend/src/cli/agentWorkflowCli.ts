@@ -797,14 +797,17 @@ function printHelp(): void {
   console.log('  # Generate only first plate for character "cosmo-the-fox"');
   console.log('  run-task --task CREATE_VISUAL_REFERENCE_IMAGES --story-id abc-123 --character-id "cosmo-the-fox" --image-index 1 --mode stub');
   console.log('');
-  console.log('  # Generate all shot images for a story');
+  console.log('  # Generate all shot images for a story (uses reference images from visual reference package)');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --mode stub');
   console.log('');
-  console.log('  # Generate only shot images for scenelet "intro-scene"');
-  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --mode stub');
+  console.log('  # Generate only shot images for scenelet "intro-scene" with verbose logging (shows reference images used)');
+  console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --mode stub --verbose');
   console.log('');
   console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
+  console.log('');
+  console.log('Note: CREATE_SHOT_IMAGES automatically uses character model sheets and environment keyframes');
+  console.log('      from the visual reference package based on the shot\'s referenced_designs field.');
 }
 
 function loadEnvironmentVariables(): void {

@@ -36,6 +36,7 @@ export interface ShotImageTaskDependencies {
   targetSceneletId?: string;
   targetShotIndex?: number;
   aspectRatio?: string;
+  verbose?: boolean;
 }
 
 export interface ShotImageTaskLogger {

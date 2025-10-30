@@ -301,4 +301,143 @@ describe('parseShotProductionResponse', () => {
       })
     ).toThrow(/framing_and_angle/i);
   });
+
+  it('preserves referenced_designs when provided', () => {
+    const response = JSON.stringify({
+      scenelet_id: 'scenelet-control',
+      shots: [
+        {
+          shot_index: 1,
+          storyboard_entry: {
+            framing_and_angle: LONG_STORYBOARD,
+            composition_and_content: LONG_STORYBOARD,
+            character_action_and_emotion: LONG_STORYBOARD,
+            camera_dynamics: LONG_STORYBOARD,
+            lighting_and_atmosphere: LONG_STORYBOARD,
+            continuity_notes: LONG_STORYBOARD,
+            referenced_designs: {
+              characters: ['finn', 'rhea'],
+              environments: ['control-room'],
+            },
+          },
+          generation_prompts: {
+            first_frame_prompt: LONG_PROMPT,
+            key_frame_storyboard_prompt: LONG_PROMPT,
+            video_clip_prompt: LONG_VIDEO_PROMPT,
+          },
+        },
+      ],
+    });
+
+    const result = parseShotProductionResponse(response, {
+      scenelet: TARGET_SCENELET,
+      visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+    });
+
+    expect(result.shots[0]?.storyboard.referencedDesigns).toEqual({
+      characters: ['finn', 'rhea'],
+      environments: ['control-room'],
+    });
+  });
+
+  it('handles missing referenced_designs gracefully (backward compatibility)', () => {
+    const response = JSON.stringify({
+      scenelet_id: 'scenelet-control',
+      shots: [
+        {
+          shot_index: 1,
+          storyboard_entry: {
+            framing_and_angle: LONG_STORYBOARD,
+            composition_and_content: LONG_STORYBOARD,
+            character_action_and_emotion: LONG_STORYBOARD,
+            camera_dynamics: LONG_STORYBOARD,
+            lighting_and_atmosphere: LONG_STORYBOARD,
+            continuity_notes: LONG_STORYBOARD,
+          },
+          generation_prompts: {
+            first_frame_prompt: LONG_PROMPT,
+            key_frame_storyboard_prompt: LONG_PROMPT,
+            video_clip_prompt: LONG_VIDEO_PROMPT,
+          },
+        },
+      ],
+    });
+
+    const result = parseShotProductionResponse(response, {
+      scenelet: TARGET_SCENELET,
+      visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+    });
+
+    expect(result.shots[0]?.storyboard.referencedDesigns).toBeUndefined();
+  });
+
+  it('validates referenced_designs.characters is a string array', () => {
+    const response = JSON.stringify({
+      scenelet_id: 'scenelet-control',
+      shots: [
+        {
+          shot_index: 1,
+          storyboard_entry: {
+            framing_and_angle: LONG_STORYBOARD,
+            composition_and_content: LONG_STORYBOARD,
+            character_action_and_emotion: LONG_STORYBOARD,
+            camera_dynamics: LONG_STORYBOARD,
+            lighting_and_atmosphere: LONG_STORYBOARD,
+            continuity_notes: LONG_STORYBOARD,
+            referenced_designs: {
+              characters: 'not-an-array',
+              environments: [],
+            },
+          },
+          generation_prompts: {
+            first_frame_prompt: LONG_PROMPT,
+            key_frame_storyboard_prompt: LONG_PROMPT,
+            video_clip_prompt: LONG_VIDEO_PROMPT,
+          },
+        },
+      ],
+    });
+
+    expect(() =>
+      parseShotProductionResponse(response, {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/must be an array/i);
+  });
+
+  it('validates referenced_designs.environments is a string array', () => {
+    const response = JSON.stringify({
+      scenelet_id: 'scenelet-control',
+      shots: [
+        {
+          shot_index: 1,
+          storyboard_entry: {
+            framing_and_angle: LONG_STORYBOARD,
+            composition_and_content: LONG_STORYBOARD,
+            character_action_and_emotion: LONG_STORYBOARD,
+            camera_dynamics: LONG_STORYBOARD,
+            lighting_and_atmosphere: LONG_STORYBOARD,
+            continuity_notes: LONG_STORYBOARD,
+            referenced_designs: {
+              characters: [],
+              environments: ['valid-id', 123],
+            },
+          },
+          generation_prompts: {
+            first_frame_prompt: LONG_PROMPT,
+            key_frame_storyboard_prompt: LONG_PROMPT,
+            video_clip_prompt: LONG_VIDEO_PROMPT,
+          },
+        },
+      ],
+    });
+
+    expect(() =>
+      parseShotProductionResponse(response, {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/must be non-empty strings/i);
+  });
 });
