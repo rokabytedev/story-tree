@@ -26,6 +26,7 @@ import type { InteractiveStoryLogger } from '../interactive-story/types.js';
 import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
 import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
 import { createGeminiJsonClient } from '../gemini/client.js';
+import { ImageStorageService } from '../image-generation/imageStorage.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
@@ -240,12 +241,15 @@ async function buildWorkflowDependencies(
   const storyTreeLoader = (storyId: string) =>
     loadStoryTreeSnapshot(storyId, { sceneletsRepository });
 
-  // Create gemini clients for real mode with verbose support
+  // Create gemini clients and image storage for real mode with verbose support
   const geminiImageClient = mode === 'real'
     ? createGeminiImageClient({ verbose })
     : undefined;
   const geminiJsonClient = mode === 'real'
     ? createGeminiJsonClient({ verbose })
+    : undefined;
+  const imageStorage = mode === 'real'
+    ? new ImageStorageService()
     : undefined;
 
   // Extract run-task specific options with proper type narrowing
@@ -253,15 +257,6 @@ async function buildWorkflowDependencies(
   let shotImageOptions = {};
 
   if (options.command === 'run-task') {
-    if (verbose) {
-      console.log('[agent-workflow] run-task options:', {
-        characterId: options.characterId,
-        environmentId: options.environmentId,
-        imageIndex: options.imageIndex,
-        sceneletId: options.sceneletId,
-        shotIndex: options.shotIndex,
-      });
-    }
     if (options.characterId) {
       visualRefImageOptions = { ...visualRefImageOptions, targetCharacterId: options.characterId };
     }
@@ -276,9 +271,6 @@ async function buildWorkflowDependencies(
     }
     if (options.shotIndex !== undefined) {
       shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
-    }
-    if (verbose) {
-      console.log('[agent-workflow] visualRefImageOptions:', visualRefImageOptions);
     }
   }
 
@@ -307,6 +299,7 @@ async function buildWorkflowDependencies(
     visualReferenceImageTaskOptions: {
       logger,
       ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
       ...visualRefImageOptions,
     },
     audioDesignTaskOptions: {
@@ -320,6 +313,7 @@ async function buildWorkflowDependencies(
     shotImageTaskOptions: {
       logger,
       ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
       ...shotImageOptions,
     },
   };

@@ -54,14 +54,6 @@ export async function runVisualReferenceImageTask(
   const targetEnvironmentId = dependencies.targetEnvironmentId?.trim() || undefined;
   const targetIndex = dependencies.targetIndex;
 
-  logger?.debug?.('Visual reference image task filter options', {
-    targetCharacterId,
-    targetEnvironmentId,
-    targetIndex,
-    rawCharacterId: dependencies.targetCharacterId,
-    rawEnvironmentId: dependencies.targetEnvironmentId,
-  });
-
   // Validate that targetIndex is only used with a specific character or environment
   if (targetIndex !== undefined && !targetCharacterId && !targetEnvironmentId) {
     throw new VisualReferenceImageTaskError(
