@@ -291,7 +291,7 @@ function requirePrompt(
   return text;
 }
 
-function requireRichText(value: unknown, field: string, minimumLength = 16): string {
+function requireRichText(value: unknown, field: string, minimumLength = 1): string {
   const text = toTrimmedString(value);
   if (!text) {
     throw new ShotProductionTaskError(`${field} must be a non-empty string.`);
