@@ -248,6 +248,40 @@ async function buildWorkflowDependencies(
     ? createGeminiJsonClient({ verbose })
     : undefined;
 
+  // Extract run-task specific options with proper type narrowing
+  let visualRefImageOptions = {};
+  let shotImageOptions = {};
+
+  if (options.command === 'run-task') {
+    if (verbose) {
+      console.log('[agent-workflow] run-task options:', {
+        characterId: options.characterId,
+        environmentId: options.environmentId,
+        imageIndex: options.imageIndex,
+        sceneletId: options.sceneletId,
+        shotIndex: options.shotIndex,
+      });
+    }
+    if (options.characterId) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetCharacterId: options.characterId };
+    }
+    if (options.environmentId) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetEnvironmentId: options.environmentId };
+    }
+    if (options.imageIndex !== undefined) {
+      visualRefImageOptions = { ...visualRefImageOptions, targetIndex: options.imageIndex };
+    }
+    if (options.sceneletId) {
+      shotImageOptions = { ...shotImageOptions, targetSceneletId: options.sceneletId };
+    }
+    if (options.shotIndex !== undefined) {
+      shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
+    }
+    if (verbose) {
+      console.log('[agent-workflow] visualRefImageOptions:', visualRefImageOptions);
+    }
+  }
+
   const workflowOptions: AgentWorkflowOptions = {
     storiesRepository,
     shotsRepository,
@@ -273,15 +307,7 @@ async function buildWorkflowDependencies(
     visualReferenceImageTaskOptions: {
       logger,
       ...(geminiImageClient ? { geminiImageClient } : {}),
-      ...(options.command === 'run-task' && options.characterId
-        ? { targetCharacterId: options.characterId }
-        : {}),
-      ...(options.command === 'run-task' && options.environmentId
-        ? { targetEnvironmentId: options.environmentId }
-        : {}),
-      ...(options.command === 'run-task' && options.imageIndex !== undefined
-        ? { targetIndex: options.imageIndex }
-        : {}),
+      ...visualRefImageOptions,
     },
     audioDesignTaskOptions: {
       logger,
@@ -294,12 +320,7 @@ async function buildWorkflowDependencies(
     shotImageTaskOptions: {
       logger,
       ...(geminiImageClient ? { geminiImageClient } : {}),
-      ...(options.command === 'run-task' && options.sceneletId
-        ? { targetSceneletId: options.sceneletId }
-        : {}),
-      ...(options.command === 'run-task' && options.shotIndex !== undefined
-        ? { targetShotIndex: options.shotIndex }
-        : {}),
+      ...shotImageOptions,
     },
   };
 

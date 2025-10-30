@@ -505,12 +505,12 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.retry = overrides.retry;
     }
 
-    if (overrides?.targetCharacterName) {
-      dependencies.targetCharacterName = overrides.targetCharacterName;
+    if (overrides?.targetCharacterId) {
+      dependencies.targetCharacterId = overrides.targetCharacterId;
     }
 
-    if (overrides?.targetEnvironmentName) {
-      dependencies.targetEnvironmentName = overrides.targetEnvironmentName;
+    if (overrides?.targetEnvironmentId) {
+      dependencies.targetEnvironmentId = overrides.targetEnvironmentId;
     }
 
     if (overrides?.targetIndex !== undefined) {
