@@ -56,7 +56,7 @@ export function StoryboardCanvas({ data }: StoryboardCanvasProps) {
         />
         <Panel position="top-right">
           <div className="rounded-full bg-surface-muted/80 px-3 py-1 text-xs text-text-muted">
-            Scroll or pinch to zoom • Drag background to pan
+            Pinch to zoom • Drag to move
           </div>
         </Panel>
       </ReactFlow>
