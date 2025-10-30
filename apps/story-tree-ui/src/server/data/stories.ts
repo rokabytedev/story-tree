@@ -30,6 +30,7 @@ export interface StorySummaryViewModel {
 export interface StoryDetailViewModel extends StorySummaryViewModel {
   constitutionMarkdown: string | null;
   visualDesignDocument: unknown | null;
+  visualReferencePackage: unknown | null;
   audioDesignDocument: unknown | null;
 }
 
@@ -123,6 +124,7 @@ function mapStoryRecordToDetail(record: StoryRecord): StoryDetailViewModel {
     accentColor: deriveAccentColor(record.displayName ?? record.id),
     constitutionMarkdown: extractConstitutionMarkdown(record.storyConstitution),
     visualDesignDocument: record.visualDesignDocument ?? null,
+    visualReferencePackage: record.visualReferencePackage ?? null,
     audioDesignDocument: record.audioDesignDocument ?? null,
   };
 }

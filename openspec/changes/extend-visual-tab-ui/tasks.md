@@ -2,7 +2,7 @@
 
 ## Milestone 1: Type Definitions and Data Fetching
 
-- [ ] **Task 1.1**: Create `apps/story-tree-ui/src/components/visual/types.ts`
+- [x] **Task 1.1**: Create `apps/story-tree-ui/src/components/visual/types.ts`
   - Define `VisualStyle`, `ColorPaletteEntry`, `GlobalAesthetic`
   - Define `CharacterDesign`, `EnvironmentDesign`, `VisualDesignDocument`
   - Define `CharacterReferencePlate`, `CharacterModelSheet`
@@ -10,7 +10,7 @@
   - Define `VisualReferencePackage`
   - Export all types
 
-- [ ] **Task 1.2**: Update `StoryDetailViewModel` in `apps/story-tree-ui/src/server/data/stories.ts`
+- [x] **Task 1.2**: Update `StoryDetailViewModel` in `apps/story-tree-ui/src/server/data/stories.ts`
   - Add `visualReferencePackage: unknown | null` field to interface
   - Update `mapStoryRecordToDetail` to include `visualReferencePackage` from record
   - Verify existing `getStory` function returns the new field
@@ -25,7 +25,7 @@
 
 ## Milestone 2: Reusable UI Components
 
-- [ ] **Task 2.1**: Create `apps/story-tree-ui/src/components/visual/ReferenceImageCard.tsx`
+- [x] **Task 2.1**: Create `apps/story-tree-ui/src/components/visual/ReferenceImageCard.tsx`
   - Accept props: `imagePath`, `description`, `onClick`
   - Render image with 16:9 aspect ratio (or configurable)
   - Render description text below image with background separation
@@ -33,7 +33,7 @@
   - Make card clickable with hover state
   - Use theme-appropriate styling
 
-- [ ] **Task 2.2**: Create `apps/story-tree-ui/src/components/visual/ImageDetailPanel.tsx`
+- [x] **Task 2.2**: Create `apps/story-tree-ui/src/components/visual/ImageDetailPanel.tsx`
   - Accept props: `selectedImage` (union of character/environment image types), `onClose`
   - Render fixed right-side overlay (similar to `ShotDetailPanel`)
   - Display full image at top
@@ -44,7 +44,7 @@
   - Support close button
   - Ensure accessibility (focus management, aria labels)
 
-- [ ] **Task 2.3**: Create `apps/story-tree-ui/src/components/visual/GlobalAestheticSection.tsx`
+- [x] **Task 2.3**: Create `apps/story-tree-ui/src/components/visual/GlobalAestheticSection.tsx`
   - Accept props: `globalAesthetic` (or null)
   - Render visual style name and description
   - Render color palette grid
@@ -60,7 +60,7 @@
 
 ## Milestone 3: Character and Environment Sections
 
-- [ ] **Task 3.1**: Create `apps/story-tree-ui/src/components/visual/CharacterSection.tsx`
+- [x] **Task 3.1**: Create `apps/story-tree-ui/src/components/visual/CharacterSection.tsx`
   - Accept props: `characterId`, `referencePlates`, `characterDesign`, `onImageClick`
   - Render character ID heading
   - Render grid of `ReferenceImageCard` components
@@ -69,7 +69,7 @@
   - Display all fields from `detailed_description` (attire, physique, facial_features)
   - Format text properly (line breaks, labels)
 
-- [ ] **Task 3.2**: Create `apps/story-tree-ui/src/components/visual/EnvironmentSection.tsx`
+- [x] **Task 3.2**: Create `apps/story-tree-ui/src/components/visual/EnvironmentSection.tsx`
   - Accept props: `environmentId`, `keyframes`, `environmentDesign`, `onImageClick`
   - Render environment ID heading
   - Render grid of `ReferenceImageCard` components
@@ -87,7 +87,7 @@
 
 ## Milestone 4: Main Visual Reference View Component
 
-- [ ] **Task 4.1**: Create `apps/story-tree-ui/src/components/visual/VisualReferenceView.tsx`
+- [x] **Task 4.1**: Create `apps/story-tree-ui/src/components/visual/VisualReferenceView.tsx`
   - Mark as client component ("use client")
   - Accept props: `visualReferencePackage`, `visualDesignDocument`
   - Implement state management for selected image
@@ -101,7 +101,7 @@
   - Render visual design document JSON (CodeBlock)
   - Render `ImageDetailPanel` overlay
 
-- [ ] **Task 4.2**: Handle edge cases in `VisualReferenceView`
+- [x] **Task 4.2**: Handle edge cases in `VisualReferenceView`
   - Handle missing visual reference package
   - Handle missing visual design document
   - Handle mismatched character/environment IDs
@@ -119,7 +119,7 @@
 
 ## Milestone 5: Update Visual Tab Page
 
-- [ ] **Task 5.1**: Update `apps/story-tree-ui/src/app/story/[storyId]/visual/page.tsx`
+- [x] **Task 5.1**: Update `apps/story-tree-ui/src/app/story/[storyId]/visual/page.tsx`
   - Import `VisualReferenceView` component
   - Fetch story using existing `getStory(storyId)`
   - Extract `visualReferencePackage` and `visualDesignDocument` from story
@@ -138,19 +138,19 @@ OPTIONAL DO NOT IMPLEMENT:
 
 ## Milestone 6: Styling and Accessibility
 
-- [ ] **Task 6.1**: Implement responsive grid layouts
+- [x] **Task 6.1**: Implement responsive grid layouts
   - Use CSS Grid or Flexbox for image card grids
   - Ensure cards have consistent sizing
   - Add appropriate gaps and spacing
   - Test layout on different screen sizes
 
-- [ ] **Task 6.2**: Implement theme-consistent styling
+- [x] **Task 6.2**: Implement theme-consistent styling
   - Use existing TailwindCSS theme tokens
   - Match border, shadow, and background styles from storyboard components
   - Ensure proper text hierarchy (headings, body text, captions)
   - Test in light and dark mode
 
-- [ ] **Task 6.3**: Accessibility audit
+- [x] **Task 6.3**: Accessibility audit
   - Add descriptive alt text to all images
   - Add aria labels to interactive elements
 OPTIONAL DO NOT IMPLEMENT:
@@ -158,7 +158,7 @@ OPTIONAL DO NOT IMPLEMENT:
   - Test focus management when opening/closing detail panel
   - Test with screen reader (VoiceOver or NVDA)
 
-- [ ] **Task 6.4**: Handle long text content
+- [x] **Task 6.4**: Handle long text content
   - Ensure long image prompts are scrollable in detail panel
   - Ensure long descriptions wrap properly in cards
 OPTIONAL DO NOT IMPLEMENT:
