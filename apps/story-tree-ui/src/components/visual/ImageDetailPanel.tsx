@@ -149,7 +149,7 @@ export function ImageDetailPanel({
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
               Image Generation Prompt
             </h3>
-            <div className="max-h-96 overflow-y-auto rounded-lg bg-surface-muted/70 p-4">
+            <div className="rounded-lg bg-surface-muted/70 p-4">
               <p className="whitespace-pre-wrap text-xs leading-relaxed text-text">
                 {formatText(selectedImage.image_generation_prompt)}
               </p>
