@@ -93,9 +93,7 @@ export default async function StoryLayout({ children, params }: StoryLayoutProps
             aria-hidden="true"
           />
         </header>
-        <div className="rounded-3xl border border-border bg-surface p-6 shadow-panel lg:p-10">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   );
