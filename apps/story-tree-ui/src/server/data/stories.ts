@@ -11,11 +11,13 @@ import {
   createStoriesRepository,
   type StoryRecord,
 } from "../../../../../supabase/src/storiesRepository";
+import { createShotsRepository, type ShotRecord } from "../../../../../supabase/src/shotsRepository";
 import { getSupabaseClient } from "../supabase";
 import type {
   StoryTreeData,
   StoryboardBranchingPoint,
   StoryboardScenelet,
+  ShotImage,
 } from "@/components/storyboard/types";
 
 export interface StorySummaryViewModel {
@@ -92,6 +94,8 @@ export async function getStoryTreeData(storyId: string): Promise<StoryTreeData |
 
   const client = getSupabaseClient();
   const sceneletsRepository = createSceneletsRepository(client);
+  const shotsRepository = createShotsRepository(client);
+
   const scenelets = await sceneletsRepository.listSceneletsByStory(trimmed);
 
   if (scenelets.length === 0) {
@@ -100,7 +104,8 @@ export async function getStoryTreeData(storyId: string): Promise<StoryTreeData |
 
   try {
     const snapshot = assembleStoryTreeSnapshot(scenelets);
-    return mapStoryTreeEntriesToStoryboardData(snapshot.entries);
+    const shotsByScenelet = await shotsRepository.getShotsByStory(trimmed);
+    return mapStoryTreeEntriesToStoryboardData(snapshot.entries, shotsByScenelet);
   } catch (error) {
     console.error("Failed to assemble story tree snapshot", error);
     return null;
@@ -152,13 +157,17 @@ function extractConstitutionMarkdown(value: unknown): string | null {
   return null;
 }
 
-export function mapStoryTreeEntriesToStoryboardData(entries: StoryTreeEntry[]): StoryTreeData {
+export function mapStoryTreeEntriesToStoryboardData(
+  entries: StoryTreeEntry[],
+  shotsByScenelet: Record<string, ShotRecord[]> = {}
+): StoryTreeData {
   const scenelets: StoryboardScenelet[] = [];
   const branchingPoints: StoryboardBranchingPoint[] = [];
 
   for (const entry of entries) {
     if (entry.kind === "scenelet") {
-      scenelets.push(transformSceneletDigest(entry.data));
+      const sceneletShots = shotsByScenelet[entry.data.id] ?? [];
+      scenelets.push(transformSceneletDigest(entry.data, sceneletShots));
       continue;
     }
 
@@ -170,7 +179,10 @@ export function mapStoryTreeEntriesToStoryboardData(entries: StoryTreeEntry[]): 
   return { scenelets, branchingPoints };
 }
 
-function transformSceneletDigest(digest: SceneletDigest): StoryboardScenelet {
+function transformSceneletDigest(
+  digest: SceneletDigest,
+  shots: ShotRecord[] = []
+): StoryboardScenelet {
   return {
     id: digest.id,
     parentId: digest.parentId,
@@ -178,6 +190,7 @@ function transformSceneletDigest(digest: SceneletDigest): StoryboardScenelet {
     description: digest.description,
     dialogue: digest.dialogue.map((line) => ({ character: line.character, line: line.line })),
     shotSuggestions: [...digest.shotSuggestions],
+    shots: shots.map(mapShotRecordToShotImage),
     choiceLabel: digest.choiceLabel ?? null,
   };
 }
@@ -191,5 +204,23 @@ function transformBranchingPointDigest(digest: BranchingPointDigest): Storyboard
       label: choice.label,
       leadsTo: choice.leadsTo,
     })),
+  };
+}
+
+function transformImagePath(dbPath: string | undefined): string | null {
+  if (!dbPath) return null;
+  return `/generated/${dbPath}`;
+}
+
+function mapShotRecordToShotImage(record: ShotRecord): ShotImage {
+  return {
+    shotIndex: record.shotIndex,
+    keyFrameImagePath: transformImagePath(record.keyFrameImagePath),
+    firstFrameImagePath: transformImagePath(record.firstFrameImagePath),
+    storyboardPayload: record.storyboardPayload,
+    firstFramePrompt: record.firstFramePrompt,
+    keyFramePrompt: record.keyFramePrompt,
+    videoClipPrompt: record.videoClipPrompt,
+    createdAt: record.createdAt,
   };
 }

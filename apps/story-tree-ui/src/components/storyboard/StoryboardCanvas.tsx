@@ -6,7 +6,7 @@ import "@xyflow/react/dist/style.css";
 import { BranchingPointNode } from "./BranchingPointNode";
 import { SceneletNode } from "./SceneletNode";
 import { createReactFlowGraph } from "./dataTransformers";
-import type { BranchingPointNodeData, SceneletNodeData, StoryTreeData } from "./types";
+import type { BranchingPointNodeData, SceneletNodeData, ShotImage, StoryTreeData } from "./types";
 
 const nodeTypes = {
   scenelet: SceneletNode,
@@ -15,10 +15,11 @@ const nodeTypes = {
 
 export interface StoryboardCanvasProps {
   data: StoryTreeData;
+  onShotClick?: (shot: ShotImage) => void;
 }
 
-export function StoryboardCanvas({ data }: StoryboardCanvasProps) {
-  const graph = useMemo(() => createReactFlowGraph(data), [data]);
+export function StoryboardCanvas({ data, onShotClick }: StoryboardCanvasProps) {
+  const graph = useMemo(() => createReactFlowGraph(data, onShotClick), [data, onShotClick]);
 
   if (graph.nodes.length === 0) {
     return (
@@ -56,7 +57,7 @@ export function StoryboardCanvas({ data }: StoryboardCanvasProps) {
         />
         <Panel position="top-right">
           <div className="rounded-full bg-surface-muted/80 px-3 py-1 text-xs text-text-muted">
-            Scroll or pinch to zoom • Drag background to pan
+            Pinch to zoom • Drag to move
           </div>
         </Panel>
       </ReactFlow>
