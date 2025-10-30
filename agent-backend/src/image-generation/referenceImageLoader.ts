@@ -50,6 +50,7 @@ export function loadReferenceImagesFromPaths(paths: string[]): ReferenceImage[] 
       images.push({
         data,
         mimeType,
+        name: path,
       });
     } catch (error) {
       if (error instanceof ReferenceImageLoadError) {

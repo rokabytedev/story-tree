@@ -17,6 +17,7 @@ export type ImageAspectRatio =
 export interface ReferenceImage {
   data: Buffer;
   mimeType: 'image/png' | 'image/jpeg';
+  name?: string;
 }
 
 export interface ImageGenerationRequest {

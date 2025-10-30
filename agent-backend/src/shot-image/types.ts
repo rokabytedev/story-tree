@@ -15,6 +15,7 @@ export interface GeminiImageClient {
 export interface ReferenceImage {
   data: Buffer;
   mimeType: string;
+  name?: string;
 }
 
 export interface ImageStorage {

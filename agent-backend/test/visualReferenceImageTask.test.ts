@@ -75,6 +75,7 @@ describe('runVisualReferenceImageTask', () => {
       visualReferencePackage: {
         character_model_sheets: [
           {
+            character_id: 'cosmo-the-coder',
             character_name: 'Cosmo the Coder',
             reference_plates: [
               {
@@ -86,13 +87,14 @@ describe('runVisualReferenceImageTask', () => {
                 plate_description: 'Already generated',
                 type: 'CHARACTER_MODEL_SHEET',
                 image_generation_prompt: 'No-op prompt',
-                image_path: 'story-1/visuals/characters/cosmo-the-coder/model_sheet_2.png',
+                image_path: 'story-1/visuals/characters/cosmo-the-coder/character-model-sheet-2.png',
               },
             ],
           },
         ],
         environment_keyframes: [
           {
+            environment_id: 'decision-grove',
             environment_name: 'Decision Grove',
             keyframes: [
               {
@@ -137,7 +139,7 @@ describe('runVisualReferenceImageTask', () => {
       Buffer.from('character-image'),
       'story-1',
       'visuals/characters/cosmo-the-coder',
-      'model_sheet_1.png'
+      'character-model-sheet-1.png'
     );
     expect(saveImage).toHaveBeenNthCalledWith(
       2,
@@ -150,7 +152,7 @@ describe('runVisualReferenceImageTask', () => {
     expect(result.generatedCharacterImages).toBe(1);
     expect(result.generatedEnvironmentImages).toBe(1);
     expect(result.visualReferencePackage.character_model_sheets[0]?.reference_plates[0]?.image_path).toBe(
-      'story-1/visuals/characters/cosmo-the-coder/model_sheet_1.png'
+      'story-1/visuals/characters/cosmo-the-coder/character-model-sheet-1.png'
     );
     expect(result.visualReferencePackage.environment_keyframes[0]?.keyframes[0]?.image_path).toBe(
       'story-1/visuals/environments/decision-grove/keyframe_1.png'
@@ -162,19 +164,21 @@ describe('runVisualReferenceImageTask', () => {
       visualReferencePackage: {
         character_model_sheets: [
           {
+            character_id: 'cosmo-the-coder',
             character_name: 'Cosmo the Coder',
             reference_plates: [
               {
                 plate_description: 'Model sheet',
                 type: 'CHARACTER_MODEL_SHEET',
                 image_generation_prompt: 'Prompt',
-                image_path: 'story-1/visuals/characters/cosmo-the-coder/model_sheet_1.png',
+                image_path: 'story-1/visuals/characters/cosmo-the-coder/character-model-sheet-1.png',
               },
             ],
           },
         ],
         environment_keyframes: [
           {
+            environment_id: 'decision-grove',
             environment_name: 'Decision Grove',
             keyframes: [
               {

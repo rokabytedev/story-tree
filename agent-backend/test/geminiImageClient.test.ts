@@ -136,4 +136,60 @@ describe('createGeminiImageClient', () => {
       }),
     ).rejects.toBeInstanceOf(GeminiRateLimitError);
   });
+
+  it('redacts base64 image data in verbose mode logging and includes image name', async () => {
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const referenceBuffer = Buffer.from('test-image-data-that-would-be-very-long-in-real-usage');
+    const generatedBuffer = Buffer.from('generated-image');
+    const transport = {
+      generateContent: vi.fn(async () => ({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  inlineData: {
+                    data: generatedBuffer.toString('base64'),
+                    mimeType: 'image/png',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })),
+    };
+    const client = createGeminiImageClient({ transport, verbose: true });
+
+    await client.generateImage({
+      userPrompt: 'Create an image',
+      referenceImages: [{
+        data: referenceBuffer,
+        mimeType: 'image/png',
+        name: 'visuals/characters/cosmo/character-model-sheet-1.png'
+      }],
+    });
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      '[gemini-image-client] GenerateContentParameters:',
+      expect.any(String)
+    );
+
+    const loggedOutput = consoleLogSpy.mock.calls[0][1] as string;
+    const parsedOutput = JSON.parse(loggedOutput);
+
+    // Verify that the base64 data was redacted
+    expect(loggedOutput).not.toContain(referenceBuffer.toString('base64'));
+
+    // Verify image name is included in the redacted output
+    const redactedData = parsedOutput.contents[0].parts[0].inlineData.data;
+    expect(redactedData).toContain('visuals/characters/cosmo/character-model-sheet-1.png');
+    expect(redactedData).toMatch(/^<base64 image data redacted, ~\d+KB \(.*\)>$/);
+
+    // Verify _imageName metadata is not in the output
+    expect(parsedOutput.contents[0].parts[0]._imageName).toBeUndefined();
+
+    consoleLogSpy.mockRestore();
+  });
 });
