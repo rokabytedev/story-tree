@@ -7,7 +7,7 @@ import type {
 
 export const NODE_WIDTH = 640;
 export const HORIZONTAL_GAP = 0;
-export const VERTICAL_GAP = 660;
+export const VERTICAL_GAP = 500;
 
 export type StoryboardHierarchyNode =
   | {
