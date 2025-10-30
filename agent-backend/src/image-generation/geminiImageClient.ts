@@ -71,7 +71,7 @@ export function createGeminiImageClient(options: GeminiImageClientOptions = {}):
       };
 
       if (verbose) {
-        console.log('[gemini-image-client] GenerateContentParameters:', JSON.stringify(parameters, null, 2));
+        console.log('[gemini-image-client] GenerateContentParameters:', JSON.stringify(redactImageData(parameters), null, 2));
       }
 
       return executeGeminiWithRetry(
@@ -119,6 +119,8 @@ function buildContents(userPrompt: string, referenceImages: ReferenceImage[]): C
         data: reference.data.toString('base64'),
         mimeType: reference.mimeType,
       },
+      // Store name as metadata for verbose logging (not sent to Gemini)
+      ...(reference.name && { _imageName: reference.name }),
     });
   }
 
@@ -130,6 +132,29 @@ function buildContents(userPrompt: string, referenceImages: ReferenceImage[]): C
       parts,
     },
   ];
+}
+
+function redactImageData(parameters: GenerateContentParameters): unknown {
+  const redacted = JSON.parse(JSON.stringify(parameters));
+
+  if (redacted.contents && Array.isArray(redacted.contents)) {
+    for (const content of redacted.contents) {
+      if (content.parts && Array.isArray(content.parts)) {
+        for (const part of content.parts) {
+          if (part.inlineData && part.inlineData.data) {
+            const dataLength = part.inlineData.data.length;
+            const sizeKB = Math.round(dataLength / 1024);
+            const imageName = part._imageName ? ` (${part._imageName})` : '';
+            part.inlineData.data = `<base64 image data redacted, ~${sizeKB}KB${imageName}>`;
+            // Remove the metadata field from the redacted output
+            delete part._imageName;
+          }
+        }
+      }
+    }
+  }
+
+  return redacted;
 }
 
 function validateReferenceImages(referenceImages: ReferenceImage[]): void {

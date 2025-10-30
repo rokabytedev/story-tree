@@ -8,6 +8,7 @@ import {
   type ShotProductionShotRecord,
   type ShotProductionValidationResult,
   type ShotGenerationPrompts,
+  type ReferencedDesigns,
 } from './types.js';
 import { normalizeNameToId } from '../visual-design/utils.js';
 
@@ -35,6 +36,8 @@ interface RawStoryboardEntry {
   lightingAndAtmosphere?: unknown;
   continuity_notes?: unknown;
   continuityNotes?: unknown;
+  referenced_designs?: unknown;
+  referencedDesigns?: unknown;
   [key: string]: unknown;
 }
 
@@ -195,6 +198,9 @@ function sanitizeStoryboard(
   const dialogueRaw = record.dialogue;
   const dialogue = sanitizeDialogue(dialogueRaw, context);
 
+  const referencedDesignsRaw = record.referenced_designs ?? record.referencedDesigns;
+  const referencedDesigns = sanitizeReferencedDesigns(referencedDesignsRaw);
+
   return {
     framingAndAngle,
     compositionAndContent,
@@ -203,6 +209,7 @@ function sanitizeStoryboard(
     cameraDynamics,
     lightingAndAtmosphere,
     continuityNotes,
+    referencedDesigns,
   };
 }
 
@@ -254,6 +261,52 @@ function sanitizeDialogue(
   return sanitized;
 }
 
+function sanitizeReferencedDesigns(input: unknown): ReferencedDesigns | undefined {
+  if (input === undefined || input === null) {
+    return undefined;
+  }
+
+  if (!input || typeof input !== 'object') {
+    throw new ShotProductionTaskError('referenced_designs must be an object when provided.');
+  }
+
+  const record = input as Record<string, unknown>;
+  const charactersRaw = record.characters;
+  const environmentsRaw = record.environments;
+
+  const characters = validateStringArray(charactersRaw, 'referenced_designs.characters');
+  const environments = validateStringArray(environmentsRaw, 'referenced_designs.environments');
+
+  return {
+    characters,
+    environments,
+  };
+}
+
+function validateStringArray(input: unknown, field: string): string[] {
+  if (input === undefined || input === null) {
+    return [];
+  }
+
+  if (!Array.isArray(input)) {
+    throw new ShotProductionTaskError(`${field} must be an array when provided.`);
+  }
+
+  const validated: string[] = [];
+  for (const item of input) {
+    if (typeof item !== 'string') {
+      throw new ShotProductionTaskError(`${field} array entries must be non-empty strings.`);
+    }
+    const str = item.trim();
+    if (!str) {
+      throw new ShotProductionTaskError(`${field} array entries must be non-empty strings.`);
+    }
+    validated.push(str);
+  }
+
+  return validated;
+}
+
 function sanitizePrompts(input: unknown): ShotGenerationPrompts {
   if (!input || typeof input !== 'object') {
     throw new ShotProductionTaskError('generation_prompts must be an object.');
@@ -291,7 +344,7 @@ function requirePrompt(
   return text;
 }
 
-function requireRichText(value: unknown, field: string, minimumLength = 16): string {
+function requireRichText(value: unknown, field: string, minimumLength = 1): string {
   const text = toTrimmedString(value);
   if (!text) {
     throw new ShotProductionTaskError(`${field} must be a non-empty string.`);

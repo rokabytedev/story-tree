@@ -15,6 +15,7 @@ export interface GeminiImageClient {
 export interface ReferenceImage {
   data: Buffer;
   mimeType: string;
+  name?: string;
 }
 
 export interface ImageStorage {
@@ -36,6 +37,7 @@ export interface ShotImageTaskDependencies {
   targetSceneletId?: string;
   targetShotIndex?: number;
   aspectRatio?: string;
+  verbose?: boolean;
 }
 
 export interface ShotImageTaskLogger {
