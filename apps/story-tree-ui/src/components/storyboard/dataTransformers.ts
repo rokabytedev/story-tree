@@ -8,6 +8,7 @@ import type {
   StoryTreeData,
   StoryboardBranchingPoint,
   StoryboardScenelet,
+  ShotImage,
 } from "./types";
 
 const CANVAS_PADDING_X = 48;
@@ -18,7 +19,8 @@ const EDGE_STYLE = {
 };
 
 export function createReactFlowGraph(
-  data: StoryTreeData
+  data: StoryTreeData,
+  onShotClick?: (shot: ShotImage) => void
 ): {
   nodes: Node<SceneletNodeData | BranchingPointNodeData>[];
   edges: Edge[];
@@ -30,13 +32,14 @@ export function createReactFlowGraph(
 
   const layoutRoot = calculateTreeLayout(hierarchyRoot);
   return {
-    nodes: mapToReactFlowNodes(layoutRoot),
+    nodes: mapToReactFlowNodes(layoutRoot, onShotClick),
     edges: mapToReactFlowEdges(layoutRoot),
   };
 }
 
 function mapToReactFlowNodes(
-  layoutRoot: HierarchyPointNode<StoryboardHierarchyNode>
+  layoutRoot: HierarchyPointNode<StoryboardHierarchyNode>,
+  onShotClick?: (shot: ShotImage) => void
 ): Node<SceneletNodeData | BranchingPointNodeData>[] {
   const allNodes = layoutRoot.descendants();
   const minX = Math.min(...allNodes.map((node) => node.x));
@@ -47,7 +50,7 @@ function mapToReactFlowNodes(
     const y = node.y - minY + CANVAS_PADDING_Y;
 
     if (node.data.type === "scenelet") {
-      return createSceneletNode(node.data.scenelet, x, y);
+      return createSceneletNode(node.data.scenelet, x, y, onShotClick);
     }
 
     return createBranchingPointNode(node.data.branchingPoint, x, y);
@@ -57,12 +60,13 @@ function mapToReactFlowNodes(
 function createSceneletNode(
   scenelet: StoryboardScenelet,
   x: number,
-  y: number
+  y: number,
+  onShotClick?: (shot: ShotImage) => void
 ): Node<SceneletNodeData> {
   return {
     id: scenelet.id,
     type: "scenelet",
-    data: { type: "scenelet", scenelet },
+    data: { type: "scenelet", scenelet, onShotClick },
     position: { x, y },
     draggable: false,
     selectable: true,

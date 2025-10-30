@@ -1,9 +1,10 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { SceneletNodeData } from "./types";
+import { ShotCarousel } from "./ShotCarousel";
 
 function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
-  const { scenelet } = data;
+  const { scenelet, onShotClick } = data;
 
   return (
     <div className="w-[640px] overflow-hidden rounded-3xl border border-border bg-surface text-text shadow-sm transition-shadow duration-150 hover:shadow-lg">
@@ -28,7 +29,11 @@ function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
           <p className="text-sm leading-relaxed text-text-muted">{scenelet.description}</p>
         )}
 
-        {scenelet.shotSuggestions.length > 0 && (
+        {scenelet.shots.length > 0 && onShotClick && (
+          <ShotCarousel shots={scenelet.shots} onShotClick={onShotClick} />
+        )}
+
+        {scenelet.shots.length === 0 && scenelet.shotSuggestions.length > 0 && (
           <section className="space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
               Shot Suggestions

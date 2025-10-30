@@ -6,7 +6,7 @@ import "@xyflow/react/dist/style.css";
 import { BranchingPointNode } from "./BranchingPointNode";
 import { SceneletNode } from "./SceneletNode";
 import { createReactFlowGraph } from "./dataTransformers";
-import type { BranchingPointNodeData, SceneletNodeData, StoryTreeData } from "./types";
+import type { BranchingPointNodeData, SceneletNodeData, ShotImage, StoryTreeData } from "./types";
 
 const nodeTypes = {
   scenelet: SceneletNode,
@@ -15,10 +15,11 @@ const nodeTypes = {
 
 export interface StoryboardCanvasProps {
   data: StoryTreeData;
+  onShotClick?: (shot: ShotImage) => void;
 }
 
-export function StoryboardCanvas({ data }: StoryboardCanvasProps) {
-  const graph = useMemo(() => createReactFlowGraph(data), [data]);
+export function StoryboardCanvas({ data, onShotClick }: StoryboardCanvasProps) {
+  const graph = useMemo(() => createReactFlowGraph(data, onShotClick), [data, onShotClick]);
 
   if (graph.nodes.length === 0) {
     return (

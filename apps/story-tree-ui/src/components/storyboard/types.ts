@@ -5,6 +5,17 @@ export interface StoryboardDialogueLine {
   line: string;
 }
 
+export interface ShotImage {
+  shotIndex: number;
+  keyFrameImagePath: string | null;
+  firstFrameImagePath: string | null;
+  storyboardPayload: unknown;
+  firstFramePrompt: string;
+  keyFramePrompt: string;
+  videoClipPrompt: string;
+  createdAt: string;
+}
+
 export interface StoryboardScenelet {
   id: string;
   parentId: string | null;
@@ -12,6 +23,7 @@ export interface StoryboardScenelet {
   description: string;
   dialogue: StoryboardDialogueLine[];
   shotSuggestions: string[];
+  shots: ShotImage[];
   choiceLabel?: string | null;
 }
 
@@ -35,6 +47,7 @@ export interface StoryTreeData {
 export interface SceneletNodeData {
   type: "scenelet";
   scenelet: StoryboardScenelet;
+  onShotClick?: (shot: ShotImage) => void;
 }
 
 export interface BranchingPointNodeData {

@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/emptyState";
-import { StoryboardCanvas } from "@/components/storyboard/StoryboardCanvas";
 import { getStoryTreeData } from "@/server/data/stories";
+import { StoryboardView } from "./StoryboardView";
 
 export default async function StoryboardTab({
   params,
@@ -35,17 +35,5 @@ export default async function StoryboardTab({
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.3em] text-text-muted">
-          Storyboard Canvas
-        </p>
-        <p className="text-xs text-text-muted/80">
-          Explore the narrative flow with an interactive tree of scenelets and branching points.
-        </p>
-      </header>
-      <StoryboardCanvas data={storyboardData} />
-    </div>
-  );
+  return <StoryboardView data={storyboardData} />;
 }
