@@ -22,7 +22,8 @@
           {
             "type": "dialogue",
             "source": "rhea",
-            "line": "We'll lead with a welcoming tutorial, keep things breezy."
+            "line": "We'll lead with a welcoming tutorial, keep things breezy.",
+            "delivery": "Light and reassuring, like a friendly teacher guiding the room."
           }
         ]
       }
@@ -48,7 +49,8 @@
           {
             "type": "dialogue",
             "source": "testing-agent",
-            "line": "Logging: tutorial tone, comedic beats, zero peril."
+            "line": "Logging: tutorial tone, comedic beats, zero peril.",
+            "delivery": "Cheerily analytical with a playful mechanical lilt."
           }
         ]
       }

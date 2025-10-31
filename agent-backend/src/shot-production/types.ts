@@ -64,6 +64,7 @@ export interface AudioNarrativeEntry {
   type: 'monologue' | 'dialogue';
   source: string;
   line: string;
+  delivery: string;
 }
 
 export interface ReferencedDesigns {

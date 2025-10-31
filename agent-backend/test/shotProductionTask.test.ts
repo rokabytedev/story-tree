@@ -179,6 +179,7 @@ function buildValidShotResponse(sceneletId: string, dialogueLine: string): strin
               type: 'dialogue',
               source: 'narrator',
               line: dialogueLine,
+              delivery: 'Warm and inviting, drawing listeners in with calm assurance.',
             },
           ],
         },

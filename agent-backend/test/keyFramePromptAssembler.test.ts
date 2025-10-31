@@ -37,7 +37,12 @@ function createShot(overrides: Partial<ShotProductionStoryboardEntry> = {}): Sho
       environments: ['sandbox-studio'],
     },
     audioAndNarrative: [
-      { type: 'monologue', source: 'narrator', line: 'The studio hums as the plan comes together.' },
+      {
+        type: 'monologue',
+        source: 'narrator',
+        line: 'The studio hums as the plan comes together.',
+        delivery: 'Excited and reverent, carrying the thrill of discovery.',
+      },
     ],
     ...overrides,
   };

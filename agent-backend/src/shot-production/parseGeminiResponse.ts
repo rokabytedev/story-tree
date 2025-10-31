@@ -7,7 +7,6 @@ import {
   type ShotProductionValidationResult,
   type ReferencedDesigns,
 } from './types.js';
-import { normalizeNameToId } from '../visual-design/utils.js';
 
 interface RawShotRecord {
   shot_index?: unknown;
@@ -42,6 +41,7 @@ interface RawAudioNarrativeEntry {
   type?: unknown;
   source?: unknown;
   line?: unknown;
+  delivery?: unknown;
   [key: string]: unknown;
 }
 
@@ -97,8 +97,6 @@ export function parseShotProductionResponse(
 
   const characterRoster = extractCharacterRoster(context.visualDesignDocument);
   const environmentRoster = extractEnvironmentRoster(context.visualDesignDocument);
-  const dialogueLookup = buildDialogueLookup(context.scenelet.dialogue);
-
   const sanitizedShots: ShotProductionShotRecord[] = [];
   let expectedShotIndex = 1;
 
@@ -107,7 +105,6 @@ export function parseShotProductionResponse(
       expectedIndex: expectedShotIndex,
       characterRoster,
       environmentRoster,
-      dialogueLookup,
     });
     sanitizedShots.push(sanitized);
     expectedShotIndex += 1;
@@ -125,7 +122,6 @@ function sanitizeShot(
     expectedIndex: number;
     characterRoster: Set<string>;
     environmentRoster: Set<string>;
-    dialogueLookup: Set<string>;
   }
 ): ShotProductionShotRecord {
   if (!input || typeof input !== 'object') {
@@ -159,7 +155,6 @@ function sanitizeStoryboard(
   context: {
     characterRoster: Set<string>;
     environmentRoster: Set<string>;
-    dialogueLookup: Set<string>;
   }
 ): ShotProductionStoryboardEntry {
   if (!input || typeof input !== 'object') {
@@ -196,7 +191,6 @@ function sanitizeStoryboard(
   const audioNarrativeRaw = record.audio_and_narrative ?? record.audioAndNarrative;
   const audioAndNarrative = sanitizeAudioNarrative(audioNarrativeRaw, {
     characterRoster: context.characterRoster,
-    dialogueLookup: context.dialogueLookup,
   });
 
   return {
@@ -215,7 +209,6 @@ function sanitizeAudioNarrative(
   input: unknown,
   context: {
     characterRoster: Set<string>;
-    dialogueLookup: Set<string>;
   }
 ): AudioNarrativeEntry[] {
   if (!Array.isArray(input)) {
@@ -245,6 +238,7 @@ function sanitizeAudioNarrative(
     }
 
     const line = requireRichText(record.line, 'audio_and_narrative.line');
+    const delivery = requireRichText(record.delivery, 'audio_and_narrative.delivery');
 
     if (normalizedType === 'monologue') {
       if (source !== 'narrator') {
@@ -254,19 +248,13 @@ function sanitizeAudioNarrative(
       if (!context.characterRoster.has(source)) {
         throw new ShotProductionTaskError(`Dialogue references unknown character design id ${source}.`);
       }
-
-      const key = buildDialogueKey(source, line);
-      if (!context.dialogueLookup.has(key)) {
-        throw new ShotProductionTaskError(
-          `Dialogue line for character id ${source} does not exist in the target scenelet: "${line}"`
-        );
-      }
     }
 
     sanitized.push({
       type: normalizedType as AudioNarrativeEntry['type'],
       source,
       line,
+      delivery,
     });
   }
 
@@ -369,31 +357,6 @@ function parseInteger(value: unknown): number | null {
   }
 
   return null;
-}
-
-function buildDialogueLookup(
-  dialogue: Array<{ character: string; line: string }>
-): Set<string> {
-  const inventory = new Set<string>();
-
-  for (const entry of dialogue ?? []) {
-    const character = toTrimmedString(entry?.character);
-    const line = toTrimmedString(entry?.line);
-
-    if (!character || !line) {
-      continue;
-    }
-
-    const characterId = normalizeNameToId(character);
-    const key = buildDialogueKey(characterId, line);
-    inventory.add(key);
-  }
-
-  return inventory;
-}
-
-function buildDialogueKey(character: string, line: string): string {
-  return `${character}::${line}`;
 }
 
 function extractCharacterRoster(document: unknown): Set<string> {

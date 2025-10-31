@@ -22,7 +22,8 @@
           {
             "type": "dialogue",
             "source": "rhea",
-            "line": "Or we launch with a challenge to jolt them awake."
+            "line": "Or we launch with a challenge to jolt them awake.",
+            "delivery": "Thrilling and daring, pitched like a daring mission briefing."
           }
         ]
       }
@@ -48,7 +49,8 @@
           {
             "type": "dialogue",
             "source": "testing-agent",
-            "line": "Noted. Tracking elevated tension and time pressure cues."
+            "line": "Noted. Tracking elevated tension and time pressure cues.",
+            "delivery": "Measured and calm, a steady AI voice in the storm."
           }
         ]
       }

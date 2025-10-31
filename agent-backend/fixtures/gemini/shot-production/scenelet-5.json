@@ -20,7 +20,8 @@
           {
             "type": "monologue",
             "source": "narrator",
-            "line": "The room hums as players sprint through puzzles, breathless but exhilarated."
+            "line": "The room hums as players sprint through puzzles, breathless but exhilarated.",
+            "delivery": "Breathless and cinematic, racing to keep pace with the action."
           }
         ]
       }
@@ -46,7 +47,8 @@
           {
             "type": "dialogue",
             "source": "rhea",
-            "line": "We kept them on their toes. Let's capture this momentum for iteration two."
+            "line": "We kept them on their toes. Let's capture this momentum for iteration two.",
+            "delivery": "Energized yet strategic, already plotting the next move."
           }
         ]
       }

@@ -184,6 +184,10 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
                       <span>{entry.source}</span>
                     </div>
                     <p className="mt-2 leading-relaxed">{entry.line}</p>
+                    <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                      Delivery
+                    </p>
+                    <p className="mt-1 leading-relaxed text-text-muted">{entry.delivery}</p>
                   </div>
                 ))}
               </div>
@@ -238,7 +242,7 @@ function extractReferencedDesigns(payload: unknown): { characters: string[]; env
 
 function extractAudioNarrative(
   payload: unknown
-): Array<{ type: string; source: string; line: string }> {
+): Array<{ type: string; source: string; line: string; delivery: string }> {
   if (!payload || typeof payload !== "object") {
     return [];
   }
@@ -255,11 +259,13 @@ function extractAudioNarrative(
       const type = typeof entry.type === "string" ? entry.type.toLowerCase() : "unknown";
       const source = typeof entry.source === "string" ? entry.source : "unknown";
       const line = typeof entry.line === "string" ? entry.line : "";
+      const delivery = typeof entry.delivery === "string" ? entry.delivery : "";
       return {
         type,
         source,
         line,
+        delivery,
       };
     })
-    .filter((entry) => entry.line.trim().length > 0);
+    .filter((entry) => entry.line.trim().length > 0 && entry.delivery.trim().length > 0);
 }

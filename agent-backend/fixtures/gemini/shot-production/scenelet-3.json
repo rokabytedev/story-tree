@@ -20,7 +20,8 @@
           {
             "type": "monologue",
             "source": "narrator",
-            "line": "Minutes later, testers confidently remix the tutorial scenelets."
+            "line": "Minutes later, testers confidently remix the tutorial scenelets.",
+            "delivery": "Sweeping and triumphant, celebrating collaborative victory."
           }
         ]
       }
@@ -47,7 +48,8 @@
           {
             "type": "dialogue",
             "source": "rhea",
-            "line": "Perfect. Friendly tone achieved, and they're already riffing."
+            "line": "Perfect. Friendly tone achieved, and they're already riffing.",
+            "delivery": "Contented and proud, delivered with a soft laugh at the end."
           }
         ]
       }

@@ -22,7 +22,8 @@
           {
             "type": "monologue",
             "source": "narrator",
-            "line": "Rhea powers up the story simulator, ready to stress-test the new constitution."
+            "line": "Rhea powers up the story simulator, ready to stress-test the new constitution.",
+            "delivery": "Excited and invitational, layering in the spark of a new challenge."
           }
         ]
       }
@@ -48,7 +49,8 @@
           {
             "type": "dialogue",
             "source": "rhea",
-            "line": "Let's see if this scriptwriter mode can keep up with our testers."
+            "line": "Let's see if this scriptwriter mode can keep up with our testers.",
+            "delivery": "Playful bravado with a grin, teasing the unseen audience."
           }
         ]
       }

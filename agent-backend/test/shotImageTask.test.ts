@@ -135,7 +135,12 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
           environments: ['sandbox-studio'],
         },
         audioAndNarrative: [
-          { type: 'dialogue', source: 'rhea', line: 'Let\'s push this challenge even further.' },
+          {
+            type: 'dialogue',
+            source: 'rhea',
+            line: 'Let\'s push this challenge even further.',
+            delivery: 'Playful and daring, with a spark of competition.',
+          },
         ],
       },
     keyFrameImagePath: overrides.keyFrameImagePath,
@@ -278,7 +283,14 @@ describe('runShotImageTask', () => {
             cameraDynamics: 'Dynamics',
             lightingAndAtmosphere: 'Lighting',
             continuityNotes: 'Notes',
-            audioAndNarrative: [{ type: 'monologue', source: 'narrator', line: 'Line' }],
+            audioAndNarrative: [
+              {
+                type: 'monologue',
+                source: 'narrator',
+                line: 'Line',
+                delivery: 'A steady narrator read with mounting suspense.',
+              },
+            ],
           },
         }),
       ],

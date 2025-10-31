@@ -57,11 +57,13 @@ function createValidPayload() {
               type: 'MONOLOGUE',
               source: 'narrator',
               line: '  The alarm klaxons echo through the control deck. ',
+              delivery: 'Booming and urgent, pushing over the din of alarms.',
             },
             {
               type: 'dialogue',
               source: 'finn',
               line: 'Diagnostics online. Something corrupted the guidance array.',
+              delivery: 'Clipped and focused, spoken quickly between keystrokes.',
             },
           ],
         },
@@ -84,6 +86,7 @@ function createValidPayload() {
               type: 'monologue',
               source: 'narrator',
               line: 'The hangar falls silent around them.',
+              delivery: 'Soft and hushed, like a secret carried on the silence.',
             },
           ],
         },
@@ -116,11 +119,13 @@ describe('parseShotProductionResponse', () => {
         type: 'monologue',
         source: 'narrator',
         line: 'The alarm klaxons echo through the control deck.',
+        delivery: 'Booming and urgent, pushing over the din of alarms.',
       },
       {
         type: 'dialogue',
         source: 'finn',
         line: 'Diagnostics online. Something corrupted the guidance array.',
+        delivery: 'Clipped and focused, spoken quickly between keystrokes.',
       },
     ]);
 
@@ -136,6 +141,7 @@ describe('parseShotProductionResponse', () => {
         type: 'monologue',
         source: 'narrator',
         line: 'The hangar falls silent around them.',
+        delivery: 'Soft and hushed, like a secret carried on the silence.',
       },
     ]);
   });
@@ -407,6 +413,18 @@ describe('parseShotProductionResponse', () => {
     ).toThrow(/line must be a non-empty string/i);
   });
 
+  it('throws when audio entries omit the delivery field', () => {
+    const payload = createValidPayload();
+    delete payload.shots[0].storyboard_entry.audio_and_narrative[0].delivery;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/delivery must be a non-empty string/i);
+  });
+
   it('throws when dialogue entries use an unknown character id', () => {
     const payload = createValidPayload();
     payload.shots[0].storyboard_entry.audio_and_narrative[1].source = 'cosmo';
@@ -419,17 +437,17 @@ describe('parseShotProductionResponse', () => {
     ).toThrow(/unknown character design id cosmo/i);
   });
 
-  it('throws when dialogue lines are not present in the target scenelet', () => {
+  it('allows dialogue lines that do not exactly match the target scenelet entry', () => {
     const payload = createValidPayload();
     payload.shots[0].storyboard_entry.audio_and_narrative[1].line =
-      'This dialogue does not appear within the target scenelet.';
+      'Diagnostics online. Something corrupted the array.';
 
     expect(() =>
       parseShotProductionResponse(JSON.stringify(payload), {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/does not exist in the target scenelet/i);
+    ).not.toThrow();
   });
 
   it('throws when the visual design document is missing', () => {
