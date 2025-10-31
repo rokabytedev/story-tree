@@ -204,7 +204,20 @@ function parseAudioDesignDocument(raw: unknown): AudioDesignDocument {
     throw new ShotAudioTaskError('Audio design document must be an object.');
   }
 
-  return raw as AudioDesignDocument;
+  const record = raw as Record<string, unknown>;
+  const nested = record.audio_design_document ?? record.audioDesignDocument;
+
+  if (nested !== undefined) {
+    if (!nested || typeof nested !== 'object') {
+      throw new ShotAudioTaskError(
+        'Persisted audio design document payload must be an object.'
+      );
+    }
+    // Persisted Supabase rows keep the sanitized document under audio_design_document.
+    return nested as AudioDesignDocument;
+  }
+
+  return record as AudioDesignDocument;
 }
 
 function parseStoryboardPayload(

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { assembleShotAudioPrompt } from '../src/shot-audio/promptAssembler.js';
 import { runShotAudioTask } from '../src/shot-audio/shotAudioTask.js';
 import type { ShotAudioTaskDependencies, ShotAudioPrompt } from '../src/shot-audio/types.js';
 import { ShotAudioTaskError } from '../src/shot-audio/errors.js';
@@ -177,5 +178,36 @@ describe('runShotAudioTask', () => {
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(saveShotAudio).toHaveBeenCalledTimes(1);
     expect(updateShotAudioPath).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles audio design documents persisted under audio_design_document wrapper', async () => {
+    const shot = createShotRecord({ audioFilePath: undefined });
+    const story = createStory();
+    const nestedAudioDesign = story.audioDesignDocument;
+    story.audioDesignDocument = {
+      audio_design_document: nestedAudioDesign,
+    } as any;
+
+    const { dependencies, synthesize, saveShotAudio, updateShotAudioPath, savedPaths } = createDependencies(shot, {
+      storiesRepository: {
+        getStoryById: vi.fn(async () => story),
+        createStory: vi.fn(),
+        updateStoryArtifacts: vi.fn(),
+      } as any,
+      promptAssembler: assembleShotAudioPrompt,
+    });
+
+    const result = await runShotAudioTask('story-123', dependencies);
+
+    expect(result).toEqual({ generatedAudio: 1, skippedShots: 0, totalShots: 1 });
+    expect(synthesize).toHaveBeenCalledTimes(1);
+    expect(saveShotAudio).toHaveBeenCalledTimes(1);
+    expect(updateShotAudioPath).toHaveBeenCalledWith(
+      'story-123',
+      'scenelet-1',
+      1,
+      savedPaths[0]
+    );
+    expect(shot.audioFilePath).toBe(savedPaths[0]);
   });
 });
