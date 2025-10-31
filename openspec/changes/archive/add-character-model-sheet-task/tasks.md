@@ -2,21 +2,21 @@
 
 ## Milestone 1: Core Module Setup
 
-- [ ] Create `agent-backend/src/character-model-sheet/` directory
-- [ ] Create `agent-backend/src/character-model-sheet/types.ts` with:
+- [x] Create `agent-backend/src/character-model-sheet/` directory
+- [x] Create `agent-backend/src/character-model-sheet/types.ts` with:
   - CharacterModelSheetTaskDependencies interface
   - CharacterModelSheetTaskOptions type
   - CharacterModelSheetTaskResult interface
   - CharacterModelSheetTaskRunner type
   - CharacterModelSheetStoryRecord interface extending AgentWorkflowStoryRecord
-- [ ] Create `agent-backend/src/character-model-sheet/errors.ts` with CharacterModelSheetTaskError class
+- [x] Create `agent-backend/src/character-model-sheet/errors.ts` with CharacterModelSheetTaskError class
 
 ## Milestone 2: Prompt Builder
 
-- [ ] Create `agent-backend/src/character-model-sheet/promptBuilder.ts`
-- [ ] Implement `extractGlobalAesthetic(visualDesignDocument): object` function
-- [ ] Implement `extractCharacterDesign(visualDesignDocument, characterId): object` function
-- [ ] Implement `buildModelSheetPrompt(globalAesthetic, characterDesign): string` function
+- [x] Create `agent-backend/src/character-model-sheet/promptBuilder.ts`
+- [x] Implement `extractGlobalAesthetic(visualDesignDocument): object` function
+- [x] Implement `extractCharacterDesign(visualDesignDocument, characterId): object` function
+- [x] Implement `buildModelSheetPrompt(globalAesthetic, characterDesign): string` function
   - **IMPORTANT**: Use EXACT template from `docs/018_visual_reference_image_structured_prompt_plan.md` - DO NOT modify or reinvent
   - Base template MUST start with: "Character model sheet, character design sheet, concept art for animation, professional production art."
   - MUST include "A 3-row grid layout."
@@ -34,36 +34,36 @@
 
 ## Milestone 3: Task Runner Core Logic
 
-- [ ] Create `agent-backend/src/character-model-sheet/characterModelSheetTask.ts`
-- [ ] Implement `runCharacterModelSheetTask(storyId, dependencies): Promise<CharacterModelSheetTaskResult>` function
-- [ ] Implement story validation:
+- [x] Create `agent-backend/src/character-model-sheet/characterModelSheetTask.ts`
+- [x] Implement `runCharacterModelSheetTask(storyId, dependencies): Promise<CharacterModelSheetTaskResult>` function
+- [x] Implement story validation:
   - Throw error if story not found
   - Throw error if visual_design_document is null/missing
   - Throw error if character_designs array is empty
-- [ ] Implement character targeting logic:
+- [x] Implement character targeting logic:
   - Support batch mode (no targetCharacterId) - process all characters
   - Support single-character mode (targetCharacterId specified)
   - Throw error if targetCharacterId not found in character_designs
-- [ ] Implement override flag logic:
+- [x] Implement override flag logic:
   - Skip generation if character_model_sheet_image_path exists and override=false
   - Generate image if character_model_sheet_image_path exists and override=true
   - Always generate if character_model_sheet_image_path is null/undefined
-- [ ] Implement resume flag logic:
+- [x] Implement resume flag logic:
   - In batch mode with resume=true, skip characters with existing paths
   - Ignore or warn if resume=true in single-character mode
 
 ## Milestone 4: Image Generation Integration
 
-- [ ] Implement GeminiImageClient resolution (reuse from dependencies or create default)
-- [ ] Implement ImageStorageService resolution (reuse from dependencies or create default)
-- [ ] Implement verbose logging support:
+- [x] Implement GeminiImageClient resolution (reuse from dependencies or create default)
+- [x] Implement ImageStorageService resolution (reuse from dependencies or create default)
+- [x] Implement verbose logging support:
   - Accept verbose flag in task dependencies
   - When verbose=true: log complete assembled prompt before Gemini call
   - When verbose=true: log request parameters (aspectRatio, timeout, retry)
   - When verbose=true: log generation start/completion timestamps
   - DO NOT log binary image data (log only metadata like size in bytes)
   - Log saved file path after successful storage
-- [ ] Implement per-character generation loop:
+- [x] Implement per-character generation loop:
   - Build structured prompt using promptBuilder
   - Log prompt if verbose=true
   - Call geminiClient.generateImage() with aspectRatio='1:1'
@@ -74,19 +74,19 @@
   - Update visual_design_document with character_model_sheet_image_path immediately
   - Catch and wrap Gemini errors with character context
   - Catch and wrap storage errors with character context
-- [ ] Implement batch error handling:
+- [x] Implement batch error handling:
   - Continue processing after individual character failures
   - Collect error list with character context
   - Return success count and error summary
 
 ## Milestone 5: Workflow Integration
 
-- [ ] Update `agent-backend/src/workflow/types.ts`:
+- [x] Update `agent-backend/src/workflow/types.ts`:
   - Add 'CREATE_CHARACTER_MODEL_SHEETS' to StoryWorkflowTask union type
   - Add CharacterModelSheetTaskOptions type
   - Add characterModelSheetTaskOptions?: CharacterModelSheetTaskOptions to AgentWorkflowOptions
   - Add runCharacterModelSheetTask?: CharacterModelSheetTaskRunner to AgentWorkflowOptions
-- [ ] Update `agent-backend/src/workflow/storyWorkflow.ts`:
+- [x] Update `agent-backend/src/workflow/storyWorkflow.ts`:
   - Import runCharacterModelSheetTask and related types
   - Add case for 'CREATE_CHARACTER_MODEL_SHEETS' in runTask() switch statement
   - Implement task runner invocation with dependencies
@@ -95,7 +95,7 @@
 
 ## Milestone 6: CLI Integration
 
-- [ ] Update `agent-backend/src/cli/agentWorkflowCli.ts`:
+- [x] Update `agent-backend/src/cli/agentWorkflowCli.ts`:
   - Add 'CREATE_CHARACTER_MODEL_SHEETS' to SUPPORTED_TASKS array
   - Add characterId?: string to RunTaskCommandOptions interface
   - Add override?: boolean to RunTaskCommandOptions interface (for model sheets)
@@ -106,7 +106,7 @@
   - Validate that --resume is not used with --character-id (or ignore with warning)
   - Pass verbose flag from CLI to characterModelSheetTaskOptions (enable detailed logging)
   - Pass parsed options to workflow's characterModelSheetTaskOptions
-- [ ] Update CLI help text with CREATE_CHARACTER_MODEL_SHEETS usage examples
+- [x] Update CLI help text with CREATE_CHARACTER_MODEL_SHEETS usage examples
 - [ ] Update `agent-backend/README.md` with new task documentation and --verbose behavior
 
 ## Milestone 7: Testing
