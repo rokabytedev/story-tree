@@ -1,0 +1,2 @@
+goal
+- now that we have character model sheet images and environment reference images. we're going to replace the image path from visual reference package with the new character model sheet images and environment reference images path saved in visual design document directly.
