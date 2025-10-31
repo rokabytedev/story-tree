@@ -1,246 +1,3 @@
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            dialogue: [
-              { character: 'Finn', line: 'Invented dialogue not in the script.' },
-            ],
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(/does not exist/i);
-  });
-
-  it('throws when prompts are too short or missing the required phrase', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-          },
-          generation_prompts: {
-            first_frame_prompt: 'too short',
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: 'A long enough prompt but missing the magic phrase entirely. '
-              + 'This line still exceeds eighty characters yet omits the instruction.',
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(ShotProductionTaskError);
-  });
-
-  it('throws when the response payload is not valid JSON', () => {
-    expect(() =>
-      parseShotProductionResponse('not-json', {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(/invalid json/i);
-  });
-
-  it('throws when storyboard entry omits required fields', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(/framing_and_angle/i);
-  });
-
-  it('preserves referenced_designs when provided', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: {
-              characters: ['finn', 'rhea'],
-              environments: ['control-room'],
-            },
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    const result = parseShotProductionResponse(response, {
-      scenelet: TARGET_SCENELET,
-      visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-    });
-
-    expect(result.shots[0]?.storyboard.referencedDesigns).toEqual({
-      characters: ['finn', 'rhea'],
-      environments: ['control-room'],
-    });
-  });
-
-  it('handles missing referenced_designs gracefully (backward compatibility)', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    const result = parseShotProductionResponse(response, {
-      scenelet: TARGET_SCENELET,
-      visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-    });
-
-    expect(result.shots[0]?.storyboard.referencedDesigns).toBeUndefined();
-  });
-
-  it('validates referenced_designs.characters is a string array', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: {
-              characters: 'not-an-array',
-              environments: [],
-            },
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(/must be an array/i);
-  });
-
-  it('validates referenced_designs.environments is a string array', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: {
-              characters: [],
-              environments: ['valid-id', 123],
-            },
-          },
-          generation_prompts: {
-            first_frame_prompt: LONG_PROMPT,
-            key_frame_storyboard_prompt: LONG_PROMPT,
-            video_clip_prompt: LONG_VIDEO_PROMPT,
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(/must be non-empty strings/i);
-  });
-});
 import { describe, expect, it } from 'vitest';
 
 import { parseShotProductionResponse } from '../src/shot-production/parseGeminiResponse.js';
@@ -256,6 +13,7 @@ const TARGET_SCENELET: SceneletDigest = {
   dialogue: [
     { character: 'Finn', line: 'Diagnostics online. Something corrupted the guidance array.' },
     { character: 'Rhea', line: "Focus on the anomaly. I'll prep the response." },
+    { character: 'Narrator', line: 'The hangar falls silent around them.' },
   ],
   shotSuggestions: [
     "Begin on Finn's hands flying across the console with holographic readouts.",
@@ -275,79 +33,85 @@ const VISUAL_DESIGN_DOCUMENT = {
 };
 
 const LONG_STORYBOARD =
-  'A richly detailed account of composition, camera language, and emotional stakes that exceeds the minimum length requirement.';
+  'A richly detailed narration of framing, composition, emotion, and continuity that comfortably exceeds any minimum requirement set for storyboard prose.';
+
+function createValidPayload() {
+  return {
+    scenelet_id: 'scenelet-control',
+    shots: [
+      {
+        shot_index: ' 1 ',
+        storyboard_entry: {
+          framing_and_angle: `  ${LONG_STORYBOARD}  `,
+          composition_and_content: LONG_STORYBOARD,
+          character_action_and_emotion: LONG_STORYBOARD,
+          camera_dynamics: LONG_STORYBOARD,
+          lighting_and_atmosphere: LONG_STORYBOARD,
+          continuity_notes: LONG_STORYBOARD,
+          referenced_designs: {
+            characters: [' finn ', 'rhea'],
+            environments: ['control-room'],
+          },
+          audio_and_narrative: [
+            {
+              type: 'MONOLOGUE',
+              source: 'narrator',
+              line: '  The alarm klaxons echo through the control deck. ',
+            },
+            {
+              type: 'dialogue',
+              source: 'finn',
+              line: 'Diagnostics online. Something corrupted the guidance array.',
+            },
+          ],
+        },
+      },
+      {
+        shot_index: 2,
+        storyboard_entry: {
+          framingAndAngle: LONG_STORYBOARD,
+          compositionAndContent: LONG_STORYBOARD,
+          characterActionAndEmotion: LONG_STORYBOARD,
+          cameraDynamics: LONG_STORYBOARD,
+          lightingAndAtmosphere: LONG_STORYBOARD,
+          continuityNotes: LONG_STORYBOARD,
+          referencedDesigns: {
+            characters: [],
+            environments: ['hanger-bay'],
+          },
+          audioAndNarrative: [
+            {
+              type: 'monologue',
+              source: 'narrator',
+              line: 'The hangar falls silent around them.',
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
 
 describe('parseShotProductionResponse', () => {
-  it('parses a valid response with structured storyboard fields', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: '1',
-          storyboard_entry: {
-            framing_and_angle: `  ${LONG_STORYBOARD}  `,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: {
-              characters: ['finn', 'rhea'],
-              environments: ['control-room'],
-            },
-            audio_and_narrative: [
-              {
-                type: 'MONOLOGUE',
-                source: 'narrator',
-                line: '  The alarm klaxons echo through the control deck. ',
-              },
-              {
-                type: 'dialogue',
-                source: 'finn',
-                line: 'Diagnostics online. Something corrupted the guidance array.',
-              },
-            ],
-          },
-        },
-        {
-          shot_index: 2,
-          storyboard_entry: {
-            framingAndAngle: LONG_STORYBOARD,
-            compositionAndContent: LONG_STORYBOARD,
-            characterActionAndEmotion: LONG_STORYBOARD,
-            cameraDynamics: LONG_STORYBOARD,
-            lightingAndAtmosphere: LONG_STORYBOARD,
-            continuityNotes: LONG_STORYBOARD,
-            referencedDesigns: {
-              characters: [],
-              environments: ['hanger-bay'],
-            },
-            audioAndNarrative: [
-              {
-                type: 'monologue',
-                source: 'narrator',
-                line: 'The shot lingers on the silent hangar.',
-              },
-            ],
-          },
-        },
-      ],
-    });
+  it('parses a valid response with mixed key styles and trims fields', () => {
+    const payload = createValidPayload();
 
-    const result = parseShotProductionResponse(response, {
+    const result = parseShotProductionResponse(JSON.stringify(payload), {
       scenelet: TARGET_SCENELET,
       visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
     });
 
     expect(result.sceneletId).toBe('scenelet-control');
     expect(result.shots).toHaveLength(2);
-    expect(result.shots[0]?.shotIndex).toBe(1);
-    expect(result.shots[0]?.storyboard.framingAndAngle).toBe(LONG_STORYBOARD);
-    expect(result.shots[0]?.storyboard.referencedDesigns).toEqual({
+
+    const first = result.shots[0];
+    expect(first?.shotIndex).toBe(1);
+    expect(first?.storyboard.framingAndAngle).toBe(LONG_STORYBOARD);
+    expect(first?.storyboard.referencedDesigns).toEqual({
       characters: ['finn', 'rhea'],
       environments: ['control-room'],
     });
-    expect(result.shots[0]?.storyboard.audioAndNarrative).toEqual([
+    expect(first?.storyboard.audioAndNarrative).toEqual([
       {
         type: 'monologue',
         source: 'narrator',
@@ -359,261 +123,321 @@ describe('parseShotProductionResponse', () => {
         line: 'Diagnostics online. Something corrupted the guidance array.',
       },
     ]);
-    expect(result.shots[1]?.storyboard.referencedDesigns).toEqual({
+
+    const second = result.shots[1];
+    expect(second?.shotIndex).toBe(2);
+    expect(second?.storyboard.framingAndAngle).toBe(LONG_STORYBOARD);
+    expect(second?.storyboard.referencedDesigns).toEqual({
       characters: [],
       environments: ['hanger-bay'],
     });
-    expect(result.shots[1]?.storyboard.audioAndNarrative).toEqual([
+    expect(second?.storyboard.audioAndNarrative).toEqual([
       {
         type: 'monologue',
         source: 'narrator',
-        line: 'The shot lingers on the silent hangar.',
+        line: 'The hangar falls silent around them.',
       },
     ]);
   });
 
-  it('throws when scenelet id does not match the requested target', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-other',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-            audio_and_narrative: [
-              { type: 'monologue', source: 'narrator', line: 'A mismatch occurs.' },
-            ],
-          },
-        },
-      ],
-    });
-
+  it('throws when the response payload is invalid JSON', () => {
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse('not-json', {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/does not match requested/i);
+    ).toThrow(/invalid json/i);
   });
 
-  it('throws when shot indices skip numbers', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 2,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-            audio_and_narrative: [
-              { type: 'monologue', source: 'narrator', line: 'Sequence skipped.' },
-            ],
-          },
-        },
-      ],
-    });
-
+  it('throws when the parsed payload is not an object', () => {
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse('null', {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/sequential/i);
+    ).toThrow(/must be a JSON object/i);
   });
 
-  it('throws when referenced designs include unknown ids', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['unknown-character'], environments: [] },
-            audio_and_narrative: [
-              { type: 'monologue', source: 'narrator', line: 'Unknown character reference.' },
-            ],
-          },
-        },
-      ],
-    });
+  it('throws when the target scenelet is missing in the context', () => {
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(createValidPayload()), {
+        scenelet: undefined as unknown as SceneletDigest,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/requires a target scenelet/i);
+  });
+
+  it('throws when scenelet_id is missing or blank', () => {
+    const payload = createValidPayload();
+    delete payload.scenelet_id;
 
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse(JSON.stringify(payload), {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/unknown design ids/i);
+    ).toThrow(/scenelet_id/i);
   });
 
-  it('throws when audio_and_narrative entries use invalid types', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-            audio_and_narrative: [
-              { type: 'speech', source: 'narrator', line: 'Invalid type.' },
-            ],
-          },
-        },
-      ],
-    });
+  it('throws when scenelet_id does not match the requested scenelet', () => {
+    const payload = createValidPayload();
+    payload.scenelet_id = 'scenelet-trail';
 
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse(JSON.stringify(payload), {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/either "monologue" or "dialogue"/i);
+    ).toThrow(/does not match/i);
   });
 
-  it('throws when dialogue entry references an unknown character id', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-            audio_and_narrative: [
-              {
-                type: 'dialogue',
-                source: 'unknown',
-                line: 'Diagnostics online. Something corrupted the guidance array.',
-              },
-            ],
-          },
-        },
-      ],
-    });
+  it('throws when shots are missing or empty', () => {
+    const payload = createValidPayload();
+    payload.shots = [];
 
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse(JSON.stringify(payload), {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
-    ).toThrow(/unknown character design id/i);
+    ).toThrow(/must include at least one shot/i);
   });
 
-  it('throws when dialogue line is not present in the scenelet transcript', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['rhea'], environments: ['control-room'] },
-            audio_and_narrative: [
-              {
-                type: 'dialogue',
-                source: 'rhea',
-                line: 'An unscripted line that does not exist.',
-              },
-            ],
-          },
-        },
-      ],
-    });
+  it('throws when a shot entry is not an object', () => {
+    const payload = createValidPayload();
+    payload.shots[0] = 'invalid' as unknown as Record<string, unknown>;
 
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/non-object shot entry/i);
+  });
+
+  it('throws when shot indices are not sequential starting at 1', () => {
+    const payload = createValidPayload();
+    payload.shots[0].shot_index = 2;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/Shot indices must be sequential/i);
+  });
+
+  it('throws when a shot lacks a numeric shot_index', () => {
+    const payload = createValidPayload();
+    payload.shots[0].shot_index = 'abc';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/shot_index/i);
+  });
+
+  it('throws when a shot omits the storyboard_entry object', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry = null as unknown as Record<string, unknown>;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/must include a storyboard_entry object/i);
+  });
+
+  it('throws when required storyboard fields are missing', () => {
+    const payload = createValidPayload();
+    delete payload.shots[0].storyboard_entry.framing_and_angle;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/framing_and_angle/i);
+  });
+
+  it('throws when referenced_designs is missing', () => {
+    const payload = createValidPayload();
+    delete payload.shots[0].storyboard_entry.referenced_designs;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/referenced_designs must be an object/i);
+  });
+
+  it('throws when referenced_designs.characters is not an array', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.referenced_designs.characters = 'finn' as unknown as string[];
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/characters must be an array/i);
+  });
+
+  it('throws when referenced_designs characters contain invalid entries', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.referenced_designs.characters = [123 as unknown as string];
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/array entries must be non-empty strings/i);
+  });
+
+  it('throws when referenced_designs includes unknown character ids', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.referenced_designs.characters = ['unknown'];
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/includes unknown design ids/i);
+  });
+
+  it('throws when referenced_designs environments include unknown ids', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.referenced_designs.environments = ['unknown-env'];
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/includes unknown design ids/i);
+  });
+
+  it('throws when audio_and_narrative is missing or not an array', () => {
+    const payload = createValidPayload();
+    delete payload.shots[0].storyboard_entry.audio_and_narrative;
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/audio_and_narrative must be an array/i);
+  });
+
+  it('throws when audio entries are not objects', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative = ['not-object'] as unknown as Record<string, unknown>[];
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/audio_and_narrative entries must be objects/i);
+  });
+
+  it('throws when audio entries are missing the type field', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[0].type = '   ';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/type must be provided/i);
+  });
+
+  it('throws when audio entries use an unsupported type', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[0].type = 'soundscape';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/must be either "monologue" or "dialogue"/i);
+  });
+
+  it('throws when monologue entries use a non-narrator source', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[0].source = 'voice-over';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/Monologue entries must use source "narrator"/i);
+  });
+
+  it('throws when audio entries omit the source field', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[0].source = '   ';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/source must be a non-empty string/i);
+  });
+
+  it('throws when audio entries omit the line field', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[0].line = '  ';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/line must be a non-empty string/i);
+  });
+
+  it('throws when dialogue entries use an unknown character id', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[1].source = 'cosmo';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
+        scenelet: TARGET_SCENELET,
+        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+      })
+    ).toThrow(/unknown character design id cosmo/i);
+  });
+
+  it('throws when dialogue lines are not present in the target scenelet', () => {
+    const payload = createValidPayload();
+    payload.shots[0].storyboard_entry.audio_and_narrative[1].line =
+      'This dialogue does not appear within the target scenelet.';
+
+    expect(() =>
+      parseShotProductionResponse(JSON.stringify(payload), {
         scenelet: TARGET_SCENELET,
         visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
       })
     ).toThrow(/does not exist in the target scenelet/i);
   });
 
-  it('throws when monologue entry uses a non-narrator source', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-            audio_and_narrative: [
-              { type: 'monologue', source: 'finn', line: 'Misclassified monologue.' },
-            ],
-          },
-        },
-      ],
-    });
-
+  it('throws when the visual design document is missing', () => {
     expect(() =>
-      parseShotProductionResponse(response, {
+      parseShotProductionResponse(JSON.stringify(createValidPayload()), {
         scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
+        visualDesignDocument: null,
       })
-    ).toThrow(/must use source "narrator"/i);
-  });
-
-  it('throws when audio_and_narrative is missing', () => {
-    const response = JSON.stringify({
-      scenelet_id: 'scenelet-control',
-      shots: [
-        {
-          shot_index: 1,
-          storyboard_entry: {
-            framing_and_angle: LONG_STORYBOARD,
-            composition_and_content: LONG_STORYBOARD,
-            character_action_and_emotion: LONG_STORYBOARD,
-            camera_dynamics: LONG_STORYBOARD,
-            lighting_and_atmosphere: LONG_STORYBOARD,
-            continuity_notes: LONG_STORYBOARD,
-            referenced_designs: { characters: ['finn'], environments: ['control-room'] },
-          },
-        },
-      ],
-    });
-
-    expect(() =>
-      parseShotProductionResponse(response, {
-        scenelet: TARGET_SCENELET,
-        visualDesignDocument: VISUAL_DESIGN_DOCUMENT,
-      })
-    ).toThrow(ShotProductionTaskError);
+    ).toThrow(/Visual design document is required/i);
   });
 });

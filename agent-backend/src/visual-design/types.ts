@@ -44,6 +44,11 @@ export interface VisualDesignEnvironmentDesign {
 }
 
 export interface VisualDesignDocument {
+  global_aesthetic?: {
+    visual_style?: unknown;
+    master_color_palette?: unknown;
+    [key: string]: unknown;
+  };
   character_designs?: VisualDesignCharacterDesign[];
   characterDesigns?: VisualDesignCharacterDesign[];
   environment_designs?: VisualDesignEnvironmentDesign[];

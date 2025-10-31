@@ -9,6 +9,7 @@ import type {
 interface GlobalAesthetic {
   visual_style: unknown;
   master_color_palette: unknown;
+  [key: string]: unknown;
 }
 
 export interface AssembledKeyFramePrompt {
@@ -64,17 +65,36 @@ function extractGlobalAesthetic(document: VisualDesignDocument): GlobalAesthetic
     throw new ShotImageTaskError('Visual design document must be provided to assemble prompts.');
   }
 
+  const record = document as Record<string, unknown> & {
+    global_aesthetic?: Record<string, unknown>;
+  };
+
+  const globalAesthetic = record.global_aesthetic;
+
   const visualStyle =
-    (document as Record<string, unknown>).visual_style ??
-    (document as Record<string, unknown>).visualStyle;
+    globalAesthetic?.visual_style ??
+    globalAesthetic?.visualStyle ??
+    record.visual_style ??
+    record.visualStyle;
+
   const masterPalette =
-    (document as Record<string, unknown>).master_color_palette ??
-    (document as Record<string, unknown>).masterColorPalette;
+    globalAesthetic?.master_color_palette ??
+    globalAesthetic?.masterColorPalette ??
+    record.master_color_palette ??
+    record.masterColorPalette;
 
   if (visualStyle === undefined || masterPalette === undefined) {
     throw new ShotImageTaskError(
       'Visual design document is missing global aesthetic fields (visual_style or master_color_palette).'
     );
+  }
+
+  if (globalAesthetic && typeof globalAesthetic === 'object') {
+    return {
+      ...globalAesthetic,
+      visual_style: visualStyle,
+      master_color_palette: masterPalette,
+    } as GlobalAesthetic;
   }
 
   return {

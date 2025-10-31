@@ -50,6 +50,45 @@
             "image_generation_prompt": "Environment keyframe of the Choice Clearing erupting with decision energy. Vibrant glyphs hover around the obelisk, casting sharp beams of gold light through the clearing. Ambient haze catches the illumination, and sparks create a charged atmosphere against the darkened forest boundary."
           }
         ]
+      },
+      {
+        "environment_id": "sandbox-studio",
+        "keyframes": [
+          {
+            "keyframe_description": "Wide hero frame of the Sandbox Studio control floor.",
+            "image_generation_prompt": "Environment keyframe for the Sandbox Studio showing the collaborative holo-lab from a wide elevated angle. Capture modular display pylons surrounding the central control table, with translucent holographic branches projecting from the surface. Lighting should blend cool production greens with practical warm accents along the floor tracks."
+          },
+          {
+            "keyframe_description": "Sandbox Studio during an intense iteration sprint.",
+            "image_generation_prompt": "Environment keyframe inside the Sandbox Studio where projectors flood the space with layered UI planes and motion graphics. Designers' silhouettes move through volumetric light, and ceiling rigs cast sharp highlights across polished floors. Convey the energetic, iterative feel of an active story room."
+          }
+        ]
+      },
+      {
+        "environment_id": "challenge-bay",
+        "keyframes": [
+          {
+            "keyframe_description": "Challenge Bay reset between trials.",
+            "image_generation_prompt": "Environment keyframe of the Challenge Bay configured in standby mode. Show hydraulic platforms lowered flush with the floor, spectator galleries dimmed, and maintenance bots tending to scuffed panels. Lighting emphasizes overhead rigging and reflective surfaces while keeping the space ready for the next challenge."
+          },
+          {
+            "keyframe_description": "Challenge Bay activated with full spectacle.",
+            "image_generation_prompt": "Environment keyframe for the Challenge Bay mid-event. Platforms rise with dramatic spotlights, hazard strobes pulse amber, and the viewing galleries glow with responsive LEDs. Capture motion in the air from suspended drones and atmospheric haze catching the light."
+          }
+        ]
+      },
+      {
+        "environment_id": "challenge-arena",
+        "keyframes": [
+          {
+            "keyframe_description": "Challenge Arena reconfiguring for a new encounter.",
+            "image_generation_prompt": "Environment keyframe illustrating the Challenge Arena walls sliding into a new layout. Segmented barrier panels rotate while holographic overlays plot the upcoming course. Lighting pulses between magenta and blue, and kinetic energy builds through streaking spotlights."
+          },
+          {
+            "keyframe_description": "Challenge Arena at peak action.",
+            "image_generation_prompt": "Environment keyframe capturing the Challenge Arena during climax. Adaptive walls glow, ceiling gantries rain down focused beams, and the central floor radiates patterns that track contestant movement. Convey tension with high-contrast lighting and energized particle effects."
+          }
+        ]
       }
     ]
   }

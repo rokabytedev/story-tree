@@ -6,11 +6,14 @@ import type { ShotRecord, ShotProductionStoryboardEntry } from '../src/shot-prod
 import type { VisualDesignDocument } from '../src/visual-design/types.js';
 
 const VISUAL_DESIGN_DOCUMENT: VisualDesignDocument = {
-  visual_style: {
-    name: 'Neon Noir',
-    description: 'High-contrast palette with saturated highlight accents and bold silhouettes.',
+  global_aesthetic: {
+    visual_style: {
+      name: 'Neon Noir',
+      description: 'High-contrast palette with saturated highlight accents and bold silhouettes.',
+    },
+    master_color_palette: ['#1B1F3B', '#FF3366', '#38F2FF'],
+    style_anchor: 'Electric rain reflected on glossy neon surfaces.',
   },
-  master_color_palette: ['#1B1F3B', '#FF3366', '#38F2FF'],
   character_designs: [
     { character_id: 'rhea', character_name: 'Rhea', key_pose_image_path: '/characters/rhea.png' },
     { character_id: 'testing-agent', character_name: 'Testing Agent', key_pose_image_path: '/characters/testing-agent.png' },
@@ -55,10 +58,7 @@ describe('assembleKeyFramePrompt', () => {
 
     const prompt = assembleKeyFramePrompt(shot, VISUAL_DESIGN_DOCUMENT);
 
-    expect(prompt.global_aesthetic).toEqual({
-      visual_style: VISUAL_DESIGN_DOCUMENT.visual_style,
-      master_color_palette: VISUAL_DESIGN_DOCUMENT.master_color_palette,
-    });
+    expect(prompt.global_aesthetic).toEqual(VISUAL_DESIGN_DOCUMENT.global_aesthetic);
     expect(prompt.character_designs).toHaveLength(2);
     expect(prompt.environment_designs).toHaveLength(1);
     expect(prompt.environment_designs[0]?.environment_id).toBe('sandbox-studio');
@@ -109,5 +109,26 @@ describe('assembleKeyFramePrompt', () => {
     };
 
     expect(() => assembleKeyFramePrompt(shot, incompleteDoc)).toThrow(/global aesthetic fields/i);
+  });
+
+  it('supports legacy documents with top-level visual_style fields', () => {
+    const shot = createShot();
+    const visualStyle = {
+      name: 'Retro Futurism',
+    };
+    const masterPalette = ['#FFD700', '#1E90FF'];
+    const legacyDoc: VisualDesignDocument = {
+      visual_style: visualStyle,
+      master_color_palette: masterPalette,
+      character_designs: VISUAL_DESIGN_DOCUMENT.character_designs,
+      environment_designs: VISUAL_DESIGN_DOCUMENT.environment_designs,
+    };
+
+    const prompt = assembleKeyFramePrompt(shot, legacyDoc);
+
+    expect(prompt.global_aesthetic).toMatchObject({
+      visual_style: visualStyle,
+      master_color_palette: masterPalette,
+    });
   });
 });

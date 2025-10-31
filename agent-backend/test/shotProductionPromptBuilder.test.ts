@@ -117,7 +117,7 @@ describe('buildShotProductionUserPrompt', () => {
     expect(prompt).toContain("Begin on Finn's hands flying across the console with holographic readouts.");
     expect(prompt).not.toContain('No director shot_suggestions were provided.');
     expect(prompt).toContain('# Task Directives');
-    expect(prompt).toContain('No background music.');
+    expect(prompt).not.toContain('No background music.');
   });
 
   it('throws when constitution markdown is missing', () => {

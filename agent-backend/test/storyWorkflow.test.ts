@@ -155,8 +155,11 @@ function createVisualDesignTask(): {
   calls: string[];
 } {
   const calls: string[] = [];
-  const runner: VisualDesignTaskRunner = async (storyId) => {
+  const runner: VisualDesignTaskRunner = async (storyId, dependencies) => {
     calls.push(storyId);
+    await dependencies?.storiesRepository?.updateStoryArtifacts?.(storyId, {
+      visualDesignDocument: { characters: [] },
+    });
     return {
       storyId,
       visualDesignDocument: { characters: [] },

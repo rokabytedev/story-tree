@@ -264,10 +264,15 @@ describe('runAgentWorkflow', () => {
     const sceneletPersistence = createSceneletPersistence();
     const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
-    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
-      storyId,
-      visualDesignDocument: {},
-    });
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.visualDesignDocument = {};
+      }
+      return {
+        storyId,
+        visualDesignDocument: {},
+      };
+    };
     const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
       storiesRepository.record!.visualReferencePackage = {
         character_model_sheets: [],
@@ -332,10 +337,15 @@ describe('runAgentWorkflow', () => {
     const sceneletPersistence = createSceneletPersistence();
     const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
-    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
-      storyId,
-      visualDesignDocument: {},
-    });
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.visualDesignDocument = {};
+      }
+      return {
+        storyId,
+        visualDesignDocument: {},
+      };
+    };
     const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => ({
       storyId,
       visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
@@ -393,10 +403,15 @@ describe('runAgentWorkflow', () => {
     const storiesRepository = createStoriesRepository();
     const shotsRepository = createShotsRepository();
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
-    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
-      storyId,
-      visualDesignDocument: {},
-    });
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.visualDesignDocument = {};
+      }
+      return {
+        storyId,
+        visualDesignDocument: {},
+      };
+    };
 
     await expect(
       runAgentWorkflow('Prompt', {
@@ -420,10 +435,15 @@ describe('runAgentWorkflow', () => {
     const shotsRepository = createShotsRepository();
     const constitutionOptions = { promptLoader: async () => 'System prompt' };
     const storyTreeLoader = async () => VISUAL_STORY_TREE;
-    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => ({
-      storyId,
-      visualDesignDocument: {},
-    });
+    const visualDesignRunner: VisualDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.visualDesignDocument = {};
+      }
+      return {
+        storyId,
+        visualDesignDocument: {},
+      };
+    };
     const visualReferenceRunner: VisualReferenceTaskRunner = async (storyId) => {
       storiesRepository.record!.visualReferencePackage = {
         character_model_sheets: [],

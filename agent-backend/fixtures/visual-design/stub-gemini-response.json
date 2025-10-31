@@ -39,6 +39,33 @@
           "key_props": ["Ancient decision obelisk", "Floating choice glyphs"],
           "lighting": "Soft teal ambience with responsive highlights per choice."
         }
+      },
+      {
+        "environment_name": "Sandbox Studio",
+        "associated_scenelet_ids": ["scenelet-3", "scenelet-4", "scenelet-5"],
+        "detailed_description": {
+          "overview": "Collaborative holo-lab where designers iterate on branching scenes.",
+          "key_props": ["Modular display pylons", "Ceiling-mounted projector rigs"],
+          "lighting": "Cool production greens balanced with practical warm rim lights."
+        }
+      },
+      {
+        "environment_name": "Challenge Bay",
+        "associated_scenelet_ids": ["scenelet-4"],
+        "detailed_description": {
+          "overview": "Expansive bay with retractable platforms used for high-stakes trials.",
+          "key_props": ["Hydraulic risers", "Spectator galleries suspended above the floor"],
+          "lighting": "Strong contrast lighting with sweeping spotlights and dynamic warning strobes."
+        }
+      },
+      {
+        "environment_name": "Challenge Arena",
+        "associated_scenelet_ids": ["scenelet-5"],
+        "detailed_description": {
+          "overview": "Circular arena with adaptive walls that reshape for each challenge.",
+          "key_props": ["Segmented barrier walls", "Ceiling gantries for rapid lighting changes"],
+          "lighting": "Arena wash of saturated magentas and blues accented by focused follow spots."
+        }
       }
     ]
   }

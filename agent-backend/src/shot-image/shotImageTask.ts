@@ -172,21 +172,20 @@ export async function runShotImageTask(
       aspectRatio,
     });
 
-      const normalizedSceneletId = normalizeNameForPath(sceneletId);
-      const keyFrameFilename = `shot-${shotIndex}_key_frame.png`;
-      const keyFrameImagePath = await imageStorage.saveImage(
-        keyFrameResult.imageData,
-        storyId,
-        `shots/${normalizedSceneletId}`,
-        keyFrameFilename
-      );
+    const normalizedSceneletId = normalizeNameForPath(sceneletId);
+    const keyFrameFilename = `shot-${shotIndex}_key_frame.png`;
+    const keyFrameImagePath = await imageStorage.saveImage(
+      keyFrameResult.imageData,
+      storyId,
+      `shots/${normalizedSceneletId}`,
+      keyFrameFilename
+    );
 
-      await shotsRepository.updateShotImagePaths(storyId, sceneletId, shotIndex, {
-        keyFrameImagePath,
-      });
+    await shotsRepository.updateShotImagePaths(storyId, sceneletId, shotIndex, {
+      keyFrameImagePath,
+    });
 
-      generatedKeyFrameImages++;
-    }
+    generatedKeyFrameImages++;
   }
 
   logger?.debug?.('Shot image generation complete', {

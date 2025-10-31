@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runShotImageTask } from '../src/shot-image/shotImageTask.js';
 import { ShotImageTaskError } from '../src/shot-image/errors.js';
