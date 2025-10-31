@@ -226,11 +226,7 @@ function mapShotRecordToShotImage(record: ShotRecord): ShotImage {
   return {
     shotIndex: record.shotIndex,
     keyFrameImagePath: transformImagePath(record.keyFrameImagePath),
-    firstFrameImagePath: transformImagePath(record.firstFrameImagePath),
     storyboardPayload: record.storyboardPayload,
-    firstFramePrompt: record.firstFramePrompt,
-    keyFramePrompt: record.keyFramePrompt,
-    videoClipPrompt: record.videoClipPrompt,
     createdAt: record.createdAt,
   };
 }

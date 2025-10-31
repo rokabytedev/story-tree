@@ -9,9 +9,7 @@ const TASK_DIRECTIVES = [
   '- Treat this request as stateless beyond the materials provided here. Do not reference prior scenelets or past prompts.',
   "- Evaluate the director's shot_suggestions critically before finalizing your own ordered sequence.",
   '- Return every shot for this scenelet in narrative order with shot_index starting at 1 and incrementing by 1 with no gaps.',
-  '- Provide detailed prose in every storyboard_entry field, and ensure each generation prompt is at least 80 characters.',
-  '- Include the exact phrase "No background music." in every video_clip_prompt.',
-  '- Produce JSON only, matching the schema described in the system prompt: {"scenelet_id": string, "shots": [{ "shot_index": number, "storyboard_entry": {...}, "generation_prompts": {...} }]}',
+  '- Produce JSON only, matching the schema described in the system prompt: {"scenelet_id": string, "shots": [{ "shot_index": number, "storyboard_entry": {..., "referenced_designs": {...}, "audio_and_narrative": [...] }]}',
 ];
 
 export function buildShotProductionUserPrompt(options: ShotProductionPromptBuilderOptions): string {

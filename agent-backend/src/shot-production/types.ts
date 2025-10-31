@@ -6,14 +6,12 @@ import type {
 } from '../workflow/types.js';
 
 export interface UpdateShotImagePathsInput {
-  firstFrameImagePath?: string;
-  keyFrameImagePath?: string;
+  keyFrameImagePath?: string | null;
 }
 
 export interface ShotsMissingImages {
   sceneletId: string;
   shotIndex: number;
-  missingFirstFrame: boolean;
   missingKeyFrame: boolean;
 }
 
@@ -21,10 +19,6 @@ export interface ShotRecord {
   sceneletSequence: number;
   shotIndex: number;
   storyboardPayload: unknown;
-  firstFramePrompt: string;
-  keyFramePrompt: string;
-  videoClipPrompt: string;
-  firstFrameImagePath?: string;
   keyFrameImagePath?: string;
   createdAt: string;
   updatedAt: string;
@@ -48,9 +42,6 @@ export interface ShotProductionShotsRepository {
   ): Promise<void>;
 }
 
-export const REQUIRED_VIDEO_CLIP_PHRASE = 'No background music.';
-export const MIN_PROMPT_LENGTH = 80;
-
 export interface ShotProductionPromptBuilderOptions {
   constitutionMarkdown: string;
   storyTree: StoryTreeSnapshot;
@@ -67,13 +58,11 @@ export interface ShotProductionResponseValidationContext {
 export interface ShotCreationInput {
   shotIndex: number;
   storyboardPayload: unknown;
-  firstFramePrompt: string;
-  keyFramePrompt: string;
-  videoClipPrompt: string;
 }
 
-export interface ShotProductionDialogueLine {
-  character: string;
+export interface AudioNarrativeEntry {
+  type: 'monologue' | 'dialogue';
+  source: string;
   line: string;
 }
 
@@ -86,23 +75,16 @@ export interface ShotProductionStoryboardEntry {
   framingAndAngle: string;
   compositionAndContent: string;
   characterActionAndEmotion: string;
-  dialogue: ShotProductionDialogueLine[];
   cameraDynamics: string;
   lightingAndAtmosphere: string;
   continuityNotes: string;
-  referencedDesigns?: ReferencedDesigns;
-}
-
-export interface ShotGenerationPrompts {
-  firstFramePrompt: string;
-  keyFramePrompt: string;
-  videoClipPrompt: string;
+  referencedDesigns: ReferencedDesigns;
+  audioAndNarrative: AudioNarrativeEntry[];
 }
 
 export interface ShotProductionShotRecord {
   shotIndex: number;
   storyboard: ShotProductionStoryboardEntry;
-  prompts: ShotGenerationPrompts;
 }
 
 export interface ShotProductionValidationResult {

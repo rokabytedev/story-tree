@@ -26,4 +26,17 @@ describe('shots migration', () => {
     expect(migration).toContain('drop column if exists storyboard_breakdown');
     expect(migration).toContain('drop column if exists generation_prompts');
   });
+
+  it('drops deprecated prompt columns while preserving storyboard payload', async () => {
+    const migration = await readFile(
+      new URL('../migrations/000006_deprecate_shot_prompts.sql', import.meta.url),
+      'utf8'
+    );
+
+    expect(migration).toContain('drop column if exists first_frame_prompt');
+    expect(migration).toContain('drop column if exists key_frame_prompt');
+    expect(migration).toContain('drop column if exists video_clip_prompt');
+    expect(migration).toContain('drop column if exists first_frame_image_path');
+    expect(migration).not.toContain('drop column if exists storyboard_payload');
+  });
 });

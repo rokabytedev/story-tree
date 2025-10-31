@@ -1,13 +1,10 @@
 import { ShotProductionTaskError } from './errors.js';
 import {
-  MIN_PROMPT_LENGTH,
-  REQUIRED_VIDEO_CLIP_PHRASE,
-  type ShotProductionDialogueLine,
+  type AudioNarrativeEntry,
   type ShotProductionStoryboardEntry,
   type ShotProductionResponseValidationContext,
   type ShotProductionShotRecord,
   type ShotProductionValidationResult,
-  type ShotGenerationPrompts,
   type ReferencedDesigns,
 } from './types.js';
 import { normalizeNameToId } from '../visual-design/utils.js';
@@ -17,8 +14,6 @@ interface RawShotRecord {
   shotIndex?: unknown;
   storyboard_entry?: unknown;
   storyboardEntry?: unknown;
-  generation_prompts?: unknown;
-  generationPrompts?: unknown;
   [key: string]: unknown;
 }
 
@@ -38,18 +33,15 @@ interface RawStoryboardEntry {
   continuityNotes?: unknown;
   referenced_designs?: unknown;
   referencedDesigns?: unknown;
+  audio_and_narrative?: unknown;
+  audioAndNarrative?: unknown;
   [key: string]: unknown;
 }
 
-interface RawPromptBundle {
-  first_frame_prompt?: unknown;
-  firstFramePrompt?: unknown;
-  key_frame_storyboard_prompt?: unknown;
-  keyFrameStoryboardPrompt?: unknown;
-  key_frame_prompt?: unknown;
-  keyFramePrompt?: unknown;
-  video_clip_prompt?: unknown;
-  videoClipPrompt?: unknown;
+interface RawAudioNarrativeEntry {
+  type?: unknown;
+  source?: unknown;
+  line?: unknown;
   [key: string]: unknown;
 }
 
@@ -103,7 +95,8 @@ export function parseShotProductionResponse(
     throw new ShotProductionTaskError('Gemini shot production response must include at least one shot.');
   }
 
-  const roster = extractCharacterRoster(context.visualDesignDocument);
+  const characterRoster = extractCharacterRoster(context.visualDesignDocument);
+  const environmentRoster = extractEnvironmentRoster(context.visualDesignDocument);
   const dialogueLookup = buildDialogueLookup(context.scenelet.dialogue);
 
   const sanitizedShots: ShotProductionShotRecord[] = [];
@@ -112,7 +105,8 @@ export function parseShotProductionResponse(
   for (const entry of shotsRaw) {
     const sanitized = sanitizeShot(entry, {
       expectedIndex: expectedShotIndex,
-      roster,
+      characterRoster,
+      environmentRoster,
       dialogueLookup,
     });
     sanitizedShots.push(sanitized);
@@ -129,7 +123,8 @@ function sanitizeShot(
   input: unknown,
   context: {
     expectedIndex: number;
-    roster: Set<string>;
+    characterRoster: Set<string>;
+    environmentRoster: Set<string>;
     dialogueLookup: Set<string>;
   }
 ): ShotProductionShotRecord {
@@ -153,20 +148,17 @@ function sanitizeShot(
   const storyboardRaw = record.storyboard_entry ?? record.storyboardEntry;
   const storyboard = sanitizeStoryboard(storyboardRaw, context);
 
-  const promptsRaw = record.generation_prompts ?? record.generationPrompts;
-  const prompts = sanitizePrompts(promptsRaw);
-
   return {
     shotIndex,
     storyboard,
-    prompts,
   };
 }
 
 function sanitizeStoryboard(
   input: unknown,
   context: {
-    roster: Set<string>;
+    characterRoster: Set<string>;
+    environmentRoster: Set<string>;
     dialogueLookup: Set<string>;
   }
 ): ShotProductionStoryboardEntry {
@@ -195,79 +187,101 @@ function sanitizeStoryboard(
     'continuity_notes'
   );
 
-  const dialogueRaw = record.dialogue;
-  const dialogue = sanitizeDialogue(dialogueRaw, context);
-
   const referencedDesignsRaw = record.referenced_designs ?? record.referencedDesigns;
-  const referencedDesigns = sanitizeReferencedDesigns(referencedDesignsRaw);
+  const referencedDesigns = sanitizeReferencedDesigns(referencedDesignsRaw, {
+    characterRoster: context.characterRoster,
+    environmentRoster: context.environmentRoster,
+  });
+
+  const audioNarrativeRaw = record.audio_and_narrative ?? record.audioAndNarrative;
+  const audioAndNarrative = sanitizeAudioNarrative(audioNarrativeRaw, {
+    characterRoster: context.characterRoster,
+    dialogueLookup: context.dialogueLookup,
+  });
 
   return {
     framingAndAngle,
     compositionAndContent,
     characterActionAndEmotion,
-    dialogue,
     cameraDynamics,
     lightingAndAtmosphere,
     continuityNotes,
     referencedDesigns,
+    audioAndNarrative,
   };
 }
 
-function sanitizeDialogue(
+function sanitizeAudioNarrative(
   input: unknown,
   context: {
-    roster: Set<string>;
+    characterRoster: Set<string>;
     dialogueLookup: Set<string>;
   }
-): ShotProductionDialogueLine[] {
-  if (input === undefined || input === null) {
-    return [];
-  }
-
+): AudioNarrativeEntry[] {
   if (!Array.isArray(input)) {
-    throw new ShotProductionTaskError('storyboard_entry.dialogue must be an array when provided.');
+    throw new ShotProductionTaskError('storyboard_entry.audio_and_narrative must be an array.');
   }
 
-  const sanitized: ShotProductionDialogueLine[] = [];
+  const sanitized: AudioNarrativeEntry[] = [];
 
   for (const entry of input) {
     if (!entry || typeof entry !== 'object') {
-      throw new ShotProductionTaskError('storyboard_entry.dialogue entries must be objects.');
+      throw new ShotProductionTaskError('storyboard_entry.audio_and_narrative entries must be objects.');
     }
 
-    const character = toTrimmedString((entry as Record<string, unknown>).character);
-    const line = toTrimmedString((entry as Record<string, unknown>).line);
-
-    if (!character || !line) {
-      throw new ShotProductionTaskError('storyboard_entry.dialogue entries must include character and line strings.');
+    const record = entry as RawAudioNarrativeEntry;
+    const typeRaw = toTrimmedString(record.type);
+    const normalizedType = typeRaw.toLowerCase();
+    if (!typeRaw) {
+      throw new ShotProductionTaskError('audio_and_narrative.type must be provided.');
+    }
+    if (normalizedType !== 'monologue' && normalizedType !== 'dialogue') {
+      throw new ShotProductionTaskError('audio_and_narrative.type must be either "monologue" or "dialogue".');
     }
 
-    // Normalize character name to ID for matching against visual design document
-    const characterId = normalizeNameToId(character);
-    if (!context.roster.has(characterId)) {
-      throw new ShotProductionTaskError(`Dialogue references unknown character ${character}.`);
+    const source = toTrimmedString(record.source);
+    if (!source) {
+      throw new ShotProductionTaskError('audio_and_narrative.source must be a non-empty string.');
     }
 
-    const key = buildDialogueKey(character, line);
-    if (!context.dialogueLookup.has(key)) {
-      throw new ShotProductionTaskError(
-        `Dialogue line for ${character} does not exist in the target scenelet: "${line}"`
-      );
+    const line = requireRichText(record.line, 'audio_and_narrative.line');
+
+    if (normalizedType === 'monologue') {
+      if (source !== 'narrator') {
+        throw new ShotProductionTaskError('Monologue entries must use source "narrator".');
+      }
+    } else {
+      if (!context.characterRoster.has(source)) {
+        throw new ShotProductionTaskError(`Dialogue references unknown character design id ${source}.`);
+      }
+
+      const key = buildDialogueKey(source, line);
+      if (!context.dialogueLookup.has(key)) {
+        throw new ShotProductionTaskError(
+          `Dialogue line for character id ${source} does not exist in the target scenelet: "${line}"`
+        );
+      }
     }
 
-    sanitized.push({ character, line });
+    sanitized.push({
+      type: normalizedType as AudioNarrativeEntry['type'],
+      source,
+      line,
+    });
   }
 
   return sanitized;
 }
 
-function sanitizeReferencedDesigns(input: unknown): ReferencedDesigns | undefined {
-  if (input === undefined || input === null) {
-    return undefined;
+function sanitizeReferencedDesigns(
+  input: unknown,
+  context: {
+    characterRoster: Set<string>;
+    environmentRoster: Set<string>;
   }
-
+): ReferencedDesigns {
   if (!input || typeof input !== 'object') {
-    throw new ShotProductionTaskError('referenced_designs must be an object when provided.');
+    throw new ShotProductionTaskError('referenced_designs must be an object.');
   }
 
   const record = input as Record<string, unknown>;
@@ -276,6 +290,22 @@ function sanitizeReferencedDesigns(input: unknown): ReferencedDesigns | undefine
 
   const characters = validateStringArray(charactersRaw, 'referenced_designs.characters');
   const environments = validateStringArray(environmentsRaw, 'referenced_designs.environments');
+
+  const unknownCharacters = characters.filter((id) => !context.characterRoster.has(id));
+  if (unknownCharacters.length > 0) {
+    throw new ShotProductionTaskError(
+      `referenced_designs.characters includes unknown design ids: ${unknownCharacters.join(', ')}.`
+    );
+  }
+
+  const unknownEnvironments = environments.filter(
+    (id) => context.environmentRoster.size > 0 && !context.environmentRoster.has(id)
+  );
+  if (unknownEnvironments.length > 0) {
+    throw new ShotProductionTaskError(
+      `referenced_designs.environments includes unknown design ids: ${unknownEnvironments.join(', ')}.`
+    );
+  }
 
   return {
     characters,
@@ -305,43 +335,6 @@ function validateStringArray(input: unknown, field: string): string[] {
   }
 
   return validated;
-}
-
-function sanitizePrompts(input: unknown): ShotGenerationPrompts {
-  if (!input || typeof input !== 'object') {
-    throw new ShotProductionTaskError('generation_prompts must be an object.');
-  }
-
-  const record = input as RawPromptBundle;
-  const firstFramePrompt = requirePrompt(record.first_frame_prompt ?? record.firstFramePrompt, 'first_frame_prompt');
-  const keyFramePromptCandidates =
-    record.key_frame_storyboard_prompt ?? record.keyFrameStoryboardPrompt ?? record.key_frame_prompt ?? record.keyFramePrompt;
-  const keyFramePrompt = requirePrompt(keyFramePromptCandidates, 'key_frame_storyboard_prompt');
-  const videoClipPrompt = requirePrompt(record.video_clip_prompt ?? record.videoClipPrompt, 'video_clip_prompt', {
-    enforcePhrase: REQUIRED_VIDEO_CLIP_PHRASE,
-  });
-
-  return {
-    firstFramePrompt,
-    keyFramePrompt,
-    videoClipPrompt,
-  };
-}
-
-function requirePrompt(
-  value: unknown,
-  field: string,
-  options: { enforcePhrase?: string } = {}
-): string {
-  const text = requireRichText(value, field, MIN_PROMPT_LENGTH);
-
-  if (options.enforcePhrase && !text.includes(options.enforcePhrase)) {
-    throw new ShotProductionTaskError(
-      `${field} must include the exact phrase "${options.enforcePhrase}".`
-    );
-  }
-
-  return text;
 }
 
 function requireRichText(value: unknown, field: string, minimumLength = 1): string {
@@ -391,7 +384,8 @@ function buildDialogueLookup(
       continue;
     }
 
-    const key = buildDialogueKey(character, line);
+    const characterId = normalizeNameToId(character);
+    const key = buildDialogueKey(characterId, line);
     inventory.add(key);
   }
 
@@ -452,6 +446,55 @@ function extractCharacterRoster(document: unknown): Set<string> {
   return roster;
 }
 
+function extractEnvironmentRoster(document: unknown): Set<string> {
+  if (document === null || document === undefined) {
+    return new Set<string>();
+  }
+
+  let source: unknown = document;
+
+  if (typeof document === 'string') {
+    const trimmed = document.trim();
+    if (!trimmed) {
+      return new Set<string>();
+    }
+
+    try {
+      source = JSON.parse(trimmed);
+    } catch {
+      return new Set<string>();
+    }
+  }
+
+  if (!source || typeof source !== 'object') {
+    return new Set<string>();
+  }
+
+  const record = source as Record<string, unknown>;
+  const candidates = resolveEnvironmentDesigns(record);
+
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return new Set<string>();
+  }
+
+  const roster = new Set<string>();
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') {
+      continue;
+    }
+
+    const id = toTrimmedString(
+      (candidate as Record<string, unknown>).environment_id ??
+        (candidate as Record<string, unknown>).environmentId
+    );
+    if (id) {
+      roster.add(id);
+    }
+  }
+
+  return roster;
+}
+
 function resolveCharacterDesigns(record: Record<string, unknown>): unknown {
   if (Array.isArray(record.character_designs)) {
     return record.character_designs;
@@ -467,6 +510,26 @@ function resolveCharacterDesigns(record: Record<string, unknown>): unknown {
 
   if (record.visualDesignDocument && typeof record.visualDesignDocument === 'object') {
     return resolveCharacterDesigns(record.visualDesignDocument as Record<string, unknown>);
+  }
+
+  return undefined;
+}
+
+function resolveEnvironmentDesigns(record: Record<string, unknown>): unknown {
+  if (Array.isArray(record.environment_designs)) {
+    return record.environment_designs;
+  }
+
+  if (Array.isArray(record.environmentDesigns)) {
+    return record.environmentDesigns;
+  }
+
+  if (record.visual_design_document && typeof record.visual_design_document === 'object') {
+    return resolveEnvironmentDesigns(record.visual_design_document as Record<string, unknown>);
+  }
+
+  if (record.visualDesignDocument && typeof record.visualDesignDocument === 'object') {
+    return resolveEnvironmentDesigns(record.visualDesignDocument as Record<string, unknown>);
   }
 
   return undefined;

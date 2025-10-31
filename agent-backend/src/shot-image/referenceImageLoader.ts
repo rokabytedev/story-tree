@@ -1,11 +1,18 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { ReferenceImageLoader } from './types.js';
 import { ShotImageTaskError } from './errors.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
 
 export interface ReferenceImageLoaderOptions {
   baseDir?: string;
+}
+
+export interface ReferenceImageLoader {
+  loadCharacterReferences(
+    storyId: string,
+    characterNames: string[],
+    maxImages: number
+  ): Promise<Map<string, string[]>>;
 }
 
 export function createReferenceImageLoader(

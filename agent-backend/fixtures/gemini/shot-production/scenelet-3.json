@@ -7,20 +7,22 @@
         "framing_and_angle": "Expansive Montage Panel",
         "composition_and_content": "Split frame of testers laughing as tutorial scenes loop around them, floating panels demonstrating remix options in playful sync.",
         "character_action_and_emotion": "Participants high-five and remix assets with carefree joy, showcasing the success of the tutorial branch.",
-        "dialogue": [
-          {
-            "character": "Narrator",
-            "line": "Minutes later, testers confidently remix the tutorial scenelets."
-          }
-        ],
         "camera_dynamics": "Graphic montage transitions with quick wipes between panels, reinforcing upbeat pacing.",
         "lighting_and_atmosphere": "Uplifting daylight tones with sparkles accenting successful choices and celebratory overlays.",
-        "continuity_notes": "Keep panel layout consistent across montage cuts so the spatial orientation remains readable for the audience."
-      },
-      "generation_prompts": {
-        "first_frame_prompt": "Montage grid of testers remixing tutorial loops, bright celebratory lighting, motion-trail confetti, smiling faces captured in crisp cinematic clarity.",
-        "key_frame_storyboard_prompt": "Storyboard frame depicting multiple panels of jovial testers interacting with holographic UI, emphasizing collaborative gestures and upbeat montage rhythm.",
-        "video_clip_prompt": "Energetic montage of testers celebrating the tutorial success, alternating split screens, sparkling overlays, and looping success indicators animating across panels. No background music."
+        "continuity_notes": "Keep panel layout consistent across montage cuts so the spatial orientation remains readable for the audience.",
+        "referenced_designs": {
+          "characters": [],
+          "environments": [
+            "sandbox-studio"
+          ]
+        },
+        "audio_and_narrative": [
+          {
+            "type": "monologue",
+            "source": "narrator",
+            "line": "Minutes later, testers confidently remix the tutorial scenelets."
+          }
+        ]
       }
     },
     {
@@ -29,20 +31,25 @@
         "framing_and_angle": "Balanced Medium Two-Shot",
         "composition_and_content": "Rhea watches from a mezzanine with the Testing Agent hovering beside her, viewing the tutorial outcomes on suspended screens.",
         "character_action_and_emotion": "Rhea relaxes, arms folded with satisfied relief while the companion tilts inquisitively, reflecting quiet pride.",
-        "dialogue": [
-          {
-            "character": "Rhea",
-            "line": "Perfect. Friendly tone achieved, and they're already riffing."
-          }
-        ],
         "camera_dynamics": "Subtle push-in to emphasize Rhea's pride and the quiet thrill of seeing testers succeed.",
         "lighting_and_atmosphere": "Warm motivational lighting bathes the mezzanine, echoing the positive outcome with gentle flares across displays.",
-        "continuity_notes": "Keep suspended screens synchronized with montage content and maintain Rhea's relaxed posture for continuity."
-      },
-      "generation_prompts": {
-        "first_frame_prompt": "Medium shot of Rhea and the Testing Agent on a mezzanine, soft motivational lighting, suspended displays replaying tutorial victories in polished cinematic realism.",
-        "key_frame_storyboard_prompt": "Storyboard frame emphasizing Rhea's satisfied stance beside the companion orb, glowing screens showcasing player wins, calm yet celebratory composition.",
-        "video_clip_prompt": "Slow push toward Rhea observing successful testers, highlighting warm mezzanine lighting, floating analytics, and the quiet pride of the moment. No background music."
+        "continuity_notes": "Keep suspended screens synchronized with montage content and maintain Rhea's relaxed posture for continuity.",
+        "referenced_designs": {
+          "characters": [
+            "rhea",
+            "testing-agent"
+          ],
+          "environments": [
+            "sandbox-studio"
+          ]
+        },
+        "audio_and_narrative": [
+          {
+            "type": "dialogue",
+            "source": "rhea",
+            "line": "Perfect. Friendly tone achieved, and they're already riffing."
+          }
+        ]
       }
     }
   ]

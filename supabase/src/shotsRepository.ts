@@ -9,10 +9,6 @@ type ShotRow = {
   scenelet_sequence: number;
   shot_index: number;
   storyboard_payload: unknown;
-  first_frame_prompt: string;
-  key_frame_prompt: string;
-  video_clip_prompt: string;
-  first_frame_image_path: string | null;
   key_frame_image_path: string | null;
   created_at: string;
   updated_at: string;
@@ -22,10 +18,6 @@ export interface ShotRecord {
   sceneletSequence: number;
   shotIndex: number;
   storyboardPayload: unknown;
-  firstFramePrompt: string;
-  keyFramePrompt: string;
-  videoClipPrompt: string;
-  firstFrameImagePath?: string;
   keyFrameImagePath?: string;
   createdAt: string;
   updatedAt: string;
@@ -34,20 +26,15 @@ export interface ShotRecord {
 export interface CreateShotInput {
   shotIndex: number;
   storyboardPayload: unknown;
-  firstFramePrompt: string;
-  keyFramePrompt: string;
-  videoClipPrompt: string;
 }
 
 export interface UpdateShotImagePathsInput {
-  firstFrameImagePath?: string;
-  keyFrameImagePath?: string;
+  keyFrameImagePath?: string | null;
 }
 
 export interface ShotsMissingImages {
   sceneletId: string;
   shotIndex: number;
-  missingFirstFrame: boolean;
   missingKeyFrame: boolean;
 }
 
@@ -183,18 +170,8 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
           throw new ShotsRepositoryError('Shot index must be a positive integer.');
         }
 
-        const firstFramePrompt = shot.firstFramePrompt?.trim();
-        const keyFramePrompt = shot.keyFramePrompt?.trim();
-        const videoClipPrompt = shot.videoClipPrompt?.trim();
-
-        if (!firstFramePrompt) {
-          throw new ShotsRepositoryError(`Shot ${index + 1} first frame prompt must be provided.`);
-        }
-        if (!keyFramePrompt) {
-          throw new ShotsRepositoryError(`Shot ${index + 1} key frame prompt must be provided.`);
-        }
-        if (!videoClipPrompt) {
-          throw new ShotsRepositoryError(`Shot ${index + 1} video clip prompt must be provided.`);
+        if (shot.storyboardPayload === undefined || shot.storyboardPayload === null) {
+          throw new ShotsRepositoryError(`Shot ${index + 1} storyboard payload must be provided.`);
         }
 
         return {
@@ -203,9 +180,6 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
           scenelet_sequence: sceneletSequence,
           shot_index: shot.shotIndex,
           storyboard_payload: shot.storyboardPayload,
-          first_frame_prompt: firstFramePrompt,
-          key_frame_prompt: keyFramePrompt,
-          video_clip_prompt: videoClipPrompt,
         };
       });
 
@@ -271,17 +245,12 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
         throw new ShotsRepositoryError('Shot index must be a positive integer.');
       }
 
-      if (!paths || (paths.firstFrameImagePath === undefined && paths.keyFrameImagePath === undefined)) {
-        throw new ShotsRepositoryError('At least one image path must be provided for update.');
+      if (!paths || paths.keyFrameImagePath === undefined) {
+        throw new ShotsRepositoryError('Key frame image path must be provided for update.');
       }
 
       const updateData: Record<string, string | null> = {};
-      if (paths.firstFrameImagePath !== undefined) {
-        updateData.first_frame_image_path = paths.firstFrameImagePath || null;
-      }
-      if (paths.keyFrameImagePath !== undefined) {
-        updateData.key_frame_image_path = paths.keyFrameImagePath || null;
-      }
+      updateData.key_frame_image_path = paths.keyFrameImagePath || null;
 
       const { error } = await client
         .from(SHOTS_TABLE)
@@ -303,7 +272,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
 
       const { data, error } = await client
         .from(SHOTS_TABLE)
-        .select('scenelet_id, shot_index, first_frame_image_path, key_frame_image_path')
+        .select('scenelet_id, shot_index, key_frame_image_path')
         .eq('story_id', trimmedStoryId)
         .order('scenelet_sequence', { ascending: true })
         .order('shot_index', { ascending: true });
@@ -317,11 +286,10 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       }
 
       return data
-        .filter((row) => !row.first_frame_image_path || !row.key_frame_image_path)
+        .filter((row) => !row.key_frame_image_path)
         .map((row) => ({
           sceneletId: row.scenelet_id,
           shotIndex: row.shot_index,
-          missingFirstFrame: !row.first_frame_image_path,
           missingKeyFrame: !row.key_frame_image_path,
         }));
     },
@@ -333,10 +301,6 @@ function mapRowToRecord(row: ShotRow): ShotRecord {
     sceneletSequence: row.scenelet_sequence,
     shotIndex: row.shot_index,
     storyboardPayload: row.storyboard_payload,
-    firstFramePrompt: row.first_frame_prompt,
-    keyFramePrompt: row.key_frame_prompt,
-    videoClipPrompt: row.video_clip_prompt,
-    firstFrameImagePath: row.first_frame_image_path ?? undefined,
     keyFrameImagePath: row.key_frame_image_path ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

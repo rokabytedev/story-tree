@@ -14,10 +14,6 @@ type ShotRow = {
   scenelet_sequence: number;
   shot_index: number;
   storyboard_payload: unknown;
-  first_frame_prompt: string;
-  key_frame_prompt: string;
-  video_clip_prompt: string;
-  first_frame_image_path: string | null;
   key_frame_image_path: string | null;
   created_at: string;
   updated_at: string;
@@ -36,7 +32,7 @@ interface FakeResponses {
   selectExisting?: FakeResponse<Array<Pick<ShotRow, 'id'>>>;
   selectStoryShots?: FakeResponse<ShotRow[]>;
   selectSceneletIds?: FakeResponse<Array<{ scenelet_id: string }>>;
-  selectShotsMissingImages?: FakeResponse<Array<Pick<ShotRow, 'scenelet_id' | 'shot_index' | 'first_frame_image_path' | 'key_frame_image_path'>>>;
+  selectShotsMissingImages?: FakeResponse<Array<Pick<ShotRow, 'scenelet_id' | 'shot_index' | 'key_frame_image_path'>>>;
   insert?: FakeResponse<ShotRow[]>;
   update?: FakeResponse<null>;
 }
@@ -126,7 +122,7 @@ function resolveSelectResponse(
     return responses.selectSceneletIds ?? { data: [], error: null };
   }
 
-  if (columns === 'scenelet_id, shot_index, first_frame_image_path, key_frame_image_path') {
+  if (columns === 'scenelet_id, shot_index, key_frame_image_path') {
     return responses.selectShotsMissingImages ?? { data: [], error: null };
   }
 
@@ -152,12 +148,6 @@ function makeShotRow(overrides: Partial<ShotRow> = {}): ShotRow {
     scenelet_sequence: overrides.scenelet_sequence ?? 1,
     shot_index: overrides.shot_index ?? 1,
     storyboard_payload: overrides.storyboard_payload ?? { framing_and_angle: 'Wide' },
-    first_frame_prompt: overrides.first_frame_prompt ?? 'First frame prompt',
-    key_frame_prompt: overrides.key_frame_prompt ?? 'Key frame prompt',
-    video_clip_prompt: overrides.video_clip_prompt ?? 'Video clip prompt. No background music.',
-    first_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'first_frame_image_path')
-      ? overrides.first_frame_image_path ?? null
-      : null,
     key_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'key_frame_image_path')
       ? overrides.key_frame_image_path ?? null
       : null,
@@ -241,16 +231,10 @@ describe('shotsRepository.createSceneletShots', () => {
       {
         shotIndex: 1,
         storyboardPayload: { framing_and_angle: 'Wide shot' },
-        firstFramePrompt: '  First frame prompt  ',
-        keyFramePrompt: 'Key frame prompt',
-        videoClipPrompt: 'Video clip prompt. No background music.',
       },
       {
         shotIndex: 2,
         storyboardPayload: { framing_and_angle: 'Close up' },
-        firstFramePrompt: 'Another first frame',
-        keyFramePrompt: 'Another key frame',
-        videoClipPrompt: 'Another clip. No background music.',
       },
     ]);
 
@@ -271,9 +255,11 @@ describe('shotsRepository.createSceneletShots', () => {
       scenelet_sequence: 4,
       shot_index: 1,
       storyboard_payload: { framing_and_angle: 'Wide shot' },
-      first_frame_prompt: 'First frame prompt',
     });
     expect(insertedRows[0]).not.toHaveProperty('id');
+    expect(insertedRows[0]).not.toHaveProperty('first_frame_prompt');
+    expect(insertedRows[0]).not.toHaveProperty('key_frame_prompt');
+    expect(insertedRows[0]).not.toHaveProperty('video_clip_prompt');
   });
 
   it('throws when shots already exist for the scenelet', async () => {
@@ -286,9 +272,6 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(SceneletShotsAlreadyExistError);
@@ -304,9 +287,6 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
@@ -323,9 +303,6 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
@@ -342,9 +319,6 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
@@ -353,9 +327,6 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
@@ -364,12 +335,17 @@ describe('shotsRepository.createSceneletShots', () => {
         {
           shotIndex: 1,
           storyboardPayload: {},
-          firstFramePrompt: 'First',
-          keyFramePrompt: 'Key',
-          videoClipPrompt: 'Clip. No background music.',
         },
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
+    await expect(
+      repo.createSceneletShots('story-123', 'scenelet-1', 1, [
+        {
+          shotIndex: 1,
+          storyboardPayload: undefined,
+        },
+      ])
+    ).rejects.toThrow(/storyboard payload/i);
   });
 });
 
@@ -427,19 +403,17 @@ describe('shotsRepository.findSceneletIdsMissingShots', () => {
 });
 
 describe('shotsRepository.updateShotImagePaths', () => {
-  it('updates both image paths when provided', async () => {
+  it('updates key frame image path when provided', async () => {
     const { repo, table } = makeRepository({
       update: { data: null, error: null },
     });
 
     await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
-      firstFrameImagePath: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
       keyFrameImagePath: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
     });
 
     expect(table.updated).toHaveLength(1);
     expect(table.updated[0]?.data).toEqual({
-      first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
       key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
     });
     expect(table.updated[0]?.filters).toEqual([
@@ -449,40 +423,26 @@ describe('shotsRepository.updateShotImagePaths', () => {
     ]);
   });
 
-  it('updates only first frame image path when provided', async () => {
+  it('allows clearing the key frame image path', async () => {
     const { repo, table } = makeRepository({
       update: { data: null, error: null },
     });
 
     await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
-      firstFrameImagePath: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+      keyFrameImagePath: null,
     });
 
     expect(table.updated[0]?.data).toEqual({
-      first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
+      key_frame_image_path: null,
     });
   });
 
-  it('updates only key frame image path when provided', async () => {
-    const { repo, table } = makeRepository({
-      update: { data: null, error: null },
-    });
-
-    await repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
-      keyFrameImagePath: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
-    });
-
-    expect(table.updated[0]?.data).toEqual({
-      key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
-    });
-  });
-
-  it('throws when no image paths are provided', async () => {
+  it('throws when key frame image path input is missing', async () => {
     const { repo } = makeRepository({});
 
     await expect(
-      repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {})
-    ).rejects.toThrow(/at least one image path/i);
+      repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {} as Record<string, never>)
+    ).rejects.toThrow(/key frame image path/i);
   });
 
   it('throws when story id is blank', async () => {
@@ -490,7 +450,7 @@ describe('shotsRepository.updateShotImagePaths', () => {
 
     await expect(
       repo.updateShotImagePaths('  ', 'scenelet-1', 1, {
-        firstFrameImagePath: 'path.png',
+        keyFrameImagePath: 'path.png',
       })
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
@@ -500,7 +460,7 @@ describe('shotsRepository.updateShotImagePaths', () => {
 
     await expect(
       repo.updateShotImagePaths('story-123', '  ', 1, {
-        firstFrameImagePath: 'path.png',
+        keyFrameImagePath: 'path.png',
       })
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
@@ -510,7 +470,7 @@ describe('shotsRepository.updateShotImagePaths', () => {
 
     await expect(
       repo.updateShotImagePaths('story-123', 'scenelet-1', 0, {
-        firstFrameImagePath: 'path.png',
+        keyFrameImagePath: 'path.png',
       })
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
@@ -522,85 +482,20 @@ describe('shotsRepository.updateShotImagePaths', () => {
 
     await expect(
       repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
-        firstFrameImagePath: 'path.png',
+        keyFrameImagePath: 'path.png',
       })
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
 });
 
 describe('shotsRepository.findShotsMissingImages', () => {
-  it('returns shots missing both image paths', async () => {
+  it('returns shots missing key frame images', async () => {
     const { repo } = makeRepository({
       selectShotsMissingImages: {
         data: [
           {
             scenelet_id: 'scenelet-1',
             shot_index: 1,
-            first_frame_image_path: null,
-            key_frame_image_path: null,
-          },
-          {
-            scenelet_id: 'scenelet-1',
-            shot_index: 2,
-            first_frame_image_path: null,
-            key_frame_image_path: null,
-          },
-        ],
-        error: null,
-      },
-    });
-
-    const result = await repo.findShotsMissingImages('story-123');
-
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({
-      sceneletId: 'scenelet-1',
-      shotIndex: 1,
-      missingFirstFrame: true,
-      missingKeyFrame: true,
-    });
-    expect(result[1]).toEqual({
-      sceneletId: 'scenelet-1',
-      shotIndex: 2,
-      missingFirstFrame: true,
-      missingKeyFrame: true,
-    });
-  });
-
-  it('returns shots missing only first frame image', async () => {
-    const { repo } = makeRepository({
-      selectShotsMissingImages: {
-        data: [
-          {
-            scenelet_id: 'scenelet-1',
-            shot_index: 1,
-            first_frame_image_path: null,
-            key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
-          },
-        ],
-        error: null,
-      },
-    });
-
-    const result = await repo.findShotsMissingImages('story-123');
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
-      sceneletId: 'scenelet-1',
-      shotIndex: 1,
-      missingFirstFrame: true,
-      missingKeyFrame: false,
-    });
-  });
-
-  it('returns shots missing only key frame image', async () => {
-    const { repo } = makeRepository({
-      selectShotsMissingImages: {
-        data: [
-          {
-            scenelet_id: 'scenelet-1',
-            shot_index: 1,
-            first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
             key_frame_image_path: null,
           },
         ],
@@ -614,7 +509,6 @@ describe('shotsRepository.findShotsMissingImages', () => {
     expect(result[0]).toEqual({
       sceneletId: 'scenelet-1',
       shotIndex: 1,
-      missingFirstFrame: false,
       missingKeyFrame: true,
     });
   });
@@ -626,7 +520,6 @@ describe('shotsRepository.findShotsMissingImages', () => {
           {
             scenelet_id: 'scenelet-1',
             shot_index: 1,
-            first_frame_image_path: 'story-123/shots/scenelet-1/shot-1_first_frame.png',
             key_frame_image_path: 'story-123/shots/scenelet-1/shot-1_key_frame.png',
           },
         ],

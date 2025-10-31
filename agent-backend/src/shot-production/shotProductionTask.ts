@@ -224,9 +224,6 @@ export async function runShotProductionTask(
     const shotInputs = parsed.shots.map<ShotCreationInput>((shot) => ({
       shotIndex: shot.shotIndex,
       storyboardPayload: shot.storyboard,
-      firstFramePrompt: shot.prompts.firstFramePrompt,
-      keyFramePrompt: shot.prompts.keyFramePrompt,
-      videoClipPrompt: shot.prompts.videoClipPrompt,
     }));
 
     await shotsRepository.createSceneletShots(trimmedStoryId, scenelet.id, sceneletSequence, shotInputs);

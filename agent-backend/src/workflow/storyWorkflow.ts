@@ -638,10 +638,6 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.imageStorage = overrides.imageStorage;
     }
 
-    if (overrides?.referenceImageLoader) {
-      dependencies.referenceImageLoader = overrides.referenceImageLoader;
-    }
-
     if (overrides?.targetSceneletId) {
       dependencies.targetSceneletId = overrides.targetSceneletId;
     }

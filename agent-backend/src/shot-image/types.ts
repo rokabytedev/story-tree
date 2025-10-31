@@ -32,7 +32,6 @@ export interface ShotImageTaskDependencies {
   shotsRepository: ShotProductionShotsRepository;
   geminiImageClient?: GeminiImageClient;
   imageStorage?: ImageStorage;
-  referenceImageLoader?: ReferenceImageLoader;
   logger?: ShotImageTaskLogger;
   targetSceneletId?: string;
   targetShotIndex?: number;
@@ -45,7 +44,6 @@ export interface ShotImageTaskLogger {
 }
 
 export interface ShotImageTaskResult {
-  generatedFirstFrameImages: number;
   generatedKeyFrameImages: number;
   totalShots: number;
 }
@@ -54,11 +52,3 @@ export type ShotImageTaskRunner = (
   storyId: string,
   dependencies: ShotImageTaskDependencies
 ) => Promise<ShotImageTaskResult>;
-
-export interface ReferenceImageLoader {
-  loadCharacterReferences(
-    storyId: string,
-    characterNames: string[],
-    maxImages: number
-  ): Promise<Map<string, string[]>>;
-}

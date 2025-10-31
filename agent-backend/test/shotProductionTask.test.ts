@@ -25,6 +25,7 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
     visualDesignDocument:
       overrides.visualDesignDocument ?? {
         character_designs: [{ character_id: 'narrator' }],
+        environment_designs: [{ environment_id: 'control-lab' }],
       },
     audioDesignDocument:
       overrides.audioDesignDocument ?? { audio_design_document: { cues: [] } },
@@ -137,32 +138,7 @@ function createDependencies(overrides: Partial<ShotProductionTaskDependencies> =
     storyTreeLoader: overrides.storyTreeLoader ?? (async () => STORY_TREE),
     promptLoader: overrides.promptLoader ?? (async () => 'Shot production system prompt'),
     geminiClient: overrides.geminiClient ?? {
-      generateJson: vi.fn(async () =>
-        JSON.stringify({
-          scenelet_id: 'scenelet-1',
-          shots: [
-            {
-              shot_index: 1,
-              storyboard_entry: {
-                framing_and_angle: 'Wide descriptive framing exceeding eighty characters for validation purposes to ensure compliance.',
-                composition_and_content: 'Rich composition details with subject placement clearly articulated beyond the minimum length.',
-                character_action_and_emotion: 'Character engages the viewer with expressive emotional cues, articulated thoroughly.',
-                dialogue: [
-                  { character: 'Narrator', line: 'Welcome.' },
-                ],
-                camera_dynamics: 'Camera slides forward continuing to describe motion beyond the threshold.',
-                lighting_and_atmosphere: 'Atmosphere described with sufficient detail regarding lighting, shadows, and highlights.',
-                continuity_notes: 'Continuity notes ensure props, costumes, and placements remain consistent for the scene.',
-              },
-              generation_prompts: {
-                first_frame_prompt: 'Detailed first frame prompt offering color palette, subject arrangement, and context surpassing length requirements.',
-                key_frame_storyboard_prompt: 'Key frame prompt elaborating staging, lensing, and camera height while exceeding eighty characters.',
-                video_clip_prompt: 'Video prompt referencing pacing, transitions, and camera cues ensuring bright detail. No background music.',
-              },
-            },
-          ],
-        })
-      ),
+      generateJson: vi.fn(async () => buildValidShotResponse('scenelet-1', 'Welcome.')),
     },
     geminiOptions: overrides.geminiOptions,
     logger: overrides.logger,
@@ -188,23 +164,23 @@ function buildValidShotResponse(sceneletId: string, dialogueLine: string): strin
             'Richly described composition for the shot meeting length checks for validation path requirements.',
           character_action_and_emotion:
             'Character expression and action articulated in lengthy prose to clear validations consistently throughout.',
-          dialogue: [
-            { character: 'Narrator', line: dialogueLine },
-          ],
           camera_dynamics:
             'Camera motion discussed in depth including motivation, start and end beats, and timing nuance beyond minimums.',
           lighting_and_atmosphere:
             'Lighting description elaborating on mood, highlights, and shadows beyond the constraints set by validators.',
           continuity_notes:
             'Continuity notes cover props and staging ensuring textual length requirements are met alongside blocking.',
-        },
-        generation_prompts: {
-          first_frame_prompt:
-            'First frame prompt elaborating on composition, materials, and color theory over eighty characters for compliance.',
-          key_frame_storyboard_prompt:
-            'Storyboard prompt covering blocking, lens, and mise-en-scene across detailed prose beyond the validation limit.',
-          video_clip_prompt:
-            'Video prompt establishing pacing, transitions, and tonal guidance at sufficient length to pass checks. No background music.',
+          referenced_designs: {
+            characters: ['narrator'],
+            environments: ['control-lab'],
+          },
+          audio_and_narrative: [
+            {
+              type: 'dialogue',
+              source: 'narrator',
+              line: dialogueLine,
+            },
+          ],
         },
       },
     ],
@@ -219,59 +195,9 @@ describe('runShotProductionTask', () => {
     const geminiClient = {
       generateJson: vi
         .fn()
-        .mockResolvedValueOnce(
-          JSON.stringify({
-            scenelet_id: 'scenelet-1',
-            shots: [
-              {
-                shot_index: 1,
-                storyboard_entry: {
-                  framing_and_angle: 'Detailed framing description over eighty characters to satisfy validation steps successfully.',
-                  composition_and_content: 'Richly described composition for the first shot meeting length checks for validation path.',
-                  character_action_and_emotion: 'Character expression and action articulated in lengthy prose to clear validations.',
-                  dialogue: [
-                    { character: 'Narrator', line: 'Welcome.' },
-                  ],
-                  camera_dynamics: 'Slow tracking motion described thoroughly with more than eighty characters of detail.',
-                  lighting_and_atmosphere: 'Lighting description elaborating on mood, highlights, and shadows beyond constraints.',
-                  continuity_notes: 'Continuity notes cover props and staging ensuring textual length requirements are met.',
-                },
-                generation_prompts: {
-                  first_frame_prompt: 'First frame prompt elaborating on composition, materials, and color theory over eighty characters.',
-                  key_frame_storyboard_prompt: 'Storyboard prompt covering blocking, lens, and mise-en-scene across detailed prose beyond limit.',
-                  video_clip_prompt: 'Video prompt establishing pacing, transitions, and tonal guidance at sufficient length. No background music.',
-                },
-              },
-            ],
-          })
-        )
-        .mockResolvedValueOnce(
-          JSON.stringify({
-            scenelet_id: 'scenelet-2',
-            shots: [
-              {
-                shot_index: 1,
-                storyboard_entry: {
-                  framing_and_angle: 'Second scenelet framing described in generous detail to exceed the validator minimum threshold.',
-                  composition_and_content: 'Composition text for follow-up shot ensuring narrative continuity and exceeding lengths.',
-                  character_action_and_emotion: 'Characters engage dynamically with emotional clarity described beyond eighty characters.',
-                  dialogue: [
-                    { character: 'Narrator', line: 'Continue.' },
-                  ],
-                  camera_dynamics: 'Camera arcs around the subject across descriptive text ensuring validation success.',
-                  lighting_and_atmosphere: 'Lighting for second shot described with nuance including color temperature and shadow interplay.',
-                  continuity_notes: 'Continuity details specify prop placements, actor marks, and wardrobe alignment thoroughly.',
-                },
-                generation_prompts: {
-                  first_frame_prompt: 'First frame prompt for scenelet two covered in extended prose covering environment and characters.',
-                  key_frame_storyboard_prompt: 'Storyboard prompt continues to detail stage directions, lensing, and movements extensively.',
-                  video_clip_prompt: 'Video clip prompt instructs on pacing, transitions, and expression in detail. No background music.',
-                },
-              },
-            ],
-          })
-        ),
-  };
+        .mockResolvedValueOnce(buildValidShotResponse('scenelet-1', 'Welcome.'))
+        .mockResolvedValueOnce(buildValidShotResponse('scenelet-2', 'Continue.')),
+    };
 
     const result = await runShotProductionTask('story-1', createDependencies({
       storiesRepository,

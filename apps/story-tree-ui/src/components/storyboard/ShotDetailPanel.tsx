@@ -46,6 +46,9 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
     }
   };
 
+  const referencedDesigns = extractReferencedDesigns(shot.storyboardPayload);
+  const audioNarrative = extractAudioNarrative(shot.storyboardPayload);
+
   return (
     <>
       {/* Backdrop */}
@@ -126,31 +129,67 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
             </div>
           </section>
 
-          {/* Prompts */}
+          {/* Referenced Designs */}
           <section className="space-y-3">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
-              Prompts
+              Referenced Designs
             </h3>
-            <div className="space-y-3">
-              <div>
-                <p className="mb-1 text-xs font-semibold text-text-muted">First Frame</p>
-                <p className="rounded-lg bg-surface-muted/70 p-3 text-xs leading-relaxed text-text">
-                  {shot.firstFramePrompt}
-                </p>
+            {referencedDesigns ? (
+              <div className="space-y-2 text-xs leading-relaxed text-text">
+                <div>
+                  <p className="font-semibold text-text-muted">Characters</p>
+                  {referencedDesigns.characters.length > 0 ? (
+                    <ul className="mt-1 space-y-1 text-text">
+                      {referencedDesigns.characters.map((id) => (
+                        <li key={`character-${id}`} className="rounded bg-surface-muted/60 px-2 py-1">
+                          {id}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-text-muted">None referenced</p>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-text-muted">Environments</p>
+                  {referencedDesigns.environments.length > 0 ? (
+                    <ul className="mt-1 space-y-1 text-text">
+                      {referencedDesigns.environments.map((id) => (
+                        <li key={`environment-${id}`} className="rounded bg-surface-muted/60 px-2 py-1">
+                          {id}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-text-muted">None referenced</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="mb-1 text-xs font-semibold text-text-muted">Key Frame</p>
-                <p className="rounded-lg bg-surface-muted/70 p-3 text-xs leading-relaxed text-text">
-                  {shot.keyFramePrompt}
-                </p>
+            ) : (
+              <p className="text-xs text-text-muted">No referenced designs recorded.</p>
+            )}
+          </section>
+
+          {/* Audio & Narrative */}
+          <section className="space-y-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+              Audio & Narrative
+            </h3>
+            {audioNarrative.length > 0 ? (
+              <div className="space-y-2">
+                {audioNarrative.map((entry, index) => (
+                  <div key={`audio-${index}`} className="rounded-lg bg-surface-muted/70 p-3 text-xs text-text">
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-text-muted">
+                      <span>{entry.type}</span>
+                      <span>{entry.source}</span>
+                    </div>
+                    <p className="mt-2 leading-relaxed">{entry.line}</p>
+                  </div>
+                ))}
               </div>
-              <div>
-                <p className="mb-1 text-xs font-semibold text-text-muted">Video Clip</p>
-                <p className="rounded-lg bg-surface-muted/70 p-3 text-xs leading-relaxed text-text">
-                  {shot.videoClipPrompt}
-                </p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-text-muted">No narration entries recorded.</p>
+            )}
           </section>
 
           {/* Storyboard Payload */}
@@ -168,4 +207,59 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
       </div>
     </>
   );
+}
+
+function extractReferencedDesigns(payload: unknown): { characters: string[]; environments: string[] } | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const raw = record.referencedDesigns ?? record.referenced_designs;
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const { characters, environments } = raw as Record<string, unknown>;
+
+  const characterIds = Array.isArray(characters)
+    ? characters.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    : [];
+
+  const environmentIds = Array.isArray(environments)
+    ? environments.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    : [];
+
+  return {
+    characters: characterIds.map((id) => id.trim()),
+    environments: environmentIds.map((id) => id.trim()),
+  };
+}
+
+function extractAudioNarrative(
+  payload: unknown
+): Array<{ type: string; source: string; line: string }> {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+  const raw = record.audioAndNarrative ?? record.audio_and_narrative;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+    .map((entry) => {
+      const type = typeof entry.type === "string" ? entry.type.toLowerCase() : "unknown";
+      const source = typeof entry.source === "string" ? entry.source : "unknown";
+      const line = typeof entry.line === "string" ? entry.line : "";
+      return {
+        type,
+        source,
+        line,
+      };
+    })
+    .filter((entry) => entry.line.trim().length > 0);
 }
