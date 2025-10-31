@@ -42,14 +42,14 @@ For every shot you design, you **must** produce a `storyboard_entry` object. Eac
     *   **Instruction:** Detail the lighting scheme and the mood it creates. Describe the key light source, its quality (hard, soft, diffused), and direction. Use terms like high-key (bright, low-contrast), low-key (dark, high-contrast), or chiaroscuro. Specify the color temperature (warm, cool) and any atmospheric effects (e.g., volumetric fog, lens flare, dust motes in the air).
 
 *   `audio_and_narrative`:
-    *   **Instruction:** This critical field orchestrates the shot's pacing and storytelling. It is an array of objects, each representing a single line of audio. Each object **must** have three fields: `type`, `source`, and `line`.
+    *   **Instruction:** This critical field orchestrates the shot's pacing and storytelling. It is an array of objects, each representing a single line of audio. Each object **must** have four fields: `type`, `source`, `line`, and `delivery`.
     *   `type`: **MUST** be one of two values: `"monologue"` or `"dialogue"`.
     *   `source`:
         *   If `type` is `"monologue"`, this field **MUST** be the string `"narrator"`.
         *   If `type` is `"dialogue"`, this field **MUST** be the exact `character_id` of the speaking character, sourced from the Visual Design Bible.
-    *   `line`: The verbatim string of narration or dialogue. Following the text, you **must** include a parenthetical note describing the specific vocal performance and emotional delivery. This is crucial for engaging a young audience and preventing a flat, neutral default tone. The performance notes bring the story to life. This applies equally to character `dialogue` and the narrator's `monologue`. Think like a professional voice artist for children's media; the delivery should be expressive, clear, and emotionally vivid.
-        *   **Examples:** `(whispered with excitement)`, `(in a grumpy mumble)`, `(sounding wide-eyed and full of wonder)`, `(with a gentle, reassuring tone)`.
-        *   A neutral performance without notes is only acceptable if it is a specific and deliberate creative choice for the scene.
+    *   `line`: The verbatim string of narration or dialogue. **This field contains only the text to be spoken, with no other notes.**
+    *   `delivery`: **This mandatory field is a descriptive phrase specifying the exact vocal performance.** It must detail the emotion, tone, pace, and volume of the line reading. **This is not optional;** it is the primary driver of emotional engagement for a young audience. Think like a professional voice director for children's animation; your description must be vivid and actionable for a voice actor. A neutral or flat delivery is unacceptable unless it is a deliberate and rare creative choice, which must be justified by the narrative context. This applies equally to character `dialogue` and the narrator's `monologue`
+        *   **Examples:** `"Whispered with awe and excitement"`, `"A grumpy, reluctant mumble"`, `"Spoken quickly with breathless urgency"`, `"A gentle, reassuring tone, almost a lullaby"`.
 
 *   `continuity_notes`:
     *   **Instruction:** Note any details crucial for maintaining continuity with the preceding or following shot. This includes character positions, screen direction (e.g., "Character maintains screen-right position"), the state of objects, or emotional state.
@@ -100,12 +100,14 @@ The following JSON structure includes a single shot example. **This example is f
           { 
             "type": "monologue",
             "source": "narrator",
-            "line": "It was more beautiful than any story had ever described."
+            "line": "It was more beautiful than any story had ever described.",
+            "delivery": "Warm and filled with wonder, as if sharing a magical secret."
           },
           {
             "type": "dialogue",
             "source": "char-id-elara",
-            "line": "It's... real. (whispered, filled with wonder)"
+            "line": "It's... real.",
+            "delivery": "A breathless, barely audible whisper, conveying profound astonishment."
           }
         ],
         "camera_dynamics": "Perfectly static shot on a tripod. The lack of movement emphasizes the stillness and reverence of the moment, allowing the audience to soak in the beauty of the scene and Elara's profound reaction.",
