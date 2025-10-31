@@ -3,11 +3,23 @@ problem
 - use the storyboard artifacts from the shot directly solves this problem
 
 goal
-- change the shot key frame image generation to use a different prompt method
-- deprecate the "key_frame_prompt". use the following method to assemble the prompt
-- don't touch first frame image generation or video prompt, don't remove the key frame prompt or something even it's not used any more.
+- change the shot image generation to use a different prompt method (direct assembly, no more "middleman" prompt)
+- deprecate all the generation prompts: first_frame_prompt, key_frame_prompt, video_clip_prompt.
+- my new intent is to have only two assets generated for each shot:
+    - a key frame image - served as a "preview" of the video clip for this shot
+    - the video clip for this shot
+    - (no more "first frame")
+- use the following method to assemble the prompt.
 
-key frame prompt method
+shot production format change
+- i already changed the shot generation system prompt (system_prompts/shot_director.md).
+- the new system prompt will instruct gemini to generate a different format of output json.
+- no more generation prompts. the storyboard_entry will have more fields that need to be persisted to db (the entirety of storyboard_entry field should be persisted to the existing shots table column storyboard_payload), and used for image/video generation.
+- read the new system_prompts/shot_director.md file to understand the new structure.
+- make code change to adapt to this new output structure.
+- deprecate the generation prompts related code logic, db schema, etc.
+
+new prompt method for key frame image generation:
 - the prompt will consist of the following parts
     - from visual design document:
         - global_aesthetic
@@ -18,7 +30,9 @@ key frame prompt method
             - only include the character design(s) and environment design(s) that are referenced in referencedDesigns field. remove anything else.
     - from `shots` table, the row of this current shot whose image is being generated:
         - the entirety of the storyboard_payload field
-        - but remove the `dialogue` (including it will accidentally generate caption in the image sometimes)
+        - but remove the `audio_and_narrative` (including it will accidentally generate caption in the image sometimes)
+
+video generation prompt is out of scope for now.
 
 below is an example of the final assembled prompt to gemini.
 ```json
@@ -110,32 +124,35 @@ below is an example of the final assembled prompt to gemini.
 },
 // Image generation instruction:
 {
-  "cameraDynamics": "Static shot.",
-  "continuityNotes": "This is the first shot, establishing the location and the relationship between Cosmo, his workshop, and the ship.",
-  "framingAndAngle": "Wide Establishing Shot, eye-level.",
-  "referencedDesigns": {
-    "characters": [
-      "cosmo",
-      "a-i-d-a"
-    ],
-    "environments": [
-      "cosmos-jungle-workshop",
-      "the-stardust-cruiser-cockpit"
-    ]
-  },
-  "compositionAndContent": "The sprawling jungle workshop fills the frame, establishing the blend of nature and scavenged tech. The magnificent, bottle-shaped Stardust Cruiser is the central focus, gleaming under dappled sunlight. Cosmo, a small figure, is visible beside it, making a final adjustment. Vines and wires hang from the banyan tree canopy above. Monitors flicker in the background.",
-  "lightingAndAtmosphere": "The mood is creative and full of potential. Warm, dappled sunlight filters through the lush green leaves, creating moving patterns of light and shadow on the workshop floor and the silver rocket.",
-  "characterActionAndEmotion": "Cosmo is focused on his work, a tiny figure full of purpose. His body language shows concentration."
+    "referenced_designs": {
+        "characters": [
+            "char-id-elara"
+        ],
+        "environments": [
+            "env-id-crystal-caves"
+        ]
+    },
+    "framing_and_angle": "Intimate Medium Close-Up (MCU) from a direct Eye-Level Angle, creating a direct emotional connection with the character and her discovery.",
+    "composition_and_content": "Elara is framed from the chest up, positioned on the right vertical third of the frame, with her dominant eye perfectly aligned with the upper-right rule-of-thirds intersection. FOREGROUND: A massive, out-of-focus, deep sapphire blue crystal juts into the frame from the bottom-left, creating a natural frame element and enhancing depth. MIDGROUND: Elara herself is the sharp focus. The intricate silver embroidery on the collar of her tunic is clearly visible, and individual strands of her luminescent hair catch the ambient light. BACKGROUND: The cavern wall is a soft-focus tapestry of glowing crystal veins in hues of amethyst and soft magenta, creating a dazzling, natural bokeh effect of overlapping circles of light. ATMOSPHERIC ELEMENTS: Tiny, shimmering motes of magical dust drift lazily in the air between the camera and Elara, catching the light.",
+    "character_action_and_emotion": "Elara's expression is one of pure, unadulterated awe. Her eyes are wide, reflecting the crystal light, her pupils slightly dilated. Her lips are parted in a soft, breathless 'o' of wonder. Her posture is frozen as she slowly, almost reverently, lifts her right hand into the frame, palm open, fingers slightly curled, as if to touch something incredibly fragile just beyond the camera's view.",
+    "camera_dynamics": "Perfectly static shot on a tripod. The lack of movement emphasizes the stillness and reverence of the moment, allowing the audience to soak in the beauty of the scene and Elara's profound reaction.",
+    "lighting_and_atmosphere": "The lighting is exclusively diegetic and low-key, sourced from the glowing crystals. The key light is a soft, cool blue-violet glow from off-screen left, sculpting one side of Elara's face. The fill light is a gentler, warm magenta from the background, preventing shadows from being completely black and adding color depth. The atmosphere is magical, serene, and charged with latent energy.",
+    "continuity_notes": "This shot establishes Elara's POV for the next shot, which will be a reveal of the Heart Crystal she is looking at. Her hand position and gaze direction (screen-left) must be matched precisely in the subsequent shot."
 }
 ```
 
 requirements
-- the only thing we're proposing to change here is the prompt used to generate the **key frame image** of a shot
-- don't change the other images / video
+- main two changes:
+    - handle new shot production format
+    - handle updated prompt assembly method for shot image generation.
 - don't change the gemini client config etc.
+- don't change the system prompt for shot image generation.
+    - still use system_prompts/visual_renderer.md as system prompt for image generation request to gemini.
+- aspect ratio is still 16:9
 - still upload the same reference images as before (the referenced designs)
 
 your task
+- carefully research current logic, code, status quo of the related code base
 - expand this doc into detailed openspec spec doc + design doc + other docs
     - make sure the tasks doc has checklist
     - tasks should be batched into major milestones
