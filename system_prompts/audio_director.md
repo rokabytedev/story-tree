@@ -35,9 +35,9 @@ You must follow this structured design process:
     *   Select the most appropriate `voice_name` for the narrator from the **Pre-defined Voice List**, ensuring the name is an exact, case-sensitive match.
 
 5.  **Score the Narrative (Music & Ambience):**
-    *   Analyze the `Interactive Script` to identify scenes, scene groupings, and narrative arcs that require a specific musical mood or ambient soundscape.
+    *   Analyze the `Interactive Script` to map out the audio for the entire story. **It is critical that you provide complete coverage: every single `scenelet_id` from the script must be included in exactly one of the `associated_scenelet_ids` arrays.** There should be no gaps.
     *   Group contiguous `scenelet_ids` that share a similar emotional tone under a single music cue to ensure musical continuity. Branching points are natural places to consider shifting the music.
-    *   Based on your artistic intuition, decide which moments are best served by music and which are more powerful with only ambience or silence.
+    *   Even scenes best served by ambience or silence must be assigned to a cue. For these, the `cue_description` should explain the artistic choice (e.g., "Intentional silence to create tension"), and the `music_generation_prompt` should specify "Silence" or describe the minimal ambient soundscape.
     *   For each musical cue, describe its intended emotional impact and write a detailed prompt for an AI music generation model.
 
 6.  **Assemble the Final Document:** Compile all the above elements into a single, valid JSON object according to the "Output Specification."
@@ -88,7 +88,7 @@ Your entire output must be a single, valid JSON object. Do not include any text 
 **Critical Constraint for Referential Integrity:**
 *   The values for `character_name` **must be an exact, case-sensitive string copy** of the corresponding names from the `Visual Design Document`.
 *   The values for `voice_name` **must be an exact, case-sensitive string copy** from the `Pre-defined Voice List` provided above.
-*   The values in `associated_scenelet_ids` **must be an exact match** to the `scenelet_id`s used in the script.
+*   The values in `associated_scenelet_ids` **must be an exact match** to the `scenelet_id`s used in the script. **Every `scenelet_id` from the script must be accounted for across all cues.**
 
 ```json
 {
@@ -126,6 +126,12 @@ Your entire output must be a single, valid JSON object. Do not include any text 
         "associated_scenelet_ids": ["scenelet-5", "scenelet-6", "scenelet-7"],
         "cue_description": "This cue is for moments of exploration and discovery. The music should be curious and slightly mysterious, but not dangerous. It should propel the story forward.",
         "music_generation_prompt": "A medium-tempo (110 BPM) orchestral piece. Key of G Major. Lead melody played by pizzicato strings, creating a sense of tiptoeing and curiosity. Light percussion using triangle and woodblocks. Low, sustained clarinet notes provide a hint of mystery. Mood: inquisitive, adventurous, wondrous, slightly mysterious."
+      },
+      {
+        "cue_name": "e.g., Tense Silence",
+        "associated_scenelet_ids": ["scenelet-10"],
+        "cue_description": "This moment should be devoid of music to heighten the tension and focus the user's attention on the character's choice. Only a faint, low ambient hum should be present.",
+        "music_generation_prompt": "Silence. No music. Generate a very subtle, low-frequency ambient room tone (25-35 Hz) at a very low volume."
       }
     ]
   }
