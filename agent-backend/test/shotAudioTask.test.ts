@@ -28,8 +28,6 @@ function createStory(): AgentWorkflowStoryRecord {
           character_id: 'rhea',
           character_name: 'Rhea',
           voice_profile: 'Profile',
-          voice_description: 'Description',
-          tts_generation_prompt: 'Prompt',
           voice_name: 'Puck',
         },
       ],

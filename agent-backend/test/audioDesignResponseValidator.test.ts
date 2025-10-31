@@ -72,15 +72,11 @@ const BASE_AUDIO_DOCUMENT = {
       {
         character_name: 'Rhea',
         voice_profile: 'Rhea voice profile text brimming with expressive qualities and sufficient detail.',
-        voice_description: 'Rhea voice description with more than thirty characters included.',
-        tts_generation_prompt: 'Prompt for Rhea voice that clearly exceeds thirty characters.',
         voice_name: 'Puck',
       },
       {
         character_name: 'Testing Agent',
         voice_profile: 'Testing Agent voice profile highlighting upbeat precision with abundant detail.',
-        voice_description: 'Testing Agent description extending comfortably beyond thirty characters for validation.',
-        tts_generation_prompt: 'Testing Agent prompt that easily surpasses thirty characters with clear direction.',
         voice_name: 'Oberon',
       },
     ],
@@ -138,15 +134,11 @@ describe('parseAudioDesignResponse', () => {
           {
             character_name: 'Rhea',
             voice_profile: 'Valid profile text with ample descriptive content for testing.',
-            voice_description: 'Valid voice description with thirty plus characters.',
-            tts_generation_prompt: 'Valid TTS prompt exceeding thirty characters easily.',
             voice_name: 'Lyra',
           },
           {
             character_name: 'Unknown',
             voice_profile: 'Unknown profile text supplied purely for validation failure coverage.',
-            voice_description: 'Another valid voice description with plenty of detail present.',
-            tts_generation_prompt: 'Another valid TTS prompt with more than thirty characters.',
             voice_name: 'Deneb',
           },
         ],
@@ -192,15 +184,11 @@ describe('parseAudioDesignResponse', () => {
           {
             character_name: 'Rhea',
             voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
-            voice_description: 'Too short',
-            tts_generation_prompt: 'Prompt that is long enough for validation to pass easily.',
             voice_name: 'Lyra',
           },
           {
             character_name: 'Testing Agent',
             voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
-            voice_description: 'Testing Agent voice description beyond thirty characters for validation.',
-            tts_generation_prompt: 'Testing Agent TTS prompt that absolutely surpasses thirty characters.',
             voice_name: 'Deneb',
           },
         ],
@@ -259,8 +247,6 @@ describe('parseAudioDesignResponse', () => {
           {
             character_name: 'Rhea',
             voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
-            voice_description: 'Rhea voice description with more than thirty characters included.',
-            tts_generation_prompt: 'Prompt for Rhea voice that clearly exceeds thirty characters.',
           },
         ],
       },

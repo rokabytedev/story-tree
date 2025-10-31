@@ -96,15 +96,11 @@ const GEMINI_RESPONSE = JSON.stringify({
       {
         character_name: 'Rhea',
         voice_profile: 'Rhea profile brimming with energetic descriptors and thoughtful nuance.',
-        voice_description: 'Rhea voice description that is rich with detail beyond the minimum requirement.',
-        tts_generation_prompt: 'Rhea prompt text that clearly communicates tone and exceeds thirty characters.',
         voice_name: 'Puck',
       },
       {
         character_name: 'Testing Agent',
         voice_profile: 'Testing Agent profile emphasising upbeat precision with ample descriptive content.',
-        voice_description: 'Testing Agent description that conveys optimistic support with more than thirty characters.',
-        tts_generation_prompt: 'Testing Agent prompt that ensures clear pacing and enthusiasm beyond thirty characters.',
         voice_name: 'Deneb',
       },
     ],

@@ -205,9 +205,7 @@ function parseVoiceProfiles(
 
     const voiceProfileSource =
       record.voice_profile ??
-      record.voiceProfile ??
-      record.voice_description ??
-      record.voiceDescription;
+      record.voiceProfile;
 
     const voiceProfile = extractDetailedString(
       voiceProfileSource,
@@ -215,33 +213,16 @@ function parseVoiceProfiles(
       30
     );
 
-    const voiceDescriptionSource =
-      record.voice_description ?? record.voiceDescription ?? voiceProfile;
-
-    const voiceDescription = extractDetailedString(
-      voiceDescriptionSource,
-      `character_voice_profiles[${index}].voice_description`,
-      30
-    );
-    const ttsPrompt = extractDetailedString(
-      record.tts_generation_prompt ?? record.ttsGenerationPrompt,
-      `character_voice_profiles[${index}].tts_generation_prompt`,
-      30
-    );
-
     const sanitizedProfile = {
       ...record,
       character_id: characterId,
       character_name: characterName,
-      voice_description: voiceDescription,
       voice_profile: voiceProfile,
-      tts_generation_prompt: ttsPrompt,
       voice_name: voiceName,
     } as AudioVoiceProfile;
 
     delete (sanitizedProfile as Record<string, unknown>).characterId;
     delete (sanitizedProfile as Record<string, unknown>).characterName;
-    delete (sanitizedProfile as Record<string, unknown>).voiceDescription;
     delete (sanitizedProfile as Record<string, unknown>).voiceProfile;
     delete (sanitizedProfile as Record<string, unknown>).voiceName;
     delete (sanitizedProfile as Record<string, unknown>).ttsGenerationPrompt;
