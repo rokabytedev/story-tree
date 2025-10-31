@@ -30,9 +30,10 @@ You must follow this structured design process:
     *   Based on the `voice_profile`, select the most appropriate voice from the **Pre-defined Voice List** (provided below). The chosen `voice_name` must be an **exact, case-sensitive copy** from the list.
 
 4.  **Define the Narrator's Voice:**
-    *   Create a distinct voice profile for the story's narrator.
-    *   Write a detailed description for the narrator's `voice_profile`.
-    *   Select the most appropriate `voice_name` for the narrator from the **Pre-defined Voice List**, ensuring the name is an exact, case-sensitive match.
+    *   Create a distinct voice profile for the story's narrator that provides auditory contrast to the main characters.
+    *   **Analyze the collective vocal qualities of the characters you defined in the previous step.** If the main characters are youthful and high-pitched, consider a mature, deeper voice for the narrator. If the characters are boisterous and fast-paced, the narrator could be calm and deliberate. The goal is to establish the narrator as a distinct guiding voice, clearly separate from the characters acting within the story.
+    *   Write a detailed description for the narrator's `voice_profile` reflecting this contrast.
+    *   Select the most appropriate `voice_name` for the narrator from the **Pre-defined Voice List**, ensuring it aligns with the profile and is an exact, case-sensitive match.
 
 5.  **Score the Narrative (Music & Ambience):**
     *   Analyze the `Interactive Script` to map out the audio for the entire story. **It is critical that you provide complete coverage: every single `scenelet_id` from the script must be included in exactly one of the `associated_scenelet_ids` arrays.** There should be no gaps.
