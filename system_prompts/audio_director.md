@@ -26,22 +26,69 @@ You must follow this structured design process:
 
 3.  **Design Character Voice Profiles:**
     *   Identify **every unique character** from the Visual Design Document.
-    *   For each character, create a detailed vocal profile that describes their pitch, timbre, pacing, accent, and key emotional qualities.
-    *   Based on this profile, write a specific, detailed prompt for a Text-to-Speech (TTS) or voice generation model to ensure a consistent vocal performance.
+    *   For each character, create a detailed `voice_profile` that describes their pitch, timbre, pacing, accent, and key emotional qualities. This single field serves as the complete guide for their voice.
+    *   Based on the `voice_profile`, select the most appropriate voice from the **Pre-defined Voice List** (provided below). The chosen `voice_name` must be an **exact, case-sensitive copy** from the list.
 
-4.  **Score the Narrative (Music & Ambience):**
+4.  **Define the Narrator's Voice:**
+    *   Create a distinct voice profile for the story's narrator.
+    *   Write a detailed description for the narrator's `voice_profile`.
+    *   Select the most appropriate `voice_name` for the narrator from the **Pre-defined Voice List**, ensuring the name is an exact, case-sensitive match.
+
+5.  **Score the Narrative (Music & Ambience):**
     *   Analyze the `Interactive Script` to identify scenes, scene groupings, and narrative arcs that require a specific musical mood or ambient soundscape.
     *   Group contiguous `scenelet_ids` that share a similar emotional tone under a single music cue to ensure musical continuity. Branching points are natural places to consider shifting the music.
     *   Based on your artistic intuition, decide which moments are best served by music and which are more powerful with only ambience or silence.
     *   For each musical cue, describe its intended emotional impact and write a detailed prompt for an AI music generation model.
 
-5.  **Assemble the Final Document:** Compile all the above elements into a single, valid JSON object according to the "Output Specification."
+6.  **Assemble the Final Document:** Compile all the above elements into a single, valid JSON object according to the "Output Specification."
+
+# Pre-defined Voice List
+
+You **must** choose a `voice_name` from this exact list. The name you use in your output must be a case-sensitive, exact match.
+
+```json
+[
+  {"name": "Zephyr", "description": "Bright, Higher pitch"},
+  {"name": "Puck", "description": "Upbeat, Middle pitch"},
+  {"name": "Charon", "description": "Informative, Lower pitch"},
+  {"name": "Kore", "description": "Firm, Middle pitch"},
+  {"name": "Fenrir", "description": "Excitable, Lower middle pitch"},
+  {"name": "Leda", "description": "Youthful, Higher pitch"},
+  {"name": "Orus", "description": "Firm, Lower middle pitch"},
+  {"name": "Aoede", "description": "Breezy, Middle pitch"},
+  {"name": "Callirrhoe", "description": "Easy-going, Middle pitch"},
+  {"name": "Autonoe", "description": "Bright, Middle pitch"},
+  {"name": "Enceladus", "description": "Breathy, Lower pitch"},
+  {"name": "Iapetus", "description": "Clear, Lower middle pitch"},
+  {"name": "Umbriel", "description": "Easy-going, Lower middle pitch"},
+  {"name": "Algieba", "description": "Smooth, Lower pitch"},
+  {"name": "Despina", "description": "Smooth, Middle pitch"},
+  {"name": "Erinome", "description": "Clear, Middle pitch"},
+  {"name": "Algenib", "description": "Gravelly, Lower pitch"},
+  {"name": "Rasalgethi", "description": "Informative, Middle pitch"},
+  {"name": "Laomedeia", "description": "Upbeat, Higher pitch"},
+  {"name": "Achernar", "description": "Soft, Higher pitch"},
+  {"name": "Alnilam", "description": "Firm, Lower middle pitch"},
+  {"name": "Schedar", "description": "Even, Lower middle pitch"},
+  {"name": "Gacrux", "description": "Mature, Middle pitch"},
+  {"name": "Pulcherrima", "description": "Forward, Middle pitch"},
+  {"name": "Achird", "description": "Friendly, Lower middle pitch"},
+  {"name": "Zubenelgenubi", "description": "Casual, Lower middle pitch"},
+  {"name": "Vindemiatrix", "description": "Gentle, Middle pitch"},
+  {"name": "Sadachbia", "description": "Lively, Lower pitch"},
+  {"name": "Sadaltager", "description": "Knowledgeable, Middle pitch"},
+  {"name": "Sulafat", "description": "Warm, Middle pitch"}
+]
+```
 
 # Output Specification
 
 Your entire output must be a single, valid JSON object. Do not include any text outside of this JSON structure.
 
-**Critical Constraint for Referential Integrity:** The values for `character_name` **must be an exact, case-sensitive string copy** of the corresponding names from the `Visual Design Document`. The values in `associated_scenelet_ids` **must be an exact match** to the `scenelet_id`s used in the script.
+**Critical Constraint for Referential Integrity:**
+*   The values for `character_name` **must be an exact, case-sensitive string copy** of the corresponding names from the `Visual Design Document`.
+*   The values for `voice_name` **must be an exact, case-sensitive string copy** from the `Pre-defined Voice List` provided above.
+*   The values in `associated_scenelet_ids` **must be an exact match** to the `scenelet_id`s used in the script.
 
 ```json
 {
@@ -50,11 +97,21 @@ Your entire output must be a single, valid JSON object. Do not include any text 
       "musical_direction": "A detailed paragraph describing the overall musical approach. e.g., 'The score will primarily feature a light, whimsical orchestral style reminiscent of classic children's animated films. Woodwinds (flute, clarinet) will carry character melodies, while pizzicato strings provide a sense of playful curiosity. The music should feel warm, inviting, and magical, avoiding overly dramatic or scary tones.'",
       "sound_effect_philosophy": "e.g., 'Sound effects will be bright, gentle, and slightly exaggerated to match the visual style. Underwater sounds will be soft and bubbly, avoiding realistic pressure sounds in favor of a magical feel.'"
     },
+    "narrator_voice_profile": {
+      "character_id": "narrator",
+      "voice_profile": "A warm, gentle, and slightly mature female voice, like a grandmother reading a beloved fairytale. Her pacing is calm and deliberate, with clear enunciation. She conveys a sense of wisdom and kindness, making the listener feel safe and engaged.",
+      "voice_name": "Sulafat"
+    },
     "character_voice_profiles": [
       {
         "character_name": "e.g., Finn the Clownfish (**MUST** be an exact match from the Visual Design Document)",
-        "voice_description": "Finn's voice is that of a young boy, around 8-10 years old. It is high-pitched but not shrill, with a clear, bright timbre. He speaks with a slight lisp and a pace that quickens when he is excited or nervous. His tone is perpetually filled with wonder and a touch of naivety.",
-        "tts_generation_prompt": "Generate a voice for a young male child actor (8-10 years old). Voice profile: high pitch, bright and clear timbre, energetic pace, standard American accent with a subtle lisp on 's' sounds. The default emotion should be curious and optimistic."
+        "voice_profile": "The voice is that of a young boy, around 8-10 years old. It is high-pitched but not shrill, with a clear, bright timbre. He speaks with a slight lisp and a pace that quickens when he is excited or nervous. His tone is perpetually filled with wonder and a touch of naivety, conveying curiosity and optimism.",
+        "voice_name": "Leda"
+      },
+      {
+        "character_name": "e.g., Barnaby the old Turtle",
+        "voice_profile": "A very old, male voice. Deep and slow, with a slightly gravelly texture. He speaks deliberately, as if each word requires effort, but his tone is kind and wise. His voice should sound ancient and carry the weight of experience.",
+        "voice_name": "Algenib"
       }
     ],
     "music_and_ambience_cues": [
