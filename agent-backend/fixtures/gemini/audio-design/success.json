@@ -4,21 +4,32 @@
       "musical_direction": "A hybrid electronic-orchestral palette that blends shimmering synth pads with expressive strings to mirror the story's evolving tension and wonder across branching paths.",
       "sound_effect_philosophy": "Sound effects should feel tactile yet playful: UI pings are glassy and precise, branch activations pulse with airy whooshes, and ambient room tones hug the listener without ever overpowering dialogue."
     },
+    "narrator_voice_profile": {
+      "character_id": "narrator",
+      "voice_profile": "A confident narrator voice with warm undertones and deliberate pacing, projecting clarity and inspiration for the listener throughout the story.",
+      "voice_name": "Kore"
+    },
     "character_voice_profiles": [
       {
         "character_name": "Rhea",
+        "voice_profile": "Rhea's voice is bright and agile with an undercurrent of curiosity, easily shifting from playful banter to focused determination.",
         "voice_description": "Rhea speaks with vibrant mid-range energy, confident yet warm. She has a quick cadence when brainstorming and softens her tone when encouraging collaborators, always carrying a hint of playful competitiveness.",
-        "tts_generation_prompt": "Generate a confident adult female voice with a tech-savvy, adventurous attitude. Maintain a bright mid-range tone, polished diction, and agile pacing that accelerates slightly when excited but never becomes frantic."
+        "tts_generation_prompt": "Generate a confident adult female voice with a tech-savvy, adventurous attitude. Maintain a bright mid-range tone, polished diction, and agile pacing that accelerates slightly when excited but never becomes frantic.",
+        "voice_name": "Puck"
       },
       {
-        "character_name": "Narrator",
-        "voice_description": "The Narrator is a calm, inspired guide with a resonant alto timbre. Each line lands with supportive authority, as though inviting the audience into the creative lab with curiosity and care.",
-        "tts_generation_prompt": "Generate a warm, neutral-accent narrator voice with slow, deliberate pacing. Deliver lines with gentle uplift at the end of sentences, maintaining clarity and inspirational poise throughout."
+        "character_name": "Mentor Guide",
+        "voice_profile": "The mentor voice carries serene authority with a gentle resonance, reassuring listeners while guiding them through discoveries.",
+        "voice_description": "Mentor Guide is a calm, inspired advisor with a resonant alto timbre. Each line lands with supportive authority, as though inviting the audience into the creative lab with curiosity and care.",
+        "tts_generation_prompt": "Generate a warm, neutral-accent mentor voice with slow, deliberate pacing. Deliver lines with gentle uplift at the end of sentences, maintaining clarity and inspirational poise throughout.",
+        "voice_name": "Deneb"
       },
       {
         "character_name": "Testing Agent",
+        "voice_profile": "Testing Agent blends cheerful enthusiasm with articulate precision, sounding like a friendly AI assistant ready to collaborate.",
         "voice_description": "Testing Agent speaks with crisp, synthesized clarity layered over a friendly youthful tone. Their speech is rhythmic and precise, but each sentence closes with a hint of enthusiasm as if proud to assist.",
-        "tts_generation_prompt": "Generate an affable androgynous assistant voice with a slight synthetic sheen. Keep consonants tight, pacing measured, and infuse subtle optimism that peaks on key action verbs."
+        "tts_generation_prompt": "Generate an affable androgynous assistant voice with a slight synthetic sheen. Keep consonants tight, pacing measured, and infuse subtle optimism that peaks on key action verbs.",
+        "voice_name": "Lyra"
       }
     ],
     "music_and_ambience_cues": [

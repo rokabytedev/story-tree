@@ -249,6 +249,15 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
     },
+    async updateShotAudioPath(_storyId, _sceneletId, shotIndex, _audioPath) {
+      return {
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+      } as any;
+    },
   };
 }
 

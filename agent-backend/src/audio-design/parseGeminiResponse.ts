@@ -5,6 +5,7 @@ import type {
   AudioMusicCue,
   AudioSonicIdentity,
   AudioVoiceProfile,
+  NarratorVoiceProfile,
 } from './types.js';
 import type { StoryTreeSnapshot, SceneletDigest } from '../story-storage/types.js';
 import { normalizeNameToId } from '../visual-design/utils.js';
@@ -22,6 +23,8 @@ interface RawAudioDesignPayload {
   characterVoiceProfiles?: unknown;
   music_and_ambience_cues?: unknown;
   musicAndAmbienceCues?: unknown;
+  narrator_voice_profile?: unknown;
+  narratorVoiceProfile?: unknown;
 }
 
 export function parseAudioDesignResponse(
@@ -58,9 +61,12 @@ export function parseAudioDesignResponse(
   const sceneletMap = buildSceneletMap(context.storyTree);
   const requiredScenelets = computeDialogueScenelets(sceneletMap);
   const characterRoster = extractCharacterNames(context.visualDesignDocument);
+  const rosterWithoutNarrator = new Set(characterRoster);
+  rosterWithoutNarrator.delete('narrator');
 
   const sonicIdentity = parseSonicIdentity(root);
-  const voiceProfiles = parseVoiceProfiles(root, characterRoster);
+  const narratorVoiceProfile = parseNarratorVoiceProfile(root);
+  const voiceProfiles = parseVoiceProfiles(root, rosterWithoutNarrator);
   const musicCues = parseMusicCues(root, {
     sceneletMap,
     requiredScenelets,
@@ -70,6 +76,7 @@ export function parseAudioDesignResponse(
 
   const sanitized: AudioDesignDocument = {
     sonic_identity: sonicIdentity,
+    narrator_voice_profile: narratorVoiceProfile,
     character_voice_profiles: voiceProfiles,
     music_and_ambience_cues: musicCues,
   };
@@ -104,6 +111,50 @@ function parseSonicIdentity(root: RawAudioDesignPayload): AudioSonicIdentity {
     musical_direction: musicalDirection,
     sound_effect_philosophy: soundEffects,
   };
+}
+
+function parseNarratorVoiceProfile(root: RawAudioDesignPayload): NarratorVoiceProfile {
+  const source = (root.narrator_voice_profile ?? root.narratorVoiceProfile) as
+    | Record<string, unknown>
+    | undefined;
+
+  if (!source || typeof source !== 'object') {
+    throw new AudioDesignTaskError(
+      'audio_design_document.narrator_voice_profile must be an object.'
+    );
+  }
+
+  const voiceProfile = extractDetailedString(
+    (source.voice_profile ?? source.voiceProfile) as unknown,
+    'narrator_voice_profile.voice_profile',
+    30
+  );
+  const voiceName = extractNonEmptyString(
+    (source.voice_name ?? source.voiceName) as unknown,
+    'narrator_voice_profile.voice_name'
+  );
+
+  const rawId = (source.character_id ?? source.characterId) as unknown;
+  const characterId = typeof rawId === 'string' && rawId.trim().length > 0 ? rawId.trim() : 'narrator';
+
+  if (characterId !== 'narrator') {
+    throw new AudioDesignTaskError(
+      'narrator_voice_profile.character_id must be "narrator".'
+    );
+  }
+
+  const sanitized = {
+    ...source,
+    character_id: 'narrator',
+    voice_name: voiceName,
+    voice_profile: voiceProfile,
+  } as NarratorVoiceProfile;
+
+  delete (sanitized as Record<string, unknown>).characterId;
+  delete (sanitized as Record<string, unknown>).voiceName;
+  delete (sanitized as Record<string, unknown>).voiceProfile;
+
+  return sanitized;
 }
 
 function parseVoiceProfiles(
@@ -147,8 +198,28 @@ function parseVoiceProfiles(
     }
     seen.add(characterId);
 
+    const voiceName = extractNonEmptyString(
+      record.voice_name ?? record.voiceName,
+      `character_voice_profiles[${index}].voice_name`
+    );
+
+    const voiceProfileSource =
+      record.voice_profile ??
+      record.voiceProfile ??
+      record.voice_description ??
+      record.voiceDescription;
+
+    const voiceProfile = extractDetailedString(
+      voiceProfileSource,
+      `character_voice_profiles[${index}].voice_profile`,
+      30
+    );
+
+    const voiceDescriptionSource =
+      record.voice_description ?? record.voiceDescription ?? voiceProfile;
+
     const voiceDescription = extractDetailedString(
-      record.voice_description ?? record.voiceDescription,
+      voiceDescriptionSource,
       `character_voice_profiles[${index}].voice_description`,
       30
     );
@@ -158,12 +229,24 @@ function parseVoiceProfiles(
       30
     );
 
-    sanitized.push({
+    const sanitizedProfile = {
       ...record,
+      character_id: characterId,
       character_name: characterName,
       voice_description: voiceDescription,
+      voice_profile: voiceProfile,
       tts_generation_prompt: ttsPrompt,
-    });
+      voice_name: voiceName,
+    } as AudioVoiceProfile;
+
+    delete (sanitizedProfile as Record<string, unknown>).characterId;
+    delete (sanitizedProfile as Record<string, unknown>).characterName;
+    delete (sanitizedProfile as Record<string, unknown>).voiceDescription;
+    delete (sanitizedProfile as Record<string, unknown>).voiceProfile;
+    delete (sanitizedProfile as Record<string, unknown>).voiceName;
+    delete (sanitizedProfile as Record<string, unknown>).ttsGenerationPrompt;
+
+    sanitized.push(sanitizedProfile);
   });
 
   const missing = [...characterRoster].filter((id) => !seen.has(id));

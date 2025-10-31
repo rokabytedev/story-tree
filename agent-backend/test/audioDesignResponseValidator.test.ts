@@ -53,7 +53,7 @@ const STORY_TREE: StoryTreeSnapshot = {
 const VISUAL_DESIGN = {
   character_designs: [
     { character_id: 'rhea' },
-    { character_id: 'narrator' },
+    { character_id: 'testing-agent' },
   ],
 };
 
@@ -63,16 +63,25 @@ const BASE_AUDIO_DOCUMENT = {
       musical_direction: 'Detailed musical direction with at least thirty characters.',
       sound_effect_philosophy: 'Detailed sound effect philosophy with sufficient length.',
     },
+    narrator_voice_profile: {
+      character_id: 'narrator',
+      voice_profile: 'Warm narrator profile text extending well beyond thirty characters for validation.',
+      voice_name: 'Kore',
+    },
     character_voice_profiles: [
       {
         character_name: 'Rhea',
+        voice_profile: 'Rhea voice profile text brimming with expressive qualities and sufficient detail.',
         voice_description: 'Rhea voice description with more than thirty characters included.',
         tts_generation_prompt: 'Prompt for Rhea voice that clearly exceeds thirty characters.',
+        voice_name: 'Puck',
       },
       {
-        character_name: 'Narrator',
-        voice_description: 'Narrator voice description beyond thirty characters for validation.',
-        tts_generation_prompt: 'Narrator TTS prompt that absolutely surpasses thirty characters.',
+        character_name: 'Testing Agent',
+        voice_profile: 'Testing Agent voice profile highlighting upbeat precision with abundant detail.',
+        voice_description: 'Testing Agent description extending comfortably beyond thirty characters for validation.',
+        tts_generation_prompt: 'Testing Agent prompt that easily surpasses thirty characters with clear direction.',
+        voice_name: 'Oberon',
       },
     ],
     music_and_ambience_cues: [
@@ -113,7 +122,11 @@ describe('parseAudioDesignResponse', () => {
     });
 
     expect(result.audioDesignDocument.sonic_identity.musical_direction).toContain('Detailed musical direction');
+    expect(result.audioDesignDocument.narrator_voice_profile.voice_name).toBe('Kore');
+    expect(result.audioDesignDocument.narrator_voice_profile.character_id).toBe('narrator');
     expect(result.audioDesignDocument.character_voice_profiles).toHaveLength(2);
+    expect(result.audioDesignDocument.character_voice_profiles[0]?.character_id).toBe('rhea');
+    expect(result.audioDesignDocument.character_voice_profiles[0]?.voice_name).toBe('Puck');
     expect(result.audioDesignDocument.music_and_ambience_cues).toHaveLength(2);
   });
 
@@ -124,13 +137,17 @@ describe('parseAudioDesignResponse', () => {
         character_voice_profiles: [
           {
             character_name: 'Rhea',
+            voice_profile: 'Valid profile text with ample descriptive content for testing.',
             voice_description: 'Valid voice description with thirty plus characters.',
             tts_generation_prompt: 'Valid TTS prompt exceeding thirty characters easily.',
+            voice_name: 'Lyra',
           },
           {
             character_name: 'Unknown',
+            voice_profile: 'Unknown profile text supplied purely for validation failure coverage.',
             voice_description: 'Another valid voice description with plenty of detail present.',
             tts_generation_prompt: 'Another valid TTS prompt with more than thirty characters.',
+            voice_name: 'Deneb',
           },
         ],
       },
@@ -174,13 +191,17 @@ describe('parseAudioDesignResponse', () => {
         character_voice_profiles: [
           {
             character_name: 'Rhea',
+            voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
             voice_description: 'Too short',
             tts_generation_prompt: 'Prompt that is long enough for validation to pass easily.',
+            voice_name: 'Lyra',
           },
           {
-            character_name: 'Narrator',
-            voice_description: 'Narrator voice description beyond thirty characters for validation.',
-            tts_generation_prompt: 'Narrator TTS prompt that absolutely surpasses thirty characters.',
+            character_name: 'Testing Agent',
+            voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
+            voice_description: 'Testing Agent voice description beyond thirty characters for validation.',
+            tts_generation_prompt: 'Testing Agent TTS prompt that absolutely surpasses thirty characters.',
+            voice_name: 'Deneb',
           },
         ],
       },
@@ -192,5 +213,64 @@ describe('parseAudioDesignResponse', () => {
         visualDesignDocument: VISUAL_DESIGN,
       })
     ).toThrow(/voice_description/);
+  });
+
+  it('throws when narrator voice profile is missing', () => {
+    const response = buildResponse({
+      audio_design_document: {
+        ...cloneBaseAudioDocument(),
+        narrator_voice_profile: undefined,
+      },
+    });
+
+    expect(() =>
+      parseAudioDesignResponse(response, {
+        storyTree: STORY_TREE,
+        visualDesignDocument: VISUAL_DESIGN,
+      })
+    ).toThrow(/narrator_voice_profile/i);
+  });
+
+  it('throws when narrator voice profile has wrong character id', () => {
+    const response = buildResponse({
+      audio_design_document: {
+        ...cloneBaseAudioDocument(),
+        narrator_voice_profile: {
+          character_id: 'not-narrator',
+          voice_profile: 'Narrator voice profile elaborating calm delivery with abundant details.',
+          voice_name: 'Deneb',
+        },
+      },
+    });
+
+    expect(() =>
+      parseAudioDesignResponse(response, {
+        storyTree: STORY_TREE,
+        visualDesignDocument: VISUAL_DESIGN,
+      })
+    ).toThrow(/character_id must be "narrator"/i);
+  });
+
+  it('throws when character voice profile is missing voice_name', () => {
+    const response = buildResponse({
+      audio_design_document: {
+        ...cloneBaseAudioDocument(),
+        character_voice_profiles: [
+          {
+            character_name: 'Rhea',
+            voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
+            voice_description: 'Rhea voice description with more than thirty characters included.',
+            tts_generation_prompt: 'Prompt for Rhea voice that clearly exceeds thirty characters.',
+          },
+        ],
+      },
+    });
+
+    expect(() =>
+      parseAudioDesignResponse(response, {
+        storyTree: STORY_TREE,
+        visualDesignDocument: VISUAL_DESIGN,
+      })
+    ).toThrow(/voice_name/i);
   });
 });

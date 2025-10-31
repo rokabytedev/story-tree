@@ -15,6 +15,7 @@ type ShotRow = {
   shot_index: number;
   storyboard_payload: unknown;
   key_frame_image_path: string | null;
+  audio_file_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -151,6 +152,9 @@ function makeShotRow(overrides: Partial<ShotRow> = {}): ShotRow {
     key_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'key_frame_image_path')
       ? overrides.key_frame_image_path ?? null
       : null,
+    audio_file_path: Object.prototype.hasOwnProperty.call(overrides, 'audio_file_path')
+      ? overrides.audio_file_path ?? null
+      : null,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00.000Z',
     updated_at: overrides.updated_at ?? '2025-01-01T00:00:00.000Z',
   };
@@ -194,6 +198,32 @@ describe('shotsRepository.getShotsByStory', () => {
     expect(result['scenelet-1'][0]).toMatchObject({ shotIndex: 1 });
     expect(result['scenelet-1'][1]).toMatchObject({ shotIndex: 2 });
     expect(result['scenelet-2'][0]).toMatchObject({ sceneletSequence: 3 });
+  });
+
+  it('maps audio file path when present', async () => {
+    const rows = [
+      makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 1, audio_file_path: 'path/to/audio.wav' }),
+    ];
+
+    const { repo } = makeRepository({
+      selectStoryShots: { data: rows, error: null },
+    });
+
+    const result = await repo.getShotsByStory('story-123');
+    const [shot] = result['scenelet-1'];
+    expect(shot.audioFilePath).toBe('path/to/audio.wav');
+  });
+
+  it('omits audio file path when null', async () => {
+    const rows = [makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 1, audio_file_path: null })];
+
+    const { repo } = makeRepository({
+      selectStoryShots: { data: rows, error: null },
+    });
+
+    const result = await repo.getShotsByStory('story-123');
+    const [shot] = result['scenelet-1'];
+    expect(shot.audioFilePath).toBeUndefined();
   });
 
   it('returns an empty record when no shots exist', async () => {
@@ -255,11 +285,32 @@ describe('shotsRepository.createSceneletShots', () => {
       scenelet_sequence: 4,
       shot_index: 1,
       storyboard_payload: { framing_and_angle: 'Wide shot' },
+      audio_file_path: null,
     });
     expect(insertedRows[0]).not.toHaveProperty('id');
     expect(insertedRows[0]).not.toHaveProperty('first_frame_prompt');
     expect(insertedRows[0]).not.toHaveProperty('key_frame_prompt');
     expect(insertedRows[0]).not.toHaveProperty('video_clip_prompt');
+  });
+
+  it('persists audio file path when provided', async () => {
+    const { repo, table } = makeRepository({
+      selectExisting: { data: [], error: null },
+      insert: { data: [], error: null },
+    });
+
+    await repo.createSceneletShots('story-123', 'scenelet-9', 4, [
+      {
+        shotIndex: 1,
+        storyboardPayload: { framing_and_angle: 'Wide shot' },
+        audioFilePath: 'generated/story/shots/scenelet-9/1_audio.wav',
+      },
+    ]);
+
+    const insertedRows = table.inserted[0];
+    expect(insertedRows[0]).toMatchObject({
+      audio_file_path: 'generated/story/shots/scenelet-9/1_audio.wav',
+    });
   });
 
   it('throws when shots already exist for the scenelet', async () => {
@@ -484,6 +535,105 @@ describe('shotsRepository.updateShotImagePaths', () => {
       repo.updateShotImagePaths('story-123', 'scenelet-1', 1, {
         keyFrameImagePath: 'path.png',
       })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+});
+
+describe('shotsRepository.updateShotAudioPath', () => {
+  it('updates audio file path for a shot', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+      selectStoryShots: {
+        data: [
+          makeShotRow({
+            story_id: 'story-123',
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            audio_file_path: 'generated/story-123/shots/scenelet-1/1_audio.wav',
+          }),
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.updateShotAudioPath(
+      'story-123',
+      'scenelet-1',
+      1,
+      'generated/story-123/shots/scenelet-1/1_audio.wav'
+    );
+
+    expect(table.updated[0]).toMatchObject({
+      data: { audio_file_path: 'generated/story-123/shots/scenelet-1/1_audio.wav' },
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-1' },
+        { type: 'eq', column: 'shot_index', value: 1 },
+      ],
+    });
+    expect(table.selectCalls[0]).toMatchObject({
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-1' },
+        { type: 'eq', column: 'shot_index', value: 1 },
+      ],
+    });
+    expect(result.audioFilePath).toBe('generated/story-123/shots/scenelet-1/1_audio.wav');
+  });
+
+  it('allows clearing audio path with null', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+      selectStoryShots: {
+        data: [
+          makeShotRow({
+            story_id: 'story-123',
+            scenelet_id: 'scenelet-1',
+            shot_index: 2,
+            audio_file_path: null,
+          }),
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.updateShotAudioPath('story-123', 'scenelet-1', 2, null);
+
+    expect(table.updated[0]?.data).toEqual({ audio_file_path: null });
+    expect(result.audioFilePath).toBeUndefined();
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotAudioPath('  ', 'scenelet-1', 1, 'path.wav')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when scenelet id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotAudioPath('story-123', '  ', 1, 'path.wav')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when shot index is invalid', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotAudioPath('story-123', 'scenelet-1', 0, 'path.wav')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when Supabase update fails', async () => {
+    const { repo } = makeRepository({
+      update: { data: null, error: { message: 'constraint violation' } },
+    });
+
+    await expect(
+      repo.updateShotAudioPath('story-123', 'scenelet-1', 1, 'generated/path.wav')
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
 });

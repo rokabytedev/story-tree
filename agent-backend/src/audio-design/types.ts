@@ -39,9 +39,19 @@ export interface AudioSonicIdentity {
 }
 
 export interface AudioVoiceProfile {
+  character_id: string;
   character_name: string;
   voice_description: string;
   tts_generation_prompt: string;
+  voice_name: string;
+  voice_profile?: string;
+  [key: string]: unknown;
+}
+
+export interface NarratorVoiceProfile {
+  character_id: 'narrator';
+  voice_name: string;
+  voice_profile: string;
   [key: string]: unknown;
 }
 
@@ -55,6 +65,7 @@ export interface AudioMusicCue {
 
 export interface AudioDesignDocument {
   sonic_identity: AudioSonicIdentity;
+  narrator_voice_profile: NarratorVoiceProfile;
   character_voice_profiles: AudioVoiceProfile[];
   music_and_ambience_cues: AudioMusicCue[];
 }

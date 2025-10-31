@@ -70,16 +70,25 @@ const GEMINI_RESPONSE = JSON.stringify({
       musical_direction: 'Integration musical direction long enough to satisfy validation requirements.',
       sound_effect_philosophy: 'Integration sound philosophy with detailed description beyond minimum length.',
     },
+    narrator_voice_profile: {
+      character_id: 'narrator',
+      voice_profile: 'Narrator integration profile conveying measured confidence and detailed qualities.',
+      voice_name: 'Kore',
+    },
     character_voice_profiles: [
       {
         character_name: 'Rhea',
+        voice_profile: 'Rhea integration profile rich with clarity and expressive tonal guidance.',
         voice_description: 'Rhea description crafted for integration tests surpassing length requirements easily.',
         tts_generation_prompt: 'Integration prompt for Rhea providing detailed direction above thirty characters.',
+        voice_name: 'Puck',
       },
       {
-        character_name: 'Narrator',
-        voice_description: 'Narrator integration description emphasising calm authority with sufficient length.',
-        tts_generation_prompt: 'Narrator integration prompt ensuring steady pacing and warmth beyond threshold.',
+        character_name: 'Testing Agent',
+        voice_profile: 'Testing Agent integration profile highlighting upbeat efficiency with detailed cues.',
+        voice_description: 'Testing Agent integration description emphasising precise optimism with enough length.',
+        tts_generation_prompt: 'Testing Agent integration prompt ensuring energetic clarity beyond threshold.',
+        voice_name: 'Deneb',
       },
     ],
     music_and_ambience_cues: [

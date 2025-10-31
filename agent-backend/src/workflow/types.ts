@@ -24,6 +24,10 @@ import type {
   ShotImageTaskRunner,
 } from '../shot-image/types.js';
 import type {
+  ShotAudioTaskDependencies,
+  ShotAudioTaskRunner,
+} from '../shot-audio/types.js';
+import type {
   CharacterModelSheetTaskDependencies,
   CharacterModelSheetTaskRunner,
 } from '../character-model-sheet/types.js';
@@ -101,6 +105,8 @@ export interface AgentWorkflowOptions {
   runShotProductionTask?: ShotProductionTaskRunner;
   shotImageTaskOptions?: ShotImageTaskOptions;
   runShotImageTask?: ShotImageTaskRunner;
+  shotAudioTaskOptions?: ShotAudioTaskOptions;
+  runShotAudioTask?: ShotAudioTaskRunner;
   characterModelSheetTaskOptions?: CharacterModelSheetTaskOptions;
   runCharacterModelSheetTask?: CharacterModelSheetTaskRunner;
   environmentReferenceTaskOptions?: EnvironmentReferenceTaskOptions;
@@ -122,6 +128,7 @@ export type StoryWorkflowTask =
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION'
   | 'CREATE_SHOT_IMAGES'
+  | 'CREATE_SHOT_AUDIO'
   | 'CREATE_CHARACTER_MODEL_SHEETS'
   | 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
 
@@ -153,6 +160,10 @@ export type ShotProductionTaskOptions = Partial<
 
 export type ShotImageTaskOptions = Partial<
   Omit<ShotImageTaskDependencies, 'storiesRepository' | 'shotsRepository'>
+>;
+
+export type ShotAudioTaskOptions = Partial<
+  Omit<ShotAudioTaskDependencies, 'storiesRepository' | 'shotsRepository'>
 >;
 
 export type CharacterModelSheetTaskOptions = Partial<

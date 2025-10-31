@@ -20,6 +20,7 @@ export interface ShotRecord {
   shotIndex: number;
   storyboardPayload: unknown;
   keyFrameImagePath?: string;
+  audioFilePath?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +41,12 @@ export interface ShotProductionShotsRepository {
     shotIndex: number,
     paths: UpdateShotImagePathsInput
   ): Promise<void>;
+  updateShotAudioPath(
+    storyId: string,
+    sceneletId: string,
+    shotIndex: number,
+    audioFilePath: string | null
+  ): Promise<ShotRecord>;
 }
 
 export interface ShotProductionPromptBuilderOptions {

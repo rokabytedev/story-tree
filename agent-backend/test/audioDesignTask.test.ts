@@ -87,16 +87,25 @@ const GEMINI_RESPONSE = JSON.stringify({
       musical_direction: 'Detailed musical direction that easily exceeds thirty characters in length.',
       sound_effect_philosophy: 'Philosophy on sound effects that more than satisfies the character requirement.',
     },
+    narrator_voice_profile: {
+      character_id: 'narrator',
+      voice_profile: 'Narrator profile rich with detail conveying calm warmth and narrative authority.',
+      voice_name: 'Kore',
+    },
     character_voice_profiles: [
       {
         character_name: 'Rhea',
+        voice_profile: 'Rhea profile brimming with energetic descriptors and thoughtful nuance.',
         voice_description: 'Rhea voice description that is rich with detail beyond the minimum requirement.',
         tts_generation_prompt: 'Rhea prompt text that clearly communicates tone and exceeds thirty characters.',
+        voice_name: 'Puck',
       },
       {
-        character_name: 'Narrator',
-        voice_description: 'Narrator description that conveys calm authority with more than thirty characters.',
-        tts_generation_prompt: 'Narrator prompt that ensures measured pacing and warmth beyond thirty characters.',
+        character_name: 'Testing Agent',
+        voice_profile: 'Testing Agent profile emphasising upbeat precision with ample descriptive content.',
+        voice_description: 'Testing Agent description that conveys optimistic support with more than thirty characters.',
+        tts_generation_prompt: 'Testing Agent prompt that ensures clear pacing and enthusiasm beyond thirty characters.',
+        voice_name: 'Deneb',
       },
     ],
     music_and_ambience_cues: [

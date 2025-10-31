@@ -27,6 +27,8 @@ import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
 import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
 import { createGeminiJsonClient } from '../gemini/client.js';
 import { ImageStorageService } from '../image-generation/imageStorage.js';
+import { createGeminiTtsClient } from '../shot-audio/geminiTtsClient.js';
+import { createFileSystemAudioStorage } from '../shot-audio/audioFileStorage.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
@@ -54,6 +56,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
   'CREATE_SHOT_IMAGES',
+  'CREATE_SHOT_AUDIO',
   'CREATE_CHARACTER_MODEL_SHEETS',
   'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
 ];
@@ -80,6 +83,7 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
   resumeEnvironmentReference?: boolean;
+  resumeShotAudio?: boolean;
   resumeCharacterModelSheets?: boolean;
   characterId?: string;
   environmentId?: string;
@@ -95,6 +99,7 @@ interface RunAllCommandOptions extends BaseCliOptions {
   storyId?: string;
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
+  resumeShotAudio?: boolean;
 }
 
 type ParsedCliCommand = CreateCommandOptions | RunTaskCommandOptions | RunAllCommandOptions;
@@ -256,10 +261,17 @@ async function buildWorkflowDependencies(
   const imageStorage = mode === 'real'
     ? new ImageStorageService()
     : undefined;
+  const geminiTtsClient = mode === 'real'
+    ? createGeminiTtsClient({ verbose })
+    : undefined;
+  const audioFileStorage = mode === 'real'
+    ? createFileSystemAudioStorage()
+    : undefined;
 
   // Extract run-task specific options with proper type narrowing
   let visualRefImageOptions = {};
   let shotImageOptions = {};
+  let shotAudioOptions = {};
   let characterModelSheetOptions = {};
   let environmentReferenceOptions = {};
 
@@ -284,9 +296,11 @@ async function buildWorkflowDependencies(
     }
     if (options.sceneletId) {
       shotImageOptions = { ...shotImageOptions, targetSceneletId: options.sceneletId };
+      shotAudioOptions = { ...shotAudioOptions, targetSceneletId: options.sceneletId };
     }
     if (options.shotIndex !== undefined) {
       shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
+      shotAudioOptions = { ...shotAudioOptions, targetShotIndex: options.shotIndex };
     }
     if (options.override !== undefined) {
       if (options.task === 'CREATE_CHARACTER_MODEL_SHEETS') {
@@ -294,6 +308,12 @@ async function buildWorkflowDependencies(
       }
       if (options.task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE') {
         environmentReferenceOptions = { ...environmentReferenceOptions, override: options.override };
+      }
+      if (options.task === 'CREATE_SHOT_AUDIO') {
+        shotAudioOptions = {
+          ...shotAudioOptions,
+          mode: options.override ? 'override' : shotAudioOptions.mode,
+        };
       }
     }
     if (options.resumeCharacterModelSheets !== undefined) {
@@ -306,6 +326,12 @@ async function buildWorkflowDependencies(
       environmentReferenceOptions = {
         ...environmentReferenceOptions,
         resume: options.resumeEnvironmentReference,
+      };
+    }
+    if (options.resumeShotAudio) {
+      shotAudioOptions = {
+        ...shotAudioOptions,
+        mode: 'resume',
       };
     }
   }
@@ -351,6 +377,13 @@ async function buildWorkflowDependencies(
       ...(geminiImageClient ? { geminiImageClient } : {}),
       ...(imageStorage ? { imageStorage } : {}),
       ...shotImageOptions,
+    },
+    shotAudioTaskOptions: {
+      logger,
+      verbose,
+      ...(geminiTtsClient ? { geminiClient: geminiTtsClient } : {}),
+      ...(audioFileStorage ? { audioFileStorage } : {}),
+      ...shotAudioOptions,
     },
     characterModelSheetTaskOptions: {
       logger,
@@ -455,6 +488,23 @@ async function buildWorkflowDependencies(
         },
       },
     };
+    workflowOptions.shotAudioTaskOptions = {
+      ...workflowOptions.shotAudioTaskOptions,
+      geminiClient: {
+        async synthesize() {
+          return Buffer.from('stub-audio-data');
+        },
+      },
+      audioFileStorage: {
+        async saveShotAudio({ storyId, sceneletId, shotIndex }) {
+          const relativePath = `generated/${storyId}/shots/${sceneletId}/${shotIndex}_audio.wav`;
+          return {
+            relativePath,
+            absolutePath: `/stub/${relativePath}`,
+          };
+        },
+      },
+    };
     workflowOptions.characterModelSheetTaskOptions = {
       ...workflowOptions.characterModelSheetTaskOptions,
       geminiImageClient: {
@@ -516,6 +566,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let shotIndex: number | undefined;
   let overrideFlag: boolean | undefined;
   let resumeModelSheetsFlag = false;
+  let resumeShotAudioFlag = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -596,22 +647,30 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         break;
       }
       case '--override': {
-        const value = rest[++index];
-        if (!value) {
-          throw new CliParseError('Missing value for --override flag. Use "true" or "false".');
-        }
-        const normalized = value.trim().toLowerCase();
-        if (normalized === 'true') {
+        const peek = rest[index + 1];
+        if (!peek || peek.startsWith('-')) {
           overrideFlag = true;
-        } else if (normalized === 'false') {
-          overrideFlag = false;
         } else {
-          throw new CliParseError('Invalid value for --override. Use "true" or "false".');
+          const value = rest[++index];
+          const normalized = value?.trim().toLowerCase();
+          if (normalized === 'true') {
+            overrideFlag = true;
+          } else if (normalized === 'false') {
+            overrideFlag = false;
+          } else {
+            throw new CliParseError('Invalid value for --override. Use "true" or "false".');
+          }
         }
         break;
       }
+      case '--no-override':
+        overrideFlag = false;
+        break;
       case '--resume-model-sheets':
         resumeModelSheetsFlag = true;
+        break;
+      case '--resume-shot-audio':
+        resumeShotAudioFlag = true;
         break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
@@ -641,6 +700,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       const resumeModelSheets = resumeModelSheetsFlag && task === 'CREATE_CHARACTER_MODEL_SHEETS';
       const resumeEnvironmentReference =
         resumeFlag && task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
+      const resumeShotAudio = resumeShotAudioFlag && task === 'CREATE_SHOT_AUDIO';
 
       if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction && !resumeEnvironmentReference) {
         throw new CliParseError(
@@ -662,6 +722,10 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         throw new CliParseError('--resume cannot be combined with --environment-id for CREATE_ENVIRONMENT_REFERENCE_IMAGE.');
       }
 
+      if (resumeShotAudioFlag && task !== 'CREATE_SHOT_AUDIO') {
+        throw new CliParseError('--resume-shot-audio can only be used with CREATE_SHOT_AUDIO task.');
+      }
+
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
@@ -669,6 +733,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         resumeInteractiveScript,
         resumeShotProduction,
         resumeEnvironmentReference,
+        resumeShotAudio,
         characterId,
         environmentId,
         imageIndex,
@@ -691,6 +756,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         storyId: trimmedStoryId || undefined,
         resumeInteractiveScript: resumeFlag || undefined,
         resumeShotProduction: resumeFlag || undefined,
+        resumeShotAudio: resumeShotAudioFlag || undefined,
         ...modeOptions,
       };
     }
@@ -908,10 +974,11 @@ function printHelp(): void {
   console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
   console.log('  --environment-id <id>        Target a specific environment (CREATE_VISUAL_REFERENCE_IMAGES or CREATE_ENVIRONMENT_REFERENCE_IMAGE).');
   console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
-  console.log('  --scenelet-id <id>           Generate only images for specific scenelet (CREATE_SHOT_IMAGES).');
-  console.log('  --shot-index <number>        Generate only images for specific shot (1-based, use with --scenelet-id).');
-  console.log('  --override <true|false>      Regenerate images even if they already exist (model sheets or environment references).');
+  console.log('  --scenelet-id <id>           Target a specific scenelet (CREATE_SHOT_IMAGES or CREATE_SHOT_AUDIO).');
+  console.log('  --shot-index <number>        Target a specific shot (1-based, use with --scenelet-id).');
+  console.log('  --override [true|false]      Regenerate outputs even if they already exist (model sheets, environment references, or shot audio).');
   console.log('  --resume-model-sheets        Resume character model sheet generation (batch mode only).');
+  console.log('  --resume-shot-audio          Resume shot audio generation (skips shots with existing audio).');
   console.log('  --help (-h)                  Show this help message.');
   console.log('');
   console.log('Examples:');
@@ -932,6 +999,12 @@ function printHelp(): void {
   console.log('');
   console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
+  console.log('');
+  console.log('  # Generate shot audio for all shots (requires audio design and shot production)');
+  console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Resume shot audio generation only for scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --scenelet-id intro-scene --mode stub --resume-shot-audio');
   console.log('');
   console.log('  # Generate environment reference images for all environments');
   console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --mode stub');
