@@ -10,6 +10,7 @@ import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.j
 import { recommendReferenceImages, ReferenceImageRecommenderError } from '../reference-images/index.js';
 import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
 import type { ReferencedDesigns } from '../shot-production/types.js';
+import type { VisualDesignDocument } from '../visual-design/types.js';
 
 const DEFAULT_ASPECT_RATIO = '16:9';
 
@@ -20,6 +21,14 @@ interface StoryboardPayload {
   [key: string]: unknown;
 }
 
+/**
+ * Generates missing shot images for a story using Gemini.
+ *
+ * Requires the story to have a visual design document so character model sheet
+ * and environment reference image paths can be resolved directly from the design metadata.
+ * Falls back to legacy character reference loading when storyboard payloads do not
+ * specify referenced designs.
+ */
 export async function runShotImageTask(
   storyId: string,
   dependencies: ShotImageTaskDependencies
@@ -44,17 +53,19 @@ export async function runShotImageTask(
 
   logger?.debug?.('Starting shot image generation task', { storyId });
 
-  // Load story to get visual reference package
+  // Load story to get visual design document
   const story = await storiesRepository.getStoryById(storyId);
   if (!story) {
     throw new ShotImageTaskError(`Story not found: ${storyId}`);
   }
 
-  if (!story.visualReferencePackage) {
+  if (story.visualDesignDocument === null || story.visualDesignDocument === undefined) {
     throw new ShotImageTaskError(
-      `Story ${storyId} does not have a visual reference package. Run CREATE_VISUAL_REFERENCE first.`
+      `Story ${storyId} does not have a visual design document. Run CREATE_VISUAL_DESIGN first.`
     );
   }
+
+  const visualDesignDocument = parseVisualDesignDocument(story.visualDesignDocument, storyId);
 
   const targetSceneletId = dependencies.targetSceneletId?.trim();
   const targetShotIndex = dependencies.targetShotIndex;
@@ -132,6 +143,7 @@ export async function runShotImageTask(
           storyId,
           referencedDesigns,
           maxImages: 5,
+          visualDesignDocument,
         });
 
         if (dependencies.verbose && recommendations.length > 0) {
@@ -288,4 +300,43 @@ function extractCharacterNames(payload: unknown): string[] {
   }
 
   return [];
+}
+
+function parseVisualDesignDocument(raw: unknown, storyId: string): VisualDesignDocument {
+  if (raw === null || raw === undefined) {
+    throw new ShotImageTaskError(
+      `Story ${storyId} does not have a visual design document. Run CREATE_VISUAL_DESIGN first.`
+    );
+  }
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new ShotImageTaskError(
+        `Visual design document for story ${storyId} is an empty string. Run CREATE_VISUAL_DESIGN before generating shot images.`
+      );
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new ShotImageTaskError(
+          `Visual design document for story ${storyId} must be a JSON object.`
+        );
+      }
+      return parsed as VisualDesignDocument;
+    } catch (error) {
+      throw new ShotImageTaskError(
+        `Visual design document for story ${storyId} must contain valid JSON.`,
+        error as Error
+      );
+    }
+  }
+
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as VisualDesignDocument;
+  }
+
+  throw new ShotImageTaskError(
+    `Visual design document for story ${storyId} must be a JSON object.`
+  );
 }

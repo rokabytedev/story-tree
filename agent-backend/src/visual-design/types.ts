@@ -29,6 +29,28 @@ export interface VisualDesignTaskResult {
   visualDesignDocument: unknown;
 }
 
+export interface VisualDesignCharacterDesign {
+  character_id: string;
+  character_name?: string;
+  character_model_sheet_image_path?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VisualDesignEnvironmentDesign {
+  environment_id: string;
+  environment_name?: string;
+  environment_reference_image_path?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VisualDesignDocument {
+  character_designs?: VisualDesignCharacterDesign[];
+  characterDesigns?: VisualDesignCharacterDesign[];
+  environment_designs?: VisualDesignEnvironmentDesign[];
+  environmentDesigns?: VisualDesignEnvironmentDesign[];
+  [key: string]: unknown;
+}
+
 export interface VisualDesignGeminiRequest {
   systemInstruction: string;
   userPrompt: string;

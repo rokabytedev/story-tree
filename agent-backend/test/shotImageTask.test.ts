@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import { runShotImageTask } from '../src/shot-image/shotImageTask.js';
 import { ShotImageTaskError, CharacterReferenceMissingError } from '../src/shot-image/errors.js';
@@ -20,12 +22,21 @@ vi.mock('node:fs/promises', () => ({
 type RepositoryWithUpdates = AgentWorkflowStoriesRepository & { updates: Array<{ storyId: string; patch: unknown }> };
 
 function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWorkflowStoryRecord {
+  const hasVisualDesignOverride = Object.prototype.hasOwnProperty.call(
+    overrides,
+    'visualDesignDocument'
+  );
   return {
     id: overrides.id ?? 'story-1',
     displayName: overrides.displayName ?? 'Test Story',
     initialPrompt: overrides.initialPrompt ?? 'Prompt',
     storyConstitution: overrides.storyConstitution ?? null,
-    visualDesignDocument: overrides.visualDesignDocument ?? null,
+    visualDesignDocument: hasVisualDesignOverride
+      ? overrides.visualDesignDocument ?? null
+      : {
+          character_designs: [],
+          environment_designs: [],
+        },
     audioDesignDocument: overrides.audioDesignDocument ?? null,
     visualReferencePackage:
       Object.prototype.hasOwnProperty.call(overrides, 'visualReferencePackage')
@@ -272,8 +283,8 @@ describe('runShotImageTask', () => {
     ).rejects.toBeInstanceOf(ShotImageTaskError);
   });
 
-  it('throws when story lacks visual reference package', async () => {
-    const story = createStory({ visualReferencePackage: null });
+  it('throws when story lacks visual design document', async () => {
+    const story = createStory({ visualDesignDocument: null });
     const storiesRepository = createStoriesRepository(story);
     const shotsRepository = createShotsRepository([], {});
 
@@ -285,7 +296,7 @@ describe('runShotImageTask', () => {
           shotsRepository,
         })
       )
-    ).rejects.toBeInstanceOf(ShotImageTaskError);
+    ).rejects.toThrow(/visual design document/);
   });
 
   it('throws when character references are missing', async () => {
@@ -332,5 +343,313 @@ describe('runShotImageTask', () => {
         })
       )
     ).rejects.toBeInstanceOf(CharacterReferenceMissingError);
+  });
+
+  it('throws when referenced character is missing model sheet path in visual design document', async () => {
+    const story = createStory({
+      visualDesignDocument: {
+        character_designs: [
+          {
+            character_id: 'hero',
+            character_model_sheet_image_path: '',
+          },
+        ],
+        environment_designs: [],
+      },
+    });
+    const storiesRepository = createStoriesRepository(story);
+
+    const shotsMissingImages: ShotsMissingImages[] = [
+      {
+        sceneletId: 'scenelet-1',
+        shotIndex: 1,
+        missingFirstFrame: true,
+        missingKeyFrame: false,
+      },
+    ];
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'scenelet-1': [
+        {
+          sceneletSequence: 1,
+          shotIndex: 1,
+          storyboardPayload: {
+            referencedDesigns: {
+              characters: ['hero'],
+              environments: [],
+            },
+          },
+          firstFramePrompt: 'First frame prompt',
+          keyFramePrompt: 'Key frame prompt',
+          videoClipPrompt: 'Video clip prompt',
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+    await expect(
+      runShotImageTask(
+        'story-1',
+        buildDependencies({
+          storiesRepository,
+          shotsRepository,
+          geminiImageClient: { generateImage: vi.fn() },
+          imageStorage: { saveImage: vi.fn() },
+        })
+      )
+    ).rejects.toThrow(/CREATE_CHARACTER_MODEL_SHEET/);
+  });
+
+  it('uses visual design document paths for referenced character images', async () => {
+    const relativePath = 'story-1/visuals/characters/hero/character-model-sheet.png';
+    const generatedRoot = join(process.cwd(), 'apps/story-tree-ui/public/generated');
+    const absolutePath = join(generatedRoot, relativePath);
+    const expectedReferencePath = join('apps/story-tree-ui/public/generated', relativePath);
+
+    try {
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, Buffer.from('model-sheet-image'));
+
+      const story = createStory({
+        visualDesignDocument: {
+          character_designs: [
+            {
+              character_id: 'hero',
+              character_model_sheet_image_path: relativePath,
+            },
+          ],
+          environment_designs: [],
+        },
+      });
+      const storiesRepository = createStoriesRepository(story);
+
+      const shotsMissingImages: ShotsMissingImages[] = [
+        {
+          sceneletId: 'scenelet-1',
+          shotIndex: 1,
+          missingFirstFrame: true,
+          missingKeyFrame: false,
+        },
+      ];
+
+      const shotsByScenelet: Record<string, ShotRecord[]> = {
+        'scenelet-1': [
+          {
+            sceneletSequence: 1,
+            shotIndex: 1,
+            storyboardPayload: {
+              referencedDesigns: {
+                characters: ['hero'],
+                environments: [],
+              },
+            },
+            firstFramePrompt: 'First frame prompt',
+            keyFramePrompt: 'Key frame prompt',
+            videoClipPrompt: 'Video clip prompt',
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+          },
+        ],
+      };
+
+      const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+      const generateImage = vi
+        .fn()
+        .mockResolvedValueOnce({ imageData: Buffer.from('first-frame'), mimeType: 'image/png' });
+
+      const saveImage = vi
+        .fn()
+        .mockResolvedValueOnce('story-1/shots/scenelet-1/shot-1_first_frame.png');
+
+      const result = await runShotImageTask(
+        'story-1',
+        buildDependencies({
+          storiesRepository,
+          shotsRepository,
+          geminiImageClient: { generateImage },
+          imageStorage: { saveImage } as any,
+        })
+      );
+
+      expect(generateImage).toHaveBeenCalledTimes(1);
+      const [{ referenceImages }] = generateImage.mock.calls[0] ?? [{}];
+      expect(referenceImages).toBeDefined();
+      expect(referenceImages).toHaveLength(1);
+      expect(referenceImages?.[0]?.name).toBe(expectedReferencePath);
+
+      expect(saveImage).toHaveBeenCalledWith(
+        Buffer.from('first-frame'),
+        'story-1',
+        'shots/scenelet-1',
+        'shot-1_first_frame.png'
+      );
+
+      expect(result.generatedFirstFrameImages).toBe(1);
+      expect(result.generatedKeyFrameImages).toBe(0);
+    } finally {
+      if (existsSync(absolutePath)) {
+        rmSync(join(generatedRoot, 'story-1'), { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('uses visual design document paths for referenced environment images', async () => {
+    const relativePath = 'story-1/visuals/environments/hangar/reference.png';
+    const persistedPath = join('generated', relativePath);
+    const generatedRoot = join(process.cwd(), 'apps/story-tree-ui/public/generated');
+    const absolutePath = join(generatedRoot, relativePath);
+    const expectedReferencePath = join('apps/story-tree-ui/public/generated', relativePath);
+
+    try {
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, Buffer.from('environment-image'));
+
+      const story = createStory({
+        visualDesignDocument: {
+          character_designs: [],
+          environment_designs: [
+            {
+              environment_id: 'hangar',
+              environment_reference_image_path: persistedPath,
+            },
+          ],
+        },
+      });
+      const storiesRepository = createStoriesRepository(story);
+
+      const shotsMissingImages: ShotsMissingImages[] = [
+        {
+          sceneletId: 'scenelet-1',
+          shotIndex: 1,
+          missingFirstFrame: true,
+          missingKeyFrame: false,
+        },
+      ];
+
+      const shotsByScenelet: Record<string, ShotRecord[]> = {
+        'scenelet-1': [
+          {
+            sceneletSequence: 1,
+            shotIndex: 1,
+            storyboardPayload: {
+              referencedDesigns: {
+                characters: [],
+                environments: ['hangar'],
+              },
+            },
+            firstFramePrompt: 'First frame prompt',
+            keyFramePrompt: 'Key frame prompt',
+            videoClipPrompt: 'Video clip prompt',
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+          },
+        ],
+      };
+
+      const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+      const generateImage = vi
+        .fn()
+        .mockResolvedValueOnce({ imageData: Buffer.from('first-frame'), mimeType: 'image/png' });
+
+      const saveImage = vi
+        .fn()
+        .mockResolvedValueOnce('story-1/shots/scenelet-1/shot-1_first_frame.png');
+
+      const result = await runShotImageTask(
+        'story-1',
+        buildDependencies({
+          storiesRepository,
+          shotsRepository,
+          geminiImageClient: { generateImage },
+          imageStorage: { saveImage } as any,
+        })
+      );
+
+      expect(generateImage).toHaveBeenCalledTimes(1);
+      const [{ referenceImages }] = generateImage.mock.calls[0] ?? [{}];
+      expect(referenceImages).toBeDefined();
+      expect(referenceImages).toHaveLength(1);
+      expect(referenceImages?.[0]?.name).toBe(expectedReferencePath);
+
+      expect(saveImage).toHaveBeenCalledWith(
+        Buffer.from('first-frame'),
+        'story-1',
+        'shots/scenelet-1',
+        'shot-1_first_frame.png'
+      );
+
+      expect(result.generatedFirstFrameImages).toBe(1);
+      expect(result.generatedKeyFrameImages).toBe(0);
+    } finally {
+      if (existsSync(absolutePath)) {
+        rmSync(join(generatedRoot, 'story-1'), { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('throws when referenced environment image file is missing', async () => {
+    const relativePath = 'story-1/visuals/environments/bridge/reference.png';
+    const persistedPath = join('generated', relativePath);
+
+    const story = createStory({
+      visualDesignDocument: {
+        character_designs: [],
+        environment_designs: [
+          {
+            environment_id: 'bridge',
+            environment_reference_image_path: persistedPath,
+          },
+        ],
+      },
+    });
+    const storiesRepository = createStoriesRepository(story);
+
+    const shotsMissingImages: ShotsMissingImages[] = [
+      {
+        sceneletId: 'scenelet-1',
+        shotIndex: 1,
+        missingFirstFrame: true,
+        missingKeyFrame: false,
+      },
+    ];
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'scenelet-1': [
+        {
+          sceneletSequence: 1,
+          shotIndex: 1,
+          storyboardPayload: {
+            referencedDesigns: {
+              characters: [],
+              environments: ['bridge'],
+            },
+          },
+          firstFramePrompt: 'First frame prompt',
+          keyFramePrompt: 'Key frame prompt',
+          videoClipPrompt: 'Video clip prompt',
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+    await expect(
+      runShotImageTask(
+        'story-1',
+        buildDependencies({
+          storiesRepository,
+          shotsRepository,
+          geminiImageClient: { generateImage: vi.fn() },
+          imageStorage: { saveImage: vi.fn() },
+        })
+      )
+    ).rejects.toThrow(/Environment keyframe not found/);
   });
 });

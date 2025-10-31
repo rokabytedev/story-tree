@@ -6,6 +6,24 @@ import {
   ReferenceImageRecommenderError,
 } from '../src/reference-images/referenceImageRecommender.js';
 
+function createVisualDesignDocument(options: {
+  characterPaths?: Record<string, string | null | undefined>;
+  environmentPaths?: Record<string, string | null | undefined>;
+} = {}) {
+  const { characterPaths = {}, environmentPaths = {} } = options;
+
+  return {
+    character_designs: Object.entries(characterPaths).map(([characterId, path]) => ({
+      character_id: characterId,
+      character_model_sheet_image_path: path,
+    })),
+    environment_designs: Object.entries(environmentPaths).map(([environmentId, path]) => ({
+      environment_id: environmentId,
+      environment_reference_image_path: path,
+    })),
+  };
+}
+
 const TEST_BASE_PATH = 'tmp/test-reference-images';
 const TEST_STORY_ID = 'test-story-123';
 
@@ -52,6 +70,200 @@ describe('recommendReferenceImages', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  it('reads character image paths from visual design document', () => {
+    const characterPaths = {
+      finn: `${TEST_STORY_ID}/custom/characters/finn/model-sheet.png`,
+    };
+
+    const visualDesignDocument = createVisualDesignDocument({ characterPaths });
+
+    const result = recommendReferenceImages(
+      {
+        storyId: TEST_STORY_ID,
+        referencedDesigns: {
+          characters: ['finn'],
+          environments: [],
+        },
+        basePublicPath: TEST_BASE_PATH,
+        visualDesignDocument,
+      },
+      { validateFileExistence: false }
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'CHARACTER',
+      id: 'finn',
+    });
+    expect(result[0]?.path).toBe(join(TEST_BASE_PATH, characterPaths.finn));
+  });
+
+  it('reads environment image paths from visual design document', () => {
+    const environmentPaths = {
+      hangar: `${TEST_STORY_ID}/custom/environments/hangar/reference.png`,
+    };
+
+    const visualDesignDocument = createVisualDesignDocument({ environmentPaths });
+
+    const result = recommendReferenceImages(
+      {
+        storyId: TEST_STORY_ID,
+        referencedDesigns: {
+          characters: [],
+          environments: ['hangar'],
+        },
+        basePublicPath: TEST_BASE_PATH,
+        visualDesignDocument,
+      },
+      { validateFileExistence: false }
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'ENVIRONMENT',
+      id: 'hangar',
+    });
+    expect(result[0]?.path).toBe(join(TEST_BASE_PATH, environmentPaths.hangar));
+  });
+
+  it('normalizes generated prefix on visual design document paths', () => {
+    const environmentPaths = {
+      bridge: `generated/${TEST_STORY_ID}/visuals/environments/bridge/reference.png`,
+    };
+
+    const visualDesignDocument = createVisualDesignDocument({ environmentPaths });
+
+    const result = recommendReferenceImages(
+      {
+        storyId: TEST_STORY_ID,
+        referencedDesigns: {
+          characters: [],
+          environments: ['bridge'],
+        },
+        basePublicPath: TEST_BASE_PATH,
+        visualDesignDocument,
+      },
+      { validateFileExistence: false }
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.path).toBe(
+      join(TEST_BASE_PATH, TEST_STORY_ID, 'visuals/environments/bridge/reference.png')
+    );
+  });
+
+  it('throws when character path is missing in visual design document', () => {
+    const visualDesignDocument = createVisualDesignDocument({
+      characterPaths: {
+        finn: '',
+      },
+    });
+
+    expect(() =>
+      recommendReferenceImages(
+        {
+          storyId: TEST_STORY_ID,
+          referencedDesigns: {
+            characters: ['finn'],
+            environments: [],
+          },
+          basePublicPath: TEST_BASE_PATH,
+          visualDesignDocument,
+        },
+        { validateFileExistence: false }
+      )
+    ).toThrow(/CREATE_CHARACTER_MODEL_SHEET/);
+  });
+
+  it('throws when environment path is missing in visual design document', () => {
+    const visualDesignDocument = createVisualDesignDocument({
+      environmentPaths: {
+        hangar: '   ',
+      },
+    });
+
+    expect(() =>
+      recommendReferenceImages(
+        {
+          storyId: TEST_STORY_ID,
+          referencedDesigns: {
+            characters: [],
+            environments: ['hangar'],
+          },
+          basePublicPath: TEST_BASE_PATH,
+          visualDesignDocument,
+        },
+        { validateFileExistence: false }
+      )
+    ).toThrow(/CREATE_ENVIRONMENT_REFERENCE_IMAGE/);
+  });
+
+  it('throws when referenced design is missing from the visual design document', () => {
+    const visualDesignDocument = createVisualDesignDocument({
+      characterPaths: {
+        finn: `${TEST_STORY_ID}/visuals/characters/finn/character-model-sheet.png`,
+      },
+    });
+
+    expect(() =>
+      recommendReferenceImages(
+        {
+          storyId: TEST_STORY_ID,
+          referencedDesigns: {
+            characters: ['rhea'],
+            environments: [],
+          },
+          basePublicPath: TEST_BASE_PATH,
+          visualDesignDocument,
+        },
+        { validateFileExistence: false }
+      )
+    ).toThrow(/visual design document/);
+  });
+
+  it('throws when referenced environment is missing from the visual design document', () => {
+    const visualDesignDocument = createVisualDesignDocument({
+      environmentPaths: {
+        bridge: `${TEST_STORY_ID}/visuals/environments/bridge/reference.png`,
+      },
+    });
+
+    expect(() =>
+      recommendReferenceImages(
+        {
+          storyId: TEST_STORY_ID,
+          referencedDesigns: {
+            characters: [],
+            environments: ['engine-room'],
+          },
+          basePublicPath: TEST_BASE_PATH,
+          visualDesignDocument,
+        },
+        { validateFileExistence: false }
+      )
+    ).toThrow(/visual design document/);
+  });
+
+  it('throws when file does not exist for visual design document path', () => {
+    const characterPaths = {
+      finn: `${TEST_STORY_ID}/visuals/characters/finn/custom-model-sheet.png`,
+    };
+
+    const visualDesignDocument = createVisualDesignDocument({ characterPaths });
+
+    expect(() =>
+      recommendReferenceImages({
+        storyId: TEST_STORY_ID,
+        referencedDesigns: {
+          characters: ['finn'],
+          environments: [],
+        },
+        basePublicPath: TEST_BASE_PATH,
+        visualDesignDocument,
+      })
+    ).toThrow(/custom-model-sheet\.png/);
   });
 
   it('recommends character model sheets for referenced characters', () => {
