@@ -27,6 +27,10 @@ import type {
   CharacterModelSheetTaskDependencies,
   CharacterModelSheetTaskRunner,
 } from '../character-model-sheet/types.js';
+import type {
+  EnvironmentReferenceTaskDependencies,
+  EnvironmentReferenceTaskRunner,
+} from '../environment-reference/types.js';
 
 export interface AgentWorkflowStoryRecord {
   id: string;
@@ -99,6 +103,8 @@ export interface AgentWorkflowOptions {
   runShotImageTask?: ShotImageTaskRunner;
   characterModelSheetTaskOptions?: CharacterModelSheetTaskOptions;
   runCharacterModelSheetTask?: CharacterModelSheetTaskRunner;
+  environmentReferenceTaskOptions?: EnvironmentReferenceTaskOptions;
+  runEnvironmentReferenceTask?: EnvironmentReferenceTaskRunner;
 }
 
 export interface AgentWorkflowResult {
@@ -116,7 +122,8 @@ export type StoryWorkflowTask =
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION'
   | 'CREATE_SHOT_IMAGES'
-  | 'CREATE_CHARACTER_MODEL_SHEETS';
+  | 'CREATE_CHARACTER_MODEL_SHEETS'
+  | 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
 
 export interface StoryWorkflow {
   readonly storyId: string;
@@ -150,4 +157,8 @@ export type ShotImageTaskOptions = Partial<
 
 export type CharacterModelSheetTaskOptions = Partial<
   Omit<CharacterModelSheetTaskDependencies, 'storiesRepository'>
+>;
+
+export type EnvironmentReferenceTaskOptions = Partial<
+  Omit<EnvironmentReferenceTaskDependencies, 'storiesRepository'>
 >;

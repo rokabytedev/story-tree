@@ -26,6 +26,7 @@ export interface CharacterDesign {
 
 export interface EnvironmentDesign {
   environment_id: string;
+  environment_name?: string;
   detailed_description: {
     overall_description: string;
     lighting_and_atmosphere: string;
@@ -33,6 +34,7 @@ export interface EnvironmentDesign {
     key_elements: string;
   };
   associated_scenelet_ids: string[];
+  environment_reference_image_path?: string;
 }
 
 export interface VisualDesignDocument {

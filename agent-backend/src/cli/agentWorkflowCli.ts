@@ -55,6 +55,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_SHOT_PRODUCTION',
   'CREATE_SHOT_IMAGES',
   'CREATE_CHARACTER_MODEL_SHEETS',
+  'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -78,13 +79,14 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   task: StoryWorkflowTask;
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
+  resumeEnvironmentReference?: boolean;
+  resumeCharacterModelSheets?: boolean;
   characterId?: string;
   environmentId?: string;
   imageIndex?: number;
   sceneletId?: string;
   shotIndex?: number;
   override?: boolean;
-  resume?: boolean;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -259,14 +261,23 @@ async function buildWorkflowDependencies(
   let visualRefImageOptions = {};
   let shotImageOptions = {};
   let characterModelSheetOptions = {};
+  let environmentReferenceOptions = {};
 
   if (options.command === 'run-task') {
     if (options.characterId) {
       visualRefImageOptions = { ...visualRefImageOptions, targetCharacterId: options.characterId };
-      characterModelSheetOptions = { ...characterModelSheetOptions, targetCharacterId: options.characterId };
+      if (options.task === 'CREATE_CHARACTER_MODEL_SHEETS') {
+        characterModelSheetOptions = { ...characterModelSheetOptions, targetCharacterId: options.characterId };
+      }
     }
     if (options.environmentId) {
       visualRefImageOptions = { ...visualRefImageOptions, targetEnvironmentId: options.environmentId };
+      if (options.task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE') {
+        environmentReferenceOptions = {
+          ...environmentReferenceOptions,
+          targetEnvironmentId: options.environmentId,
+        };
+      }
     }
     if (options.imageIndex !== undefined) {
       visualRefImageOptions = { ...visualRefImageOptions, targetIndex: options.imageIndex };
@@ -278,10 +289,24 @@ async function buildWorkflowDependencies(
       shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
     }
     if (options.override !== undefined) {
-      characterModelSheetOptions = { ...characterModelSheetOptions, override: options.override };
+      if (options.task === 'CREATE_CHARACTER_MODEL_SHEETS') {
+        characterModelSheetOptions = { ...characterModelSheetOptions, override: options.override };
+      }
+      if (options.task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE') {
+        environmentReferenceOptions = { ...environmentReferenceOptions, override: options.override };
+      }
     }
-    if (options.resume !== undefined) {
-      characterModelSheetOptions = { ...characterModelSheetOptions, resume: options.resume };
+    if (options.resumeCharacterModelSheets !== undefined) {
+      characterModelSheetOptions = {
+        ...characterModelSheetOptions,
+        resume: options.resumeCharacterModelSheets,
+      };
+    }
+    if (options.resumeEnvironmentReference !== undefined) {
+      environmentReferenceOptions = {
+        ...environmentReferenceOptions,
+        resume: options.resumeEnvironmentReference,
+      };
     }
   }
 
@@ -333,6 +358,13 @@ async function buildWorkflowDependencies(
       ...(imageStorage ? { imageStorage } : {}),
       verbose,
       ...characterModelSheetOptions,
+    },
+    environmentReferenceTaskOptions: {
+      logger,
+      ...(geminiImageClient ? { geminiImageClient } : {}),
+      ...(imageStorage ? { imageStorage } : {}),
+      verbose,
+      ...environmentReferenceOptions,
     },
   };
 
@@ -429,6 +461,22 @@ async function buildWorkflowDependencies(
         async generateImage() {
           return {
             imageData: Buffer.from('stub-character-model-sheet-data'),
+            mimeType: 'image/png',
+          };
+        },
+      },
+      imageStorage: {
+        async saveImage(_buffer, storyId, category, filename) {
+          return `${storyId}/${category}/${filename}`;
+        },
+      },
+    };
+    workflowOptions.environmentReferenceTaskOptions = {
+      ...workflowOptions.environmentReferenceTaskOptions,
+      geminiImageClient: {
+        async generateImage() {
+          return {
+            imageData: Buffer.from('stub-environment-reference-data'),
             mimeType: 'image/png',
           };
         },
@@ -591,9 +639,13 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       const resumeInteractiveScript = resumeFlag && task === 'CREATE_INTERACTIVE_SCRIPT';
       const resumeShotProduction = resumeFlag && task === 'CREATE_SHOT_PRODUCTION';
       const resumeModelSheets = resumeModelSheetsFlag && task === 'CREATE_CHARACTER_MODEL_SHEETS';
+      const resumeEnvironmentReference =
+        resumeFlag && task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
 
-      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction) {
-        throw new CliParseError('--resume can only be used with CREATE_INTERACTIVE_SCRIPT or CREATE_SHOT_PRODUCTION.');
+      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction && !resumeEnvironmentReference) {
+        throw new CliParseError(
+          '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+        );
       }
 
       // Validate --resume-model-sheets is used with CREATE_CHARACTER_MODEL_SHEETS
@@ -606,19 +658,24 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         console.warn('Warning: --resume-model-sheets is ignored when --character-id is specified (single-character mode).');
       }
 
+      if (resumeEnvironmentReference && environmentId) {
+        throw new CliParseError('--resume cannot be combined with --environment-id for CREATE_ENVIRONMENT_REFERENCE_IMAGE.');
+      }
+
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
         task,
         resumeInteractiveScript,
         resumeShotProduction,
+        resumeEnvironmentReference,
         characterId,
         environmentId,
         imageIndex,
         sceneletId,
         shotIndex,
         override: overrideFlag,
-        resume: resumeModelSheets,
+        resumeCharacterModelSheets: resumeModelSheets,
         ...modeOptions,
       };
     }
@@ -847,12 +904,14 @@ function printHelp(): void {
   console.log('  --supabase-key <key>         Supabase service role key override (falls back to env).');
   console.log('  --remote                     Use remote Supabase credentials (default is local).');
   console.log('  --verbose (-v)               Print debug logs.');
-  console.log('  --resume                     Resume pending interactive script or shot production tasks.');
+  console.log('  --resume                     Resume pending interactive script, shot production, or environment reference tasks.');
   console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
-  console.log('  --environment-id <id>        Generate only images for specific environment (CREATE_VISUAL_REFERENCE_IMAGES).');
+  console.log('  --environment-id <id>        Target a specific environment (CREATE_VISUAL_REFERENCE_IMAGES or CREATE_ENVIRONMENT_REFERENCE_IMAGE).');
   console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
   console.log('  --scenelet-id <id>           Generate only images for specific scenelet (CREATE_SHOT_IMAGES).');
   console.log('  --shot-index <number>        Generate only images for specific shot (1-based, use with --scenelet-id).');
+  console.log('  --override <true|false>      Regenerate images even if they already exist (model sheets or environment references).');
+  console.log('  --resume-model-sheets        Resume character model sheet generation (batch mode only).');
   console.log('  --help (-h)                  Show this help message.');
   console.log('');
   console.log('Examples:');
@@ -873,6 +932,15 @@ function printHelp(): void {
   console.log('');
   console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
+  console.log('');
+  console.log('  # Generate environment reference images for all environments');
+  console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Resume environment reference generation (skips existing images)');
+  console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --mode stub --resume');
+  console.log('');
+  console.log('  # Generate environment reference for a single environment with override');
+  console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --environment-id plaza --override true --mode stub');
   console.log('');
   console.log('Note: CREATE_SHOT_IMAGES automatically uses character model sheets and environment keyframes');
   console.log('      from the visual reference package based on the shot\'s referenced_designs field.');

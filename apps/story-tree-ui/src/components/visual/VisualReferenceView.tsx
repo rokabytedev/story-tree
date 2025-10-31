@@ -24,9 +24,11 @@ interface VisualReferenceViewProps {
 
 function transformImagePath(dbPath: string | undefined): string | undefined {
   if (!dbPath) return undefined;
-  // Add /generated/ prefix if not already present
-  if (dbPath.startsWith("/generated/")) return dbPath;
-  return `/generated/${dbPath}`;
+  const trimmed = dbPath.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("/generated/")) return trimmed;
+  if (trimmed.startsWith("generated/")) return `/${trimmed}`;
+  return `/generated/${trimmed}`;
 }
 
 function parseVisualReferencePackage(

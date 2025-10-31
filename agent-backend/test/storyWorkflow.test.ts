@@ -19,6 +19,10 @@ import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 import type { VisualReferenceTaskRunner } from '../src/visual-reference/types.js';
 import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
 import type { ShotProductionTaskRunner, ShotProductionShotsRepository } from '../src/shot-production/types.js';
+import type {
+  EnvironmentReferenceTaskDependencies,
+  EnvironmentReferenceTaskRunner,
+} from '../src/environment-reference/types.js';
 
 function createStoryRecord(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWorkflowStoryRecord {
   return {
@@ -176,6 +180,23 @@ function createVisualReferenceTask(): {
   return { runner, calls };
 }
 
+function createEnvironmentReferenceTask(): {
+  runner: EnvironmentReferenceTaskRunner;
+  calls: Array<{ storyId: string; dependencies: EnvironmentReferenceTaskDependencies }>;
+} {
+  const calls: Array<{ storyId: string; dependencies: EnvironmentReferenceTaskDependencies }> = [];
+  const runner: EnvironmentReferenceTaskRunner = async (storyId, dependencies) => {
+    calls.push({ storyId, dependencies });
+    return {
+      storyId,
+      generatedCount: 0,
+      skippedCount: 0,
+      errors: [],
+    };
+  };
+  return { runner, calls };
+}
+
 function createAudioDesignTask(): {
   runner: AudioDesignTaskRunner;
   calls: string[];
@@ -312,6 +333,7 @@ describe('storyWorkflow tasks', () => {
   const taskVisualReference: StoryWorkflowTask = 'CREATE_VISUAL_REFERENCE';
   const taskAudio: StoryWorkflowTask = 'CREATE_AUDIO_DESIGN';
   const taskShots: StoryWorkflowTask = 'CREATE_SHOT_PRODUCTION';
+  const taskEnvironmentReference: StoryWorkflowTask = 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
 
   it('runs constitution task and prevents reruns', async () => {
     const storiesRepository = createStoriesRepository(createStoryRecord({ id: 'story-constitution' }));
@@ -600,6 +622,43 @@ describe('storyWorkflow tasks', () => {
 
     await workflow.runTask(taskAudio);
     expect(audioDesign.calls).toEqual(['story-audio']);
+  });
+
+  it('runs environment reference task with configured options', async () => {
+    const storiesRepository = createStoriesRepository(createStoryRecord({
+      id: 'story-env',
+      visualDesignDocument: { environment_designs: [] },
+    }));
+    const shotsRepository = createShotsRepository();
+    const sceneletPersistence = createSceneletPersistence();
+    const treeLoader = createStoryTreeLoader();
+    const environmentReference = createEnvironmentReferenceTask();
+    const logger = { debug: vi.fn() };
+
+    const workflow = await resumeWorkflowFromStoryId('story-env', buildOptions({
+      storiesRepository,
+      shotsRepository,
+      sceneletPersistence,
+      storyTreeLoader: treeLoader.loader,
+      runEnvironmentReferenceTask: environmentReference.runner,
+      environmentReferenceTaskOptions: {
+        targetEnvironmentId: 'crystal-cavern',
+        override: true,
+        verbose: true,
+      },
+      logger,
+    }));
+
+    await workflow.runTask(taskEnvironmentReference);
+
+    expect(environmentReference.calls).toHaveLength(1);
+    const call = environmentReference.calls[0]!;
+    expect(call.storyId).toBe('story-env');
+    expect(call.dependencies.storiesRepository).toBe(storiesRepository);
+    expect(call.dependencies.targetEnvironmentId).toBe('crystal-cavern');
+    expect(call.dependencies.override).toBe(true);
+    expect(call.dependencies.verbose).toBe(true);
+    expect(call.dependencies.logger).toBe(logger);
   });
 
   it('runs shot production task, persists shots, and prevents reruns when shots exist', async () => {

@@ -458,6 +458,76 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.storyConstitution).not.toBeNull();
   });
 
+  it('executes environment reference task and persists generated path in stub mode', async () => {
+    const storyId = 'story-1';
+    const { repository, stories } = createStoriesRepositoryStub([
+      {
+        id: storyId,
+        displayName: 'Storyboard',
+        initialPrompt: 'Prompt',
+        storyConstitution: null,
+        visualDesignDocument: {
+          global_aesthetic: { palette: [] },
+          environment_designs: [
+            {
+              environment_id: 'forest-clearing',
+              detailed_description: {
+                overall_description: 'A clearing in the forest.',
+                lighting_and_atmosphere: 'Soft morning light.',
+                color_tones: 'Greens and warm sunlight.',
+                key_elements: 'Trees, mist, soft grass.',
+              },
+            },
+          ],
+        },
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    logs.length = 0;
+    errors.length = 0;
+    process.exitCode = undefined;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
+        '--story-id',
+        storyId,
+        '--mode',
+        'stub',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBeUndefined();
+    expect(errors).toEqual([]);
+    const output = JSON.parse(logs[0]);
+    expect(output).toEqual({
+      storyId,
+      task: 'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
+      status: 'completed',
+    });
+    const updatedDoc = stories[0]?.visualDesignDocument as {
+      environment_designs: Array<{ environment_reference_image_path?: string }>;
+    };
+    expect(
+      updatedDoc.environment_designs[0]?.environment_reference_image_path
+    ).toMatch(/^generated\//);
+  });
+
   it('rejects resume flag for irrelevant tasks', async () => {
     const { repository } = createStoriesRepositoryStub();
     const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
@@ -486,7 +556,9 @@ describe('agentWorkflow CLI', () => {
     );
 
     expect(process.exitCode).toBe(1);
-    expect(errors.join(' ')).toContain('--resume can only be used with CREATE_INTERACTIVE_SCRIPT or CREATE_SHOT_PRODUCTION.');
+    expect(errors.join(' ')).toContain(
+      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+    );
   });
 
   it('fails gracefully when story missing for run-task', async () => {
@@ -544,5 +616,30 @@ describe('agentWorkflow CLI', () => {
     expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
     expect(combinedErrors).toContain('CREATE_SHOT_PRODUCTION');
     expect(combinedErrors).toContain('CREATE_AUDIO_DESIGN');
+  });
+
+  it('rejects resume flag with environment id for environment reference task', async () => {
+    errors.length = 0;
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
+        '--story-id',
+        'story-1',
+        '--environment-id',
+        'forest-clearing',
+        '--resume',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain(
+      '--resume cannot be combined with --environment-id for CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+    );
   });
 });

@@ -8,3 +8,5 @@ export * from './visual-reference/index.js';
 export * from './visual-reference-image/index.js';
 export * from './audio-design/index.js';
 export * from './shot-production/index.js';
+export * from './character-model-sheet/index.js';
+export * from './environment-reference/index.js';

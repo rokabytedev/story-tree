@@ -36,8 +36,33 @@ Reference images must follow these path conventions:
 
 - **Character model sheets:** `apps/story-tree-ui/public/generated/<story-id>/visuals/characters/<character-id>/character-model-sheet-1.png`
 - **Environment keyframes:** `apps/story-tree-ui/public/generated/<story-id>/visuals/environments/<environment-id>/keyframe_1.png`
+- **Environment reference images:** `apps/story-tree-ui/public/generated/<story-id>/visuals/environments/<environment-id>/environment-reference.png`
 
 These files are automatically created by the `CREATE_VISUAL_REFERENCE_IMAGES` task.
+
+## Environment Reference Image Task
+
+Run `CREATE_ENVIRONMENT_REFERENCE_IMAGE` when you need high-fidelity environment plates derived directly from the visual design document.
+
+```bash
+# Generate structured reference images for every environment
+run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id <story-id> --mode real
+
+# Target a single environment and regenerate even if a path exists
+run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE \
+  --story-id <story-id> \
+  --environment-id <environment-id> \
+  --override true \
+  --mode real
+
+# Resume batch generation (skips environments that already have reference images)
+run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id <story-id> --mode real --resume
+```
+
+- Prompts use the structured Environment Concept Artist template and inject `global_aesthetic` plus the selected `environment_design`.
+- Generated PNGs are saved under `apps/story-tree-ui/public/generated/<story-id>/visuals/environments/<environment-id>/environment-reference.png`.
+- The visual design document is updated immediately after every successful generation via the `environment_reference_image_path` field, storing the relative value `generated/<story-id>/...`.
+- Use `--verbose` to log the assembled prompt, Gemini timing, and the saved file path.
 
 ### How It Works
 

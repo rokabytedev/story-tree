@@ -31,6 +31,12 @@ import type {
   VisualReferenceImageTaskRunner,
   VisualReferenceImageTaskDependencies,
 } from '../visual-reference-image/types.js';
+import { runEnvironmentReferenceTask as runEnvironmentReferenceTaskImpl } from '../environment-reference/environmentReferenceTask.js';
+import type {
+  EnvironmentReferenceTaskDependencies,
+  EnvironmentReferenceTaskOptions,
+  EnvironmentReferenceTaskRunner,
+} from '../environment-reference/types.js';
 import { runShotProductionTask } from '../shot-production/shotProductionTask.js';
 import type {
   ShotProductionTaskOptions,
@@ -153,6 +159,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly shotImageOptions?: ShotImageTaskOptions;
   private readonly characterModelSheetTaskRunner: CharacterModelSheetTaskRunner;
   private readonly characterModelSheetOptions?: CharacterModelSheetTaskOptions;
+  private readonly environmentReferenceTaskRunner: EnvironmentReferenceTaskRunner;
+  private readonly environmentReferenceOptions?: EnvironmentReferenceTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -207,6 +215,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.characterModelSheetOptions = dependencies.characterModelSheetTaskOptions
       ? { ...dependencies.characterModelSheetTaskOptions }
       : undefined;
+    this.environmentReferenceTaskRunner =
+      dependencies.runEnvironmentReferenceTask ?? runEnvironmentReferenceTaskImpl;
+    this.environmentReferenceOptions = dependencies.environmentReferenceTaskOptions
+      ? { ...dependencies.environmentReferenceTaskOptions }
+      : undefined;
     this.logger = dependencies.logger;
   }
 
@@ -238,6 +251,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_CHARACTER_MODEL_SHEETS':
         await this.runCharacterModelSheetsTask();
+        return;
+      case 'CREATE_ENVIRONMENT_REFERENCE_IMAGE':
+        await this.runEnvironmentReferenceImageTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -432,6 +448,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private async runCharacterModelSheetsTask(): Promise<void> {
     const dependencies = this.buildCharacterModelSheetDependencies();
     await this.characterModelSheetTaskRunner(this.storyId, dependencies);
+  }
+
+  private async runEnvironmentReferenceImageTask(): Promise<void> {
+    const dependencies = this.buildEnvironmentReferenceDependencies();
+    await this.environmentReferenceTaskRunner(this.storyId, dependencies);
   }
 
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {
@@ -661,6 +682,52 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.targetCharacterId) {
       dependencies.targetCharacterId = overrides.targetCharacterId;
+    }
+
+    if (overrides?.override !== undefined) {
+      dependencies.override = overrides.override;
+    }
+
+    if (overrides?.resume !== undefined) {
+      dependencies.resume = overrides.resume;
+    }
+
+    if (overrides?.verbose !== undefined) {
+      dependencies.verbose = overrides.verbose;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildEnvironmentReferenceDependencies(): EnvironmentReferenceTaskDependencies {
+    const overrides = this.environmentReferenceOptions;
+    const dependencies: EnvironmentReferenceTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+    };
+
+    if (overrides?.geminiImageClient) {
+      dependencies.geminiImageClient = overrides.geminiImageClient;
+    }
+
+    if (overrides?.imageStorage) {
+      dependencies.imageStorage = overrides.imageStorage;
+    }
+
+    if (overrides?.timeoutMs !== undefined) {
+      dependencies.timeoutMs = overrides.timeoutMs;
+    }
+
+    if (overrides?.retry) {
+      dependencies.retry = overrides.retry;
+    }
+
+    if (overrides?.targetEnvironmentId) {
+      dependencies.targetEnvironmentId = overrides.targetEnvironmentId;
     }
 
     if (overrides?.override !== undefined) {

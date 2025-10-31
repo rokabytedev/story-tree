@@ -211,7 +211,15 @@ function transformBranchingPointDigest(digest: BranchingPointDigest): Storyboard
 
 function transformImagePath(dbPath: string | undefined): string | null {
   if (!dbPath) return null;
-  return `/generated/${dbPath}`;
+  const trimmed = dbPath.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('/generated/')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('generated/')) {
+    return `/${trimmed}`;
+  }
+  return `/generated/${trimmed}`;
 }
 
 function mapShotRecordToShotImage(record: ShotRecord): ShotImage {
