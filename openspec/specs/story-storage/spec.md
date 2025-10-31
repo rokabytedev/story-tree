@@ -104,33 +104,42 @@ The storage layer MUST expose a repository method that returns the full interact
 - **AND** the database querying logic MUST be isolated so tests can supply scenelets directly without a live connection.
 
 ### Requirement: Store Shot Production Output
-The database MUST provide a `shots` table that persists every storyboard record and prompt set produced during shot production.
+The shots table MUST store complete storyboard entries in JSONB format without persisting redundant generation prompt strings.
 
-#### Scenario: Shots table schema established
-- **GIVEN** Supabase migrations are applied
-- **WHEN** `public.shots` is inspected
-- **THEN** it MUST include `id` (UUID primary key), `story_id` (UUID referencing `public.stories(id)` with cascade delete), `scenelet_id` (text identifier for the scenelet digest), `scenelet_sequence` (positive integer), `shot_index` (positive integer), `storyboard_payload` (JSONB), `first_frame_prompt` (text), `key_frame_prompt` (text), `video_clip_prompt` (text), `created_at` (timestamp with time zone defaulting to current UTC), and `updated_at` (timestamp with time zone)
-- **AND** it MUST enforce a uniqueness constraint on `(story_id, scenelet_id, shot_index)` to avoid duplicate inserts
-- **AND** it MUST expose an index on `(story_id, scenelet_id, shot_index)` to support ordered retrieval.
+#### Scenario: Shots table excludes prompt and first frame columns
+- **GIVEN** the Supabase migrations are applied
+- **WHEN** the `public.shots` table is inspected
+- **THEN** it MUST NOT include `first_frame_prompt`, `key_frame_prompt`, `video_clip_prompt`, or `first_frame_image_path` columns
+- **AND** it MUST include `storyboard_payload JSONB NOT NULL` to store the complete storyboard entry
+- **AND** it MUST include only `key_frame_image_path` for generated image storage (first frame generation is deprecated).
+
+#### Scenario: Storyboard payload stores structured audio narrative
+- **GIVEN** a shot is persisted after shot production
+- **WHEN** the `storyboard_payload` JSONB is inspected
+- **THEN** it MUST contain an `audio_and_narrative` array field
+- **AND** each array element MUST have `type`, `source`, and `line` fields
+- **AND** it MUST contain a `referenced_designs` object with `characters` and `environments` arrays.
 
 ### Requirement: Provide Shots Repository API
-The storage layer MUST expose helpers for reading, inserting, and validating scenelet shots without relying on live Supabase in tests.
+The repository MUST expose shot records without generation prompt fields and rely on storyboard_payload for all shot metadata.
 
-#### Scenario: Repository inserts exclusive scenelet shots
-- **GIVEN** the repository receives a story id, scenelet id, sequence number, and ordered shots
+#### Scenario: Repository does not expose deprecated properties
+- **GIVEN** the shots repository returns shot records
+- **WHEN** a shot record is mapped from a database row
+- **THEN** it MUST NOT include `firstFramePrompt`, `keyFramePrompt`, `videoClipPrompt`, or `firstFrameImagePath` properties
+- **AND** it MUST expose `storyboardPayload` containing the full JSONB data
+- **AND** it MUST expose only `keyFrameImagePath` when key frame image is generated.
+
+#### Scenario: Repository creates shots without prompt validation
+- **GIVEN** the repository receives shots to persist
 - **WHEN** `createSceneletShots` executes
-- **THEN** it MUST reject blank identifiers, non-positive sequence values, empty shot arrays, or missing prompt text
-- **AND** it MUST throw a `SceneletShotsAlreadyExistError` when rows already exist for the provided story and scenelet
-- **AND** when validation passes it MUST insert one row per shot with the provided storyboard payload and prompts.
+- **THEN** it MUST validate that `storyboardPayload` is provided
+- **AND** it MUST NOT require or validate `firstFramePrompt`, `keyFramePrompt`, or `videoClipPrompt` fields
+- **AND** it MUST insert rows with only `storyboard_payload` for shot metadata.
 
-#### Scenario: Repository reports shot coverage
-- **GIVEN** the repository receives a story id and list of scenelet ids
-- **WHEN** `findSceneletIdsMissingShots` executes
-- **THEN** it MUST trim identifiers, ignore blanks, and return only the scenelet ids lacking stored shots
-- **AND** it MUST surface storage errors as `ShotsRepositoryError` instances.
-
-#### Scenario: Repository reads shots grouped by scenelet
-- **GIVEN** the repository receives a story id with stored shots
+#### Scenario: Repository reads shots with enhanced storyboard structure
+- **GIVEN** shots are stored with the new storyboard structure
 - **WHEN** `getShotsByStory` executes
-- **THEN** it MUST fetch rows ordered by `scenelet_sequence` and `shot_index`, group them by scenelet id, and map fields to camel-case properties for callers.
+- **THEN** it MUST return shot records with `storyboardPayload` containing `referenced_designs` and `audio_and_narrative`
+- **AND** it MUST group shots by scenelet and order them by `scenelet_sequence` and `shot_index`.
 

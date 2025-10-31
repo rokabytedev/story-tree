@@ -2,7 +2,7 @@
 
 ## MODIFIED Requirements
 
-### Requirement: Store Shot Storyboard Payloads
+### Requirement: Store Shot Production Output
 The shots table MUST store complete storyboard entries in JSONB format without persisting redundant generation prompt strings.
 
 #### Scenario: Shots table excludes prompt and first frame columns
@@ -41,15 +41,3 @@ The repository MUST expose shot records without generation prompt fields and rel
 - **WHEN** `getShotsByStory` executes
 - **THEN** it MUST return shot records with `storyboardPayload` containing `referenced_designs` and `audio_and_narrative`
 - **AND** it MUST group shots by scenelet and order them by `scenelet_sequence` and `shot_index`.
-
-## REMOVED Requirements
-
-### Requirement: ~~Validate Generation Prompts During Persistence~~
-~~The repository MUST enforce that first_frame_prompt, key_frame_prompt, and video_clip_prompt are non-empty strings.~~
-
-**Rationale**: This requirement is removed because generation prompts are no longer stored in the database; image prompts are assembled from storyboard_payload on-demand.
-
-#### Scenario: ~~Repository rejects empty prompts~~
-~~- **GIVEN** the repository receives shots with blank prompt fields~~
-~~- **WHEN** `createSceneletShots` executes~~
-~~- **THEN** it MUST throw an error rejecting empty `firstFramePrompt`, `keyFramePrompt`, or `videoClipPrompt` values.~~
