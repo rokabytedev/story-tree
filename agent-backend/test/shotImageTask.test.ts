@@ -402,4 +402,179 @@ describe('runShotImageTask', () => {
 
     expect(result).toEqual<ShotImageTaskResult>({ generatedKeyFrameImages: 0, totalShots: 0 });
   });
+
+  it('regenerates a targeted shot when override is enabled', async () => {
+    mockRecommendReferenceImages.mockImplementation(() => [
+      { type: 'CHARACTER', id: 'rhea', path: '/generated/story-1/visuals/characters/rhea/model.png', description: 'Rhea model sheet' },
+    ]);
+    mockLoadReferenceImagesFromPaths.mockImplementation(() => [
+      { data: Buffer.from('reference'), mimeType: 'image/png', name: '/generated/story-1/visuals/characters/rhea/model.png' },
+    ]);
+
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+
+    const shotsMissingImages: ShotsMissingImages[] = [];
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [
+        createShotRecord({
+          keyFrameImagePath: '/generated/story-1/shots/scenelet-1/shot-1_key_frame.png',
+        }),
+      ],
+    };
+    const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+    const generateImage = vi.fn().mockResolvedValue({
+      imageData: Buffer.from('override-key-frame'),
+      mimeType: 'image/png',
+    });
+    const saveImage = vi.fn(async () => 'story-1/shots/scenelet-1/shot-1_key_frame.png');
+
+    const result = await runShotImageTask(
+      'story-1',
+      buildDependencies({
+        storiesRepository,
+        shotsRepository,
+        override: true,
+        targetSceneletId: 'scenelet-1',
+        targetShotIndex: 1,
+        geminiImageClient: { generateImage },
+        imageStorage: { saveImage },
+      })
+    );
+
+    expect(generateImage).toHaveBeenCalledTimes(1);
+    expect(saveImage).toHaveBeenCalledTimes(1);
+    expect(shotsRepository.updates).toEqual([
+      {
+        storyId: 'story-1',
+        sceneletId: 'scenelet-1',
+        shotIndex: 1,
+        paths: { keyFrameImagePath: 'story-1/shots/scenelet-1/shot-1_key_frame.png' },
+      },
+    ]);
+    expect(result).toEqual<ShotImageTaskResult>({
+      generatedKeyFrameImages: 1,
+      totalShots: 1,
+    });
+  });
+
+  it('regenerates only the targeted scenelet in override mode', async () => {
+    mockRecommendReferenceImages.mockImplementation(() => [
+      { type: 'CHARACTER', id: 'rhea', path: '/generated/story-1/visuals/characters/rhea/model.png', description: 'Rhea model sheet' },
+    ]);
+    mockLoadReferenceImagesFromPaths.mockImplementation(() => [
+      { data: Buffer.from('reference'), mimeType: 'image/png', name: '/generated/story-1/visuals/characters/rhea/model.png' },
+    ]);
+
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+
+    const shotsMissingImages: ShotsMissingImages[] = [];
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [
+        createShotRecord({
+          keyFrameImagePath: '/generated/story-1/shots/scenelet-1/shot-1_key_frame.png',
+        }),
+      ],
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb': [
+        createShotRecord({
+          sceneletId: 'scenelet-2',
+          sceneletRef: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          shotIndex: 4,
+          keyFrameImagePath: '/generated/story-1/shots/scenelet-2/shot-4_key_frame.png',
+        }),
+      ],
+    };
+    const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+    const generateImage = vi.fn().mockResolvedValue({
+      imageData: Buffer.from('override-targeted-shot'),
+      mimeType: 'image/png',
+    });
+    const saveImage = vi.fn(async (_buffer, _storyId, _category, filename) => `story-1/${filename}`);
+
+    const result = await runShotImageTask(
+      'story-1',
+      buildDependencies({
+        storiesRepository,
+        shotsRepository,
+        override: true,
+        targetSceneletId: 'scenelet-2',
+        targetShotIndex: 4,
+        geminiImageClient: { generateImage },
+        imageStorage: { saveImage },
+      })
+    );
+
+    expect(generateImage).toHaveBeenCalledTimes(1);
+    expect(saveImage).toHaveBeenCalledTimes(1);
+    expect(shotsRepository.updates).toEqual([
+      {
+        storyId: 'story-1',
+        sceneletId: 'scenelet-2',
+        shotIndex: 4,
+        paths: { keyFrameImagePath: 'story-1/shot-4_key_frame.png' },
+      },
+    ]);
+    expect(result).toEqual<ShotImageTaskResult>({
+      generatedKeyFrameImages: 1,
+      totalShots: 1,
+    });
+  });
+
+  it('regenerates all shots in batch override mode', async () => {
+    mockRecommendReferenceImages.mockImplementation(() => [
+      { type: 'CHARACTER', id: 'rhea', path: '/generated/story-1/visuals/characters/rhea/model.png', description: 'Rhea model sheet' },
+    ]);
+    mockLoadReferenceImagesFromPaths.mockImplementation(() => [
+      { data: Buffer.from('reference'), mimeType: 'image/png', name: '/generated/story-1/visuals/characters/rhea/model.png' },
+    ]);
+
+    const story = createStory();
+    const storiesRepository = createStoriesRepository(story);
+
+    const shotsMissingImages: ShotsMissingImages[] = [];
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [
+        createShotRecord({
+          keyFrameImagePath: '/generated/story-1/shots/scenelet-1/shot-1_key_frame.png',
+        }),
+      ],
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb': [
+        createShotRecord({
+          sceneletId: 'scenelet-2',
+          sceneletRef: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          shotIndex: 2,
+          keyFrameImagePath: '/generated/story-1/shots/scenelet-2/shot-2_key_frame.png',
+        }),
+      ],
+    };
+    const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
+
+    const generateImage = vi.fn().mockResolvedValue({
+      imageData: Buffer.from('override'),
+      mimeType: 'image/png',
+    });
+    const saveImage = vi.fn(async (_buffer, _storyId, _category, filename) => `story-1/${filename}`);
+
+    const result = await runShotImageTask(
+      'story-1',
+      buildDependencies({
+        storiesRepository,
+        shotsRepository,
+        override: true,
+        geminiImageClient: { generateImage },
+        imageStorage: { saveImage },
+      })
+    );
+
+    expect(generateImage).toHaveBeenCalledTimes(2);
+    expect(saveImage).toHaveBeenCalledTimes(2);
+    expect(shotsRepository.updates).toHaveLength(2);
+    expect(result).toEqual<ShotImageTaskResult>({
+      generatedKeyFrameImages: 2,
+      totalShots: 2,
+    });
+  });
 });

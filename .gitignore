@@ -44,3 +44,4 @@ supabase/config.toml
 **/dist/
 
 apps/story-tree-ui/public/generated/
+output

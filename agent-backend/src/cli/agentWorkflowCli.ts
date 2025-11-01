@@ -313,6 +313,9 @@ async function buildWorkflowDependencies(
       if (options.task === 'CREATE_CHARACTER_MODEL_SHEETS') {
         characterModelSheetOptions = { ...characterModelSheetOptions, override: options.override };
       }
+      if (options.task === 'CREATE_SHOT_IMAGES') {
+        shotImageOptions = { ...shotImageOptions, override: options.override };
+      }
       if (options.task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE') {
         environmentReferenceOptions = { ...environmentReferenceOptions, override: options.override };
       }
@@ -651,7 +654,9 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
     if (!token.startsWith('-')) {
-      continue;
+      throw new CliParseError(
+        `Unexpected argument "${token}". Flags must start with "--" (did you mean "--${token}"?).`
+      );
     }
 
     switch (token) {
@@ -714,9 +719,14 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         imageIndex = parsed;
         break;
       }
-      case '--scenelet-id':
-        sceneletId = rest[++index];
+      case '--scenelet-id': {
+        const value = rest[++index];
+        if (!value || value.startsWith('-')) {
+          throw new CliParseError('Missing value for --scenelet-id flag.');
+        }
+        sceneletId = value;
         break;
+      }
       case '--shot-index': {
         const value = rest[++index];
         const parsed = value ? Number.parseInt(value, 10) : NaN;

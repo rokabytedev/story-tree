@@ -4,7 +4,12 @@ import { assembleKeyFramePrompt } from './keyFramePromptAssembler.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
 import { recommendReferenceImages, ReferenceImageRecommenderError } from '../reference-images/index.js';
 import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
-import type { ReferencedDesigns, ShotProductionStoryboardEntry, ShotRecord } from '../shot-production/types.js';
+import type {
+  ReferencedDesigns,
+  ShotProductionStoryboardEntry,
+  ShotRecord,
+  ShotsMissingImages,
+} from '../shot-production/types.js';
 import type { VisualDesignDocument } from '../visual-design/types.js';
 
 const DEFAULT_ASPECT_RATIO = '16:9';
@@ -29,6 +34,7 @@ export async function runShotImageTask(
     logger,
     aspectRatio = DEFAULT_ASPECT_RATIO,
     retry,
+    override = false,
   } = dependencies;
 
   if (!geminiImageClient) {
@@ -58,44 +64,6 @@ export async function runShotImageTask(
   const targetSceneletId = dependencies.targetSceneletId?.trim();
   const targetShotIndex = dependencies.targetShotIndex;
 
-  // Find shots missing images
-  const shotsMissingImages = await shotsRepository.findShotsMissingImages(storyId);
-
-  // Filter by target if specified
-  let shotsToProcess = shotsMissingImages;
-  if (targetSceneletId) {
-    shotsToProcess = shotsMissingImages.filter((shot) => shot.sceneletId === targetSceneletId);
-    if (shotsToProcess.length === 0) {
-      throw new ShotImageTaskError(
-        `Target scenelet "${targetSceneletId}" not found in story or has no missing images.`
-      );
-    }
-  }
-  if (targetShotIndex !== undefined) {
-    shotsToProcess = shotsToProcess.filter((shot) => shot.shotIndex === targetShotIndex);
-    if (shotsToProcess.length === 0) {
-      const targetDesc = targetSceneletId
-        ? `shot ${targetShotIndex} in scenelet "${targetSceneletId}"`
-        : `shot with index ${targetShotIndex}`;
-      throw new ShotImageTaskError(
-        `Target ${targetDesc} not found in story or has no missing images.`
-      );
-    }
-  }
-
-  if (shotsToProcess.length === 0) {
-    logger?.debug?.('All shots already have images', { storyId });
-    return {
-      generatedKeyFrameImages: 0,
-      totalShots: 0,
-    };
-  }
-
-  logger?.debug?.('Found shots missing images', {
-    storyId,
-    count: shotsToProcess.length,
-  });
-
   // Load all shots for the story
   const shotsByScenelet = await shotsRepository.getShotsByStory(storyId);
   const shotsBySceneletId = new Map<string, ShotRecord[]>();
@@ -109,6 +77,66 @@ export async function runShotImageTask(
     }
   }
 
+  // Find shots missing images
+  const shotsMissingImages = await shotsRepository.findShotsMissingImages(storyId);
+
+  // Decide which shots to process based on override and targeting
+  let shotsToProcess: ShotsMissingImages[];
+  if (override) {
+    shotsToProcess = [];
+    for (const shots of shotsBySceneletId.values()) {
+      for (const shot of shots) {
+        const hasKeyFrame =
+          typeof shot.keyFrameImagePath === 'string' && shot.keyFrameImagePath.trim().length > 0;
+        shotsToProcess.push({
+          sceneletId: shot.sceneletId,
+          shotIndex: shot.shotIndex,
+          missingKeyFrame: !hasKeyFrame,
+        });
+      }
+    }
+  } else {
+    shotsToProcess = shotsMissingImages;
+  }
+
+  if (targetSceneletId) {
+    shotsToProcess = shotsToProcess.filter((shot) => shot.sceneletId === targetSceneletId);
+    if (shotsToProcess.length === 0) {
+      const reason = override
+        ? `Target scenelet "${targetSceneletId}" not found in story.`
+        : `Target scenelet "${targetSceneletId}" not found in story or has no missing images.`;
+      throw new ShotImageTaskError(reason);
+    }
+  }
+
+  if (targetShotIndex !== undefined) {
+    shotsToProcess = shotsToProcess.filter((shot) => shot.shotIndex === targetShotIndex);
+    if (shotsToProcess.length === 0) {
+      const targetDesc = targetSceneletId
+        ? `shot ${targetShotIndex} in scenelet "${targetSceneletId}"`
+        : `shot with index ${targetShotIndex}`;
+      const reason = override
+        ? `Target ${targetDesc} not found in story.`
+        : `Target ${targetDesc} not found in story or has no missing images.`;
+      throw new ShotImageTaskError(reason);
+    }
+  }
+
+  if (shotsToProcess.length === 0) {
+    const message = override ? 'No shots available for override' : 'All shots already have images';
+    logger?.debug?.(message, { storyId });
+    return {
+      generatedKeyFrameImages: 0,
+      totalShots: 0,
+    };
+  }
+
+  logger?.debug?.(override ? 'Override mode: regenerating shot images' : 'Found shots missing images', {
+    storyId,
+    count: shotsToProcess.length,
+  });
+
+  const totalShots = shotsToProcess.length;
   let generatedKeyFrameImages = 0;
 
   // Process each shot that needs images
@@ -126,7 +154,7 @@ export async function runShotImageTask(
       continue;
     }
 
-    if (!missingKeyFrame) {
+    if (!missingKeyFrame && !override) {
       logger?.debug?.('Skipping shot with existing key frame image', { sceneletId, shotIndex });
       continue;
     }
@@ -203,12 +231,12 @@ export async function runShotImageTask(
   logger?.debug?.('Shot image generation complete', {
     storyId,
     generatedKeyFrameImages,
-    totalShots: shotsMissingImages.length,
+    totalShots,
   });
 
   return {
     generatedKeyFrameImages,
-    totalShots: shotsMissingImages.length,
+    totalShots,
   };
 }
 

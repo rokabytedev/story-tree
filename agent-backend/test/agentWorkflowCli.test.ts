@@ -35,6 +35,7 @@ vi.mock(new URL('../../supabase/src/shotsRepository.js', import.meta.url).pathna
 
 import { runCli } from '../src/cli/agentWorkflowCli.js';
 import type { ShotCreationInput, ShotProductionShotsRepository, ShotRecord } from '../src/shot-production/types.js';
+import type { AgentWorkflowOptions, StoryWorkflow } from '../src/workflow/types.js';
 
 interface StubStory {
   id: string;
@@ -701,6 +702,191 @@ describe('agentWorkflow CLI', () => {
       task: 'CREATE_SHOT_IMAGES',
       status: 'completed',
     });
+  });
+
+  it('passes override flag to shot image task options', async () => {
+    const { repository } = createStoriesRepositoryStub([
+      {
+        id: 'story-1',
+        displayName: 'Test Story',
+        initialPrompt: 'Test prompt',
+        storyConstitution: null,
+        visualDesignDocument: {},
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    const workflowModule = await import('../src/workflow/storyWorkflow.js');
+    const runTask = vi.fn<StoryWorkflow['runTask']>(async (task) => {
+      expect(task).toBe('CREATE_SHOT_IMAGES');
+    });
+
+    const workflow: StoryWorkflow = {
+      storyId: 'story-1',
+      runTask,
+      async runAllTasks() {
+        return {
+          storyId: 'story-1',
+          storyTitle: 'Test Story',
+          storyConstitutionMarkdown: '# Constitution',
+        };
+      },
+    };
+
+    const resumeCalls: Array<[string, AgentWorkflowOptions]> = [];
+    const resumeSpy = vi
+      .spyOn(workflowModule, 'resumeWorkflowFromStoryId')
+      .mockImplementation(async (storyId: string, options: AgentWorkflowOptions) => {
+        resumeCalls.push([storyId, options]);
+        return workflow;
+      });
+
+    try {
+      await runCli(
+        [
+          'run-task',
+          '--task',
+          'CREATE_SHOT_IMAGES',
+          '--story-id',
+          'story-1',
+          '--scenelet-id',
+          'scenelet-1',
+          '--shot-index',
+          '2',
+          '--override',
+          '--mode',
+          'stub',
+        ],
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+        }
+      );
+    } finally {
+      resumeSpy.mockRestore();
+    }
+
+    expect(resumeCalls).toHaveLength(1);
+    const [, workflowOptions] = resumeCalls[0] ?? [];
+    expect(workflowOptions.shotImageTaskOptions?.override).toBe(true);
+    expect(workflowOptions.shotImageTaskOptions?.targetSceneletId).toBe('scenelet-1');
+    expect(workflowOptions.shotImageTaskOptions?.targetShotIndex).toBe(2);
+    expect(runTask).toHaveBeenCalledTimes(1);
+    const output = JSON.parse(logs[0]);
+    expect(output).toEqual({
+      storyId: 'story-1',
+      task: 'CREATE_SHOT_IMAGES',
+      status: 'completed',
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it('throws when shot-index flag is missing "--" prefix', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue({
+      getShotsByStory: vi.fn(async () => ({})),
+      getShotsBySceneletRef: vi.fn(async () => []),
+      createSceneletShots: vi.fn(),
+      findSceneletIdsMissingShots: vi.fn(async () => []),
+      findShotsMissingImages: vi.fn(async () => []),
+      updateShotImagePaths: vi.fn(),
+      updateShotAudioPath: vi.fn(),
+    } as any);
+
+    errors.length = 0;
+    logs.length = 0;
+    process.exitCode = undefined;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_IMAGES',
+        '--story-id',
+        'story-1',
+        '--scenelet-id',
+        'scenelet-1',
+        'shot-index',
+        '2',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join('\n')).toContain('Unexpected argument "shot-index"');
+    expect(logs).toEqual([]);
+  });
+
+  it('throws when --scenelet-id value is missing', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue({
+      getShotsByStory: vi.fn(async () => ({})),
+      getShotsBySceneletRef: vi.fn(async () => []),
+      createSceneletShots: vi.fn(),
+      findSceneletIdsMissingShots: vi.fn(async () => []),
+      findShotsMissingImages: vi.fn(async () => []),
+      updateShotImagePaths: vi.fn(),
+      updateShotAudioPath: vi.fn(),
+    } as any);
+
+    errors.length = 0;
+    logs.length = 0;
+    process.exitCode = undefined;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_IMAGES',
+        '--story-id',
+        'story-1',
+        '--scenelet-id',
+        '--override',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join('\n')).toContain('Missing value for --scenelet-id flag.');
+    expect(logs).toEqual([]);
   });
 
   it('accepts --resume for CREATE_SHOT_AUDIO tasks', async () => {

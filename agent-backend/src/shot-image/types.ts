@@ -22,6 +22,7 @@ export interface ShotImageTaskDependencies {
   targetShotIndex?: number;
   aspectRatio?: string;
   retry?: GeminiRetryOptions;
+  override?: boolean;
   verbose?: boolean;
 }
 

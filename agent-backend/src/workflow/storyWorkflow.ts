@@ -713,6 +713,10 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.retry = overrides.retry;
     }
 
+    if (overrides?.override !== undefined) {
+      dependencies.override = overrides.override;
+    }
+
     const logger = overrides?.logger ?? this.logger;
     if (logger) {
       dependencies.logger = logger;
