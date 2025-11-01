@@ -12,6 +12,15 @@
         }
       },
       {
+        "character_name": "Mentor Guide",
+        "role": "Strategist",
+        "detailed_description": {
+          "silhouette": "Tall figure with flowing coat lines that echo circuit traces.",
+          "color_palette": ["#8A2BE2", "#E0FFFF"],
+          "notable_features": "Animated holo-scrolls that orbit while they explain branching tactics."
+        }
+      },
+      {
         "character_name": "Narrator",
         "role": "Voice of System",
         "detailed_description": {

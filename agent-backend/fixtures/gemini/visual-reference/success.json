@@ -17,6 +17,21 @@
         ]
       },
       {
+        "character_id": "mentor-guide",
+        "reference_plates": [
+          {
+            "plate_description": "Model sheet detailing Mentor Guide's strategist attire and holographic tools.",
+            "type": "CHARACTER_MODEL_SHEET",
+            "image_generation_prompt": "Character model sheet for Mentor Guide, the strategist. Present full orthographic rotations showcasing their long, circuit-lined coat and calm commanding posture. Include bust expressions for thoughtful, encouraging, and resolute moods. Maintain a palette of violet energy trims with ice-blue highlights, keeping lighting neutral to emphasize garment details."
+          },
+          {
+            "plate_description": "Interaction plate of Mentor Guide projecting branching tactics.",
+            "type": "CHARACTER_ACTION_SHOT",
+            "image_generation_prompt": "Illustration of Mentor Guide unfurling animated holo-scrolls in the Sandbox Studio. Their hands direct luminous schematic ribbons that chart branching story routes, casting soft teal light across the scene. Convey deliberate grace and strategic focus with dynamic yet controlled motion trails."
+          }
+        ]
+      },
+      {
         "character_id": "narrator",
         "reference_plates": [
           {

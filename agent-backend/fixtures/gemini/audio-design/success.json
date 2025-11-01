@@ -12,16 +12,19 @@
     "character_voice_profiles": [
       {
         "character_name": "Rhea",
+        "voice_description": "Rhea speaks with a bright, curious cadence that glides between playful riffs and focused determination without losing warmth.",
         "voice_profile": "Rhea's voice is bright and agile with an undercurrent of curiosity, easily shifting from playful banter to focused determination.",
         "voice_name": "Puck"
       },
       {
         "character_name": "Mentor Guide",
+        "voice_description": "Mentor Guide resonates with calm authority, offering steady reassurance that keeps listeners grounded even when the story branches.",
         "voice_profile": "The mentor voice carries serene authority with a gentle resonance, reassuring listeners while guiding them through discoveries.",
         "voice_name": "Deneb"
       },
       {
         "character_name": "Testing Agent",
+        "voice_description": "Testing Agent sounds like an upbeat lab partner: crisp articulation, light humor, and an ever-present readiness to collaborate.",
         "voice_profile": "Testing Agent blends cheerful enthusiasm with articulate precision, sounding like a friendly AI assistant ready to collaborate.",
         "voice_name": "Lyra"
       }

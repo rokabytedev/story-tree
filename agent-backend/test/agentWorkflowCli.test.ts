@@ -382,7 +382,14 @@ describe('agentWorkflow CLI', () => {
     expect(stories[0]?.visualDesignDocument).not.toBeNull();
     expect(stories[0]?.visualReferencePackage).not.toBeNull();
     expect(stories[0]?.audioDesignDocument).not.toBeNull();
-    expect(shotsRepository.created).toEqual([
+    expect(
+      shotsRepository.created.map(({ storyId, sceneletId, sceneletSequence, shotIndices }) => ({
+        storyId,
+        sceneletId,
+        sceneletSequence,
+        shotIndices,
+      }))
+    ).toEqual([
       { storyId: stories[0]!.id, sceneletId: 'scenelet-1', sceneletSequence: 1, shotIndices: [1, 2] },
       { storyId: stories[0]!.id, sceneletId: 'scenelet-2', sceneletSequence: 2, shotIndices: [1, 2] },
       { storyId: stories[0]!.id, sceneletId: 'scenelet-3', sceneletSequence: 3, shotIndices: [1, 2] },
@@ -436,7 +443,14 @@ describe('agentWorkflow CLI', () => {
     expect(errors).toEqual([]);
     const result = JSON.parse(logs[0]);
     expect(result).toEqual({ storyId, task: 'CREATE_SHOT_PRODUCTION', status: 'completed' });
-    expect(shotsRepository.created).toEqual([
+    expect(
+      shotsRepository.created.map(({ storyId: id, sceneletId, sceneletSequence, shotIndices }) => ({
+        storyId: id,
+        sceneletId,
+        sceneletSequence,
+        shotIndices,
+      }))
+    ).toEqual([
       { storyId, sceneletId: 'scenelet-1', sceneletSequence: 1, shotIndices: [1, 2] },
       { storyId, sceneletId: 'scenelet-2', sceneletSequence: 2, shotIndices: [1, 2] },
       { storyId, sceneletId: 'scenelet-3', sceneletSequence: 3, shotIndices: [1, 2] },
