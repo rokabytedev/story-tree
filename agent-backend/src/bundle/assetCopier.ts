@@ -2,6 +2,7 @@ import path from 'node:path';
 import * as fsPromises from 'node:fs/promises';
 
 import type { ShotRecord } from '../shot-production/types.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from '../shot-audio/constants.js';
 import { buildAudioRelativePath, buildImageRelativePath, BundleAssemblyError } from './bundleAssembler.js';
 import type {
   AssetCopierOptions,
@@ -190,6 +191,10 @@ function resolveSourcePath(root: string, relativePath?: string | null): string |
 
   const trimmed = relativePath.trim();
   if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed.toUpperCase() === SKIPPED_AUDIO_PLACEHOLDER) {
     return null;
   }
 

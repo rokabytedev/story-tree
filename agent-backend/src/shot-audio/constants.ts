@@ -1,0 +1,1 @@
+export const SKIPPED_AUDIO_PLACEHOLDER = 'N/A';

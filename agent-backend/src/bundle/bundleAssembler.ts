@@ -1,6 +1,7 @@
 import { normalizeStoredSceneletContent } from '../interactive-story/sceneletUtils.js';
 import type { SceneletRecord } from '../interactive-story/types.js';
 import type { ShotRecord } from '../shot-production/types.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from '../shot-audio/constants.js';
 import {
   type AssetManifest,
   type BundleAssemblerDependencies,
@@ -245,7 +246,7 @@ export function buildManifestFromShotMap(
 
     for (const shot of shots) {
       const hasImage = Boolean(shot.keyFrameImagePath?.trim?.());
-      const hasAudio = Boolean(shot.audioFilePath?.trim?.());
+      const hasAudio = hasPlayableAudioPath(shot.audioFilePath);
 
       if (!hasImage && !hasAudio) {
         continue;
@@ -267,6 +268,14 @@ export function buildManifestFromShotMap(
   }
 
   return manifest;
+}
+
+function hasPlayableAudioPath(path?: string | null): boolean {
+  const trimmed = path?.trim?.();
+  if (!trimmed) {
+    return false;
+  }
+  return trimmed.toUpperCase() !== SKIPPED_AUDIO_PLACEHOLDER;
 }
 
 function buildChildrenMap(scenelets: SceneletRecord[]): Map<string, SceneletRecord[]> {

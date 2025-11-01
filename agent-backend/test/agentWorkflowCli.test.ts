@@ -648,8 +648,58 @@ describe('agentWorkflow CLI', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors.join(' ')).toContain(
-      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
     );
+  });
+
+  it('accepts --resume for CREATE_SHOT_AUDIO tasks', async () => {
+    const storiesRepository = {
+      getStoryById: vi.fn(async () => null),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    };
+    const sceneletsRepository = {
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    };
+    const shotsRepository = {
+      getShotsByStory: vi.fn(async () => ({})),
+      getShotsBySceneletRef: vi.fn(async () => []),
+      createSceneletShots: vi.fn(),
+      findSceneletIdsMissingShots: vi.fn(async () => []),
+      findShotsMissingImages: vi.fn(async () => []),
+      updateShotImagePaths: vi.fn(),
+      updateShotAudioPath: vi.fn(),
+    };
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(storiesRepository as any);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository as any);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository as any);
+
+    errors.length = 0;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_AUDIO',
+        '--story-id',
+        'story-1',
+        '--resume',
+        '--mode',
+        'stub',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(errors.join(' ')).not.toContain('--resume can only be used');
   });
 
   it('fails gracefully when story missing for run-task', async () => {

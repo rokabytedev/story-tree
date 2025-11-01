@@ -324,6 +324,7 @@
       (() => {
         const RAMP_UP_MS = 500;
         const RAMP_DOWN_MS = 500;
+        const NO_AUDIO_HOLD_MS = 3000;
 
         const elements = {
           error: document.getElementById('error-panel'),
@@ -636,7 +637,10 @@
           if (shot.audioPath) {
             scheduleAction(() => startAudioPlayback(shot.audioPath), RAMP_UP_MS);
           } else {
-            scheduleAction(() => onShotAudioComplete(), RAMP_UP_MS + RAMP_DOWN_MS);
+            scheduleAction(() => {
+              setStage('audio');
+              scheduleAction(() => onShotAudioComplete(), NO_AUDIO_HOLD_MS);
+            }, RAMP_UP_MS);
           }
         }
 

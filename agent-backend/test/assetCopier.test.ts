@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { ShotRecord } from '../../shot-production/types.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
 import { copyAssets } from '../src/bundle/assetCopier.js';
 
 const TMP_PREFIX = 'asset-copier-test-';
@@ -144,5 +145,50 @@ describe('copyAssets', () => {
     });
 
     expect(manifest.size).toBe(0);
+  });
+
+  it('omits placeholder audio paths from manifest and copy operations', async () => {
+    const root = await createTempRoot();
+    tempRoots.push(root);
+
+    const generatedRoot = path.join(root, 'generated');
+    const storyId = 'story-placeholder';
+    const sceneletId = 'scenelet-gap';
+    const shotsDir = path.join(generatedRoot, storyId, 'shots', sceneletId);
+
+    await fs.mkdir(shotsDir, { recursive: true });
+    const imageSource = path.join(shotsDir, 'shot-1_key_frame.png');
+    await fs.writeFile(imageSource, Buffer.from('image-data'));
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      [sceneletId]: [
+        createShotRecord({
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/${sceneletId}/shot-1_key_frame.png`,
+          audioFilePath: SKIPPED_AUDIO_PLACEHOLDER,
+        }),
+      ],
+    };
+
+    const outputRoot = path.join(root, 'output');
+    const warn = vi.fn();
+
+    const manifest = await copyAssets(storyId, shotsByScenelet, outputRoot, {
+      generatedAssetsRoot: generatedRoot,
+      logger: { warn },
+    });
+
+    const sceneletManifest = manifest.get(sceneletId);
+    expect(sceneletManifest?.get(1)).toEqual({
+      imagePath: `assets/shots/${sceneletId}/1_key_frame.png`,
+      audioPath: null,
+    });
+
+    const targetImage = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_key_frame.png');
+    await expect(fs.stat(targetImage)).resolves.toBeDefined();
+
+    const targetAudio = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_audio.wav');
+    await expect(fs.stat(targetAudio)).rejects.toThrow();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

@@ -4,9 +4,11 @@ import type { SceneletRecord } from '../../interactive-story/types.js';
 import type { ShotRecord } from '../../shot-production/types.js';
 import {
   assembleBundleJson,
+  buildManifestFromShotMap,
   BundleAssemblyError,
 } from '../src/bundle/bundleAssembler.js';
 import type { AssetManifest, BundleAssemblerDependencies } from '../src/bundle/types.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
 
 const ISO_NOW = '2024-01-01T00:00:00.000Z';
 
@@ -201,6 +203,28 @@ describe('assembleBundleJson', () => {
         preloadedShots: { root: [] },
       })
     ).rejects.toBeInstanceOf(BundleAssemblyError);
+  });
+});
+
+describe('buildManifestFromShotMap', () => {
+  it('ignores placeholder audio paths while retaining images', () => {
+    const sceneletId = 'scenelet-1';
+    const manifest = buildManifestFromShotMap({
+      [sceneletId]: [
+        createShotRecord({
+          sceneletId,
+          shotIndex: 1,
+          keyFrameImagePath: 'story-1/shots/scenelet-1/shot-1_key_frame.png',
+          audioFilePath: SKIPPED_AUDIO_PLACEHOLDER,
+        }),
+      ],
+    });
+
+    const entry = manifest.get(sceneletId)?.get(1);
+    expect(entry).toEqual({
+      imagePath: 'assets/shots/scenelet-1/1_key_frame.png',
+      audioPath: null,
+    });
   });
 });
 

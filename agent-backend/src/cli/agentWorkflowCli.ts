@@ -790,11 +790,11 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       const resumeModelSheets = resumeModelSheetsFlag && task === 'CREATE_CHARACTER_MODEL_SHEETS';
       const resumeEnvironmentReference =
         resumeFlag && task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
-      const resumeShotAudio = resumeShotAudioFlag && task === 'CREATE_SHOT_AUDIO';
+      const resumeShotAudio = (resumeFlag || resumeShotAudioFlag) && task === 'CREATE_SHOT_AUDIO';
 
-      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction && !resumeEnvironmentReference) {
+      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction && !resumeEnvironmentReference && !resumeShotAudio) {
         throw new CliParseError(
-          '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+          '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
         );
       }
 
@@ -1062,7 +1062,7 @@ function printHelp(): void {
   console.log('  --supabase-key <key>         Supabase service role key override (falls back to env).');
   console.log('  --remote                     Use remote Supabase credentials (default is local).');
   console.log('  --verbose (-v)               Print debug logs.');
-  console.log('  --resume                     Resume pending interactive script, shot production, or environment reference tasks.');
+  console.log('  --resume                     Resume pending interactive script, shot production, shot audio, or environment reference tasks.');
   console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
   console.log('  --environment-id <id>        Target a specific environment (CREATE_VISUAL_REFERENCE_IMAGES or CREATE_ENVIRONMENT_REFERENCE_IMAGE).');
   console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
@@ -1098,7 +1098,7 @@ function printHelp(): void {
   console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --mode stub');
   console.log('');
   console.log('  # Resume shot audio generation only for scenelet "intro-scene"');
-  console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --scenelet-id intro-scene --mode stub --resume-shot-audio');
+  console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --scenelet-id intro-scene --mode stub --resume');
   console.log('');
   console.log('  # Generate environment reference images for all environments');
   console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --mode stub');

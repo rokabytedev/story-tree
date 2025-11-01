@@ -6,6 +6,7 @@ import type { ShotAudioTaskDependencies, ShotAudioPrompt } from '../src/shot-aud
 import { ShotAudioTaskError } from '../src/shot-audio/errors.js';
 import type { AgentWorkflowStoryRecord } from '../src/workflow/types.js';
 import type { ShotRecord } from '../src/shot-production/types.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
 
 function createStory(): AgentWorkflowStoryRecord {
   return {
@@ -76,8 +77,8 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
     };
   });
 
-  const updateShotAudioPath = vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number) => {
-    shot.audioFilePath = `generated/story-123/shots/${shot.sceneletId}/1_audio.wav`;
+  const updateShotAudioPath = vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number, audioPath: string | null) => {
+    shot.audioFilePath = audioPath ?? null;
     return shot;
   });
 
@@ -146,6 +147,40 @@ describe('runShotAudioTask', () => {
       savedPaths[0]
     );
     expect(shot.audioFilePath).toBe(savedPaths[0]);
+  });
+
+  it('skips shots that have empty audioAndNarrative arrays', async () => {
+    const shot = createShotRecord({
+      audioFilePath: undefined,
+      storyboardPayload: {
+        audioAndNarrative: [],
+      } as any,
+    });
+
+    const speakerAnalyzer = vi.fn();
+    const promptAssembler = vi.fn();
+    const logger = { debug: vi.fn() };
+
+    const { dependencies, synthesize, saveShotAudio, updateShotAudioPath } = createDependencies(shot, {
+      speakerAnalyzer: speakerAnalyzer as any,
+      promptAssembler: promptAssembler as any,
+      logger,
+    });
+
+    const result = await runShotAudioTask('story-123', dependencies);
+
+    expect(result).toEqual({ generatedAudio: 0, skippedShots: 1, totalShots: 1 });
+    expect(speakerAnalyzer).not.toHaveBeenCalled();
+    expect(promptAssembler).not.toHaveBeenCalled();
+    expect(synthesize).not.toHaveBeenCalled();
+    expect(saveShotAudio).not.toHaveBeenCalled();
+    expect(updateShotAudioPath).toHaveBeenCalledWith('story-123', 'scenelet-1', 1, SKIPPED_AUDIO_PLACEHOLDER);
+    expect(shot.audioFilePath).toBe(SKIPPED_AUDIO_PLACEHOLDER);
+    expect(logger.debug).toHaveBeenCalledWith('Skipping shot audio generation: no audio entries in storyboard.', {
+      storyId: 'story-123',
+      sceneletId: 'scenelet-1',
+      shotIndex: 1,
+    });
   });
 
   it('throws in default mode when audio already exists', async () => {

@@ -1,5 +1,6 @@
 import { assembleShotAudioPrompt } from './promptAssembler.js';
 import { analyzeSpeakers } from './speakerAnalyzer.js';
+import { SKIPPED_AUDIO_PLACEHOLDER } from './constants.js';
 import {
   ShotAudioTaskError,
   ShotAudioValidationError,
@@ -119,6 +120,7 @@ export async function runShotAudioTask(
     mode === 'resume' ? shotQueue.filter(({ shot }) => !hasAudio(shot)) : [...shotQueue];
 
   const skippedShots = totalShots - processQueue.length;
+  let skippedShotsWithoutAudio = 0;
 
   if (processQueue.length === 0) {
     logger?.debug?.('No shots require audio generation.');
@@ -134,6 +136,25 @@ export async function runShotAudioTask(
   for (const item of processQueue) {
     try {
       const storyboard = parseStoryboardPayload(item.shot.storyboardPayload, storyId, item);
+      if (storyboard.audioAndNarrative.length === 0) {
+        logger?.debug?.('Skipping shot audio generation: no audio entries in storyboard.', {
+          storyId,
+          sceneletId: item.sceneletId,
+          shotIndex: item.shot.shotIndex,
+        });
+
+        const updatedShot = await shotsRepository.updateShotAudioPath(
+          storyId,
+          item.sceneletId,
+          item.shot.shotIndex,
+          SKIPPED_AUDIO_PLACEHOLDER
+        );
+
+        item.shot.audioFilePath = updatedShot.audioFilePath;
+        skippedShotsWithoutAudio += 1;
+        continue;
+      }
+
       const analysis = speakerAnalyzer(storyboard.audioAndNarrative);
       const prompt = promptAssembler({
         shot: item.shot,
@@ -175,7 +196,7 @@ export async function runShotAudioTask(
 
   return {
     generatedAudio,
-    skippedShots,
+    skippedShots: skippedShots + skippedShotsWithoutAudio,
     totalShots,
   };
 }
@@ -301,7 +322,10 @@ function buildShotQueue(
 
 function hasAudio(shot: ShotRecord): boolean {
   const path = shot.audioFilePath?.trim();
-  return Boolean(path);
+  if (!path) {
+    return false;
+  }
+  return path !== SKIPPED_AUDIO_PLACEHOLDER;
 }
 
 async function synthesizeAudio(
