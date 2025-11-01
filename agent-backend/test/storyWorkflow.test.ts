@@ -121,6 +121,7 @@ const STORY_TREE: StoryTreeSnapshot = {
   entries: [
     {
       kind: 'scenelet',
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       data: {
         id: 'scenelet-1',
         parentId: null,
@@ -216,16 +217,16 @@ function createAudioDesignTask(): {
 }
 
 function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRepository & {
-  created: Array<{ storyId: string; sceneletId: string; shotIndices: number[] }>;
+  created: Array<{ storyId: string; sceneletRef: string; sceneletId: string; shotIndices: number[] }>;
   existing: Set<string>;
 } {
   const existing = preexisting ?? new Set<string>();
-  const created: Array<{ storyId: string; sceneletId: string; shotIndices: number[] }> = [];
+  const created: Array<{ storyId: string; sceneletRef: string; sceneletId: string; shotIndices: number[] }> = [];
 
   return {
     created,
     existing,
-    async createSceneletShots(storyId, sceneletId, _sequence, shots) {
+    async createSceneletShots(storyId, sceneletRef, sceneletId, _sequence, shots) {
       const key = `${storyId}:${sceneletId}`;
       if (existing.has(key)) {
         throw new Error(`Shots already exist for ${key}`);
@@ -233,6 +234,7 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
       existing.add(key);
       created.push({
         storyId,
+        sceneletRef,
         sceneletId,
         shotIndices: shots.map((shot) => shot.shotIndex),
       });
@@ -243,17 +245,23 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
     async getShotsByStory(_storyId) {
       return {};
     },
+    async getShotsBySceneletRef(_sceneletRef) {
+      return [];
+    },
     async findShotsMissingImages(_storyId) {
       return [];
     },
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
     },
-    async updateShotAudioPath(_storyId, _sceneletId, shotIndex, _audioPath) {
+    async updateShotAudioPath(_storyId, sceneletId, shotIndex, audioPath) {
       return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
         sceneletSequence: 1,
         shotIndex,
         storyboardPayload: {},
+        audioFilePath: audioPath ?? null,
         createdAt: '2025-01-01T00:00:00.000Z',
         updatedAt: '2025-01-01T00:00:00.000Z',
       } as any;

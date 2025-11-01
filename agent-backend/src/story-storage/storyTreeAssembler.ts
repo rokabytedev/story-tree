@@ -134,7 +134,7 @@ export function assembleStoryTreeSnapshot(
       digest.choiceLabel = label;
     }
 
-    entries.push({ kind: 'scenelet', data: digest });
+    entries.push({ kind: 'scenelet', id: node.id, data: digest });
 
     const children = childrenByParent.get(node.id) ?? [];
 

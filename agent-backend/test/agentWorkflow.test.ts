@@ -13,7 +13,7 @@ import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
 import type { VisualDesignTaskRunner } from '../src/visual-design/types.js';
 import type { VisualReferenceTaskRunner } from '../src/visual-reference/types.js';
 import type { AudioDesignTaskRunner } from '../src/audio-design/types.js';
-import type { ShotProductionTaskRunner, ShotProductionShotsRepository } from '../src/shot-production/types.js';
+import type { ShotProductionTaskRunner, ShotProductionShotsRepository, ShotRecord } from '../src/shot-production/types.js';
 
 function createStoriesRepository(): AgentWorkflowStoriesRepository & {
   record: AgentWorkflowStoryRecord | null;
@@ -114,32 +114,82 @@ function createSceneletPersistence(): SceneletPersistence & {
 }
 
 function createShotsRepository(): ShotProductionShotsRepository & {
-  created: Array<{ storyId: string; sceneletId: string }>;
+  created: Array<{ storyId: string; sceneletRef: string; sceneletId: string }>;
 } {
-  const created: Array<{ storyId: string; sceneletId: string }> = [];
+  const created: Array<{ storyId: string; sceneletRef: string; sceneletId: string }> = [];
   const existing = new Set<string>();
+  const shotsByStory = new Map<string, Record<string, ShotRecord[]>>();
 
   return {
     created,
-    async createSceneletShots(storyId, sceneletId, _sequence, shots) {
+    async createSceneletShots(storyId, sceneletRef, sceneletId, sequence, shots) {
       const key = `${storyId}:${sceneletId}`;
       if (existing.has(key)) {
         throw new Error('Duplicate shots');
       }
       existing.add(key);
-      created.push({ storyId, sceneletId });
+      created.push({ storyId, sceneletRef, sceneletId });
+
+      const records = shots.map<ShotRecord>((shot) => ({
+        sceneletRef,
+        sceneletId,
+        sceneletSequence: sequence,
+        shotIndex: shot.shotIndex,
+        storyboardPayload: shot.storyboardPayload,
+        keyFrameImagePath: undefined,
+        audioFilePath: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const current = shotsByStory.get(storyId) ?? {};
+      current[sceneletRef] = records;
+      shotsByStory.set(storyId, current);
     },
     async findSceneletIdsMissingShots(storyId, sceneletIds) {
       return sceneletIds.filter((id) => !existing.has(`${storyId}:${id}`));
     },
-    async getShotsByStory(_storyId) {
-      return {};
+    async getShotsByStory(storyId) {
+      return shotsByStory.get(storyId) ?? {};
+    },
+    async getShotsBySceneletRef(sceneletRef) {
+      for (const storyShots of shotsByStory.values()) {
+        if (storyShots[sceneletRef]) {
+          return storyShots[sceneletRef];
+        }
+      }
+      return [];
     },
     async findShotsMissingImages(_storyId) {
       return [];
     },
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
+    },
+    async updateShotAudioPath(storyId, sceneletId, shotIndex, audioPath) {
+      const storyShots = shotsByStory.get(storyId);
+      if (storyShots) {
+        for (const [sceneletRef, records] of Object.entries(storyShots)) {
+          for (const record of records) {
+            if (record.sceneletId === sceneletId && record.shotIndex === shotIndex) {
+              record.audioFilePath = audioPath ?? null;
+              record.updatedAt = new Date().toISOString();
+              return record;
+            }
+          }
+        }
+      }
+
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId: sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
     },
   };
 }
@@ -176,16 +226,40 @@ describe('runAgentWorkflow', () => {
       };
     };
     const audioRunner: AudioDesignTaskRunner = async (storyId) => {
-      storiesRepository.record!.audioDesignDocument = {
-        audio_design_document: { sonic_identity: {} },
+      const document = {
+        audio_design_document: {
+          sonic_identity: {},
+          narrator_voice_profile: {
+            character_id: 'narrator',
+            voice_name: 'Kore',
+            voice_profile: 'Calm narrative guidance with warm tone and measured pacing.',
+          },
+          character_voice_profiles: [],
+          music_and_ambience_cues: [],
+        },
       };
+      storiesRepository.record!.audioDesignDocument = document;
       return {
         storyId,
-        audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+        audioDesignDocument: document,
       };
     };
     const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => {
-      shotsRepository.created.push({ storyId, sceneletId: 'scenelet-1' });
+      await shotsRepository.createSceneletShots(storyId, '11111111-1111-1111-1111-111111111111', 'scenelet-1', 1, [
+        {
+          shotIndex: 1,
+          storyboardPayload: {
+            audioAndNarrative: [
+              {
+                type: 'monologue',
+                source: 'narrator',
+                line: 'Narration',
+                delivery: 'calm',
+              },
+            ],
+          },
+        },
+      ]);
       return {
         storyId,
         scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
@@ -234,6 +308,12 @@ describe('runAgentWorkflow', () => {
           },
         },
       },
+      runShotAudioTask: async (storyId) => ({
+        storyId,
+        generatedAudio: 0,
+        skippedShots: 0,
+        totalShots: 0,
+      }),
     });
 
     expect(result.storyTitle).toBe('Star Trail');
@@ -254,9 +334,24 @@ describe('runAgentWorkflow', () => {
       environment_keyframes: []
     });
     expect(storiesRepository.record?.audioDesignDocument).toEqual({
-      audio_design_document: { sonic_identity: {} },
+      audio_design_document: {
+        sonic_identity: {},
+        narrator_voice_profile: {
+          character_id: 'narrator',
+          voice_name: 'Kore',
+          voice_profile: 'Calm narrative guidance with warm tone and measured pacing.',
+        },
+        character_voice_profiles: [],
+        music_and_ambience_cues: [],
+      },
     });
-    expect(shotsRepository.created).toEqual([{ storyId: result.storyId, sceneletId: 'scenelet-1' }]);
+    expect(shotsRepository.created).toEqual([
+      {
+        storyId: result.storyId,
+        sceneletId: 'scenelet-1',
+        sceneletRef: '11111111-1111-1111-1111-111111111111',
+      },
+    ]);
   });
 
   it('uses default display name when no factory provided', async () => {
@@ -286,15 +381,49 @@ describe('runAgentWorkflow', () => {
         },
       };
     };
-    const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => ({
-      storyId,
-      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
-    });
-    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
-      storyId,
-      scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
-      totalShots: 1,
-    });
+    const audioRunnerStub: AudioDesignTaskRunner = async (storyId) => {
+      const document = {
+        audio_design_document: {
+          sonic_identity: {},
+          narrator_voice_profile: {
+            character_id: 'narrator',
+            voice_name: 'Kore',
+            voice_profile: 'Calm narrative guidance with warm tone and measured pacing.',
+          },
+          character_voice_profiles: [],
+          music_and_ambience_cues: [],
+        },
+      };
+      if (storiesRepository.record) {
+        storiesRepository.record.audioDesignDocument = document;
+      }
+      return {
+        storyId,
+        audioDesignDocument: document,
+      };
+    };
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => {
+      await shotsRepository.createSceneletShots(storyId, '11111111-1111-1111-1111-111111111111', 'scenelet-1', 1, [
+        {
+          shotIndex: 1,
+          storyboardPayload: {
+            audioAndNarrative: [
+              {
+                type: 'monologue',
+                source: 'narrator',
+                line: 'Narration',
+                delivery: 'calm',
+              },
+            ],
+          },
+        },
+      ]);
+      return {
+        storyId,
+        scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+        totalShots: 1,
+      };
+    };
 
     const constitutionGenerator: AgentWorkflowConstitutionGenerator = async () => ({
       proposedStoryTitle: '',
@@ -327,6 +456,12 @@ describe('runAgentWorkflow', () => {
           },
         },
       },
+      runShotAudioTask: async (storyId) => ({
+        storyId,
+        generatedAudio: 0,
+        skippedShots: 0,
+        totalShots: 0,
+      }),
     });
 
     expect(storiesRepository.record?.displayName).toBe('Untitled Story');
@@ -350,15 +485,37 @@ describe('runAgentWorkflow', () => {
       storyId,
       visualReferencePackage: { character_model_sheets: [], environment_keyframes: [] },
     });
-    const audioRunner: AudioDesignTaskRunner = async (storyId) => ({
-      storyId,
-      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
-    });
-    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
-      storyId,
-      scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
-      totalShots: 1,
-    });
+    const audioRunner: AudioDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.audioDesignDocument = { audio_design_document: { sonic_identity: {} } };
+      }
+      return {
+        storyId,
+        audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+      };
+    };
+    const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => {
+      await shotsRepository.createSceneletShots(storyId, '11111111-1111-1111-1111-111111111111', 'scenelet-1', 1, [
+        {
+          shotIndex: 1,
+          storyboardPayload: {
+            audioAndNarrative: [
+              {
+                type: 'monologue',
+                source: 'narrator',
+                line: 'Narration',
+                delivery: 'calm',
+              },
+            ],
+          },
+        },
+      ]);
+      return {
+        storyId,
+        scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
+        totalShots: 1,
+      };
+    };
 
     await expect(
       runAgentWorkflow('Failure prompt', {
@@ -457,10 +614,15 @@ describe('runAgentWorkflow', () => {
         },
       };
     };
-    const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => ({
-      storyId,
-      audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
-    });
+    const audioRunnerForOptions: AudioDesignTaskRunner = async (storyId) => {
+      if (storiesRepository.record) {
+        storiesRepository.record.audioDesignDocument = { audio_design_document: { sonic_identity: {} } };
+      }
+      return {
+        storyId,
+        audioDesignDocument: { audio_design_document: { sonic_identity: {} } },
+      };
+    };
     const shotProductionRunner: ShotProductionTaskRunner = async (storyId) => ({
       storyId,
       scenelets: [{ sceneletId: 'scenelet-1', shotCount: 1 }],
@@ -503,6 +665,12 @@ describe('runAgentWorkflow', () => {
           },
         },
       },
+      runShotAudioTask: async (storyId) => ({
+        storyId,
+        generatedAudio: 0,
+        skippedShots: 0,
+        totalShots: 0,
+      }),
     });
 
     expect(receivedOptions).toEqual(constitutionOptions);

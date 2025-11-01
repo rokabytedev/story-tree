@@ -50,6 +50,7 @@ function createStoriesRepository(record: AgentWorkflowStoryRecord): AgentWorkflo
 function createShotsRepository(existingKeys: Set<string> = new Set<string>()): ShotProductionShotsRepository & {
   inserts: Array<{
     storyId: string;
+    sceneletRef: string;
     sceneletId: string;
     sequence: number;
     shotIndices: number[];
@@ -57,6 +58,7 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
 } {
   const inserts: Array<{
     storyId: string;
+    sceneletRef: string;
     sceneletId: string;
     sequence: number;
     shotIndices: number[];
@@ -64,7 +66,7 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
 
   return {
     inserts,
-    async createSceneletShots(storyId, sceneletId, sequence, shots) {
+    async createSceneletShots(storyId, sceneletRef, sceneletId, sequence, shots) {
       const key = `${storyId}:${sceneletId}`;
       if (existingKeys.has(key)) {
         throw new Error('Shots already exist');
@@ -72,6 +74,7 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
       existingKeys.add(key);
       inserts.push({
         storyId,
+        sceneletRef,
         sceneletId,
         sequence,
         shotIndices: shots.map((shot) => shot.shotIndex),
@@ -82,6 +85,9 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
     },
     async getShotsByStory(_storyId) {
       return {};
+    },
+    async getShotsBySceneletRef(_sceneletRef) {
+      return [];
     },
     async findShotsMissingImages(_storyId) {
       return [];
@@ -96,6 +102,7 @@ const STORY_TREE: StoryTreeSnapshot = {
   entries: [
     {
       kind: 'scenelet',
+      id: '11111111-1111-1111-1111-111111111111',
       data: {
         id: 'scenelet-1',
         parentId: null,
@@ -109,6 +116,7 @@ const STORY_TREE: StoryTreeSnapshot = {
     },
     {
       kind: 'scenelet',
+      id: '22222222-2222-2222-2222-222222222222',
       data: {
         id: 'scenelet-2',
         parentId: 'scenelet-1',
@@ -216,11 +224,13 @@ describe('runShotProductionTask', () => {
     });
     expect(shotsRepository.inserts).toHaveLength(2);
     expect(shotsRepository.inserts[0]).toMatchObject({
+      sceneletRef: '11111111-1111-1111-1111-111111111111',
       sceneletId: 'scenelet-1',
       sequence: 1,
       shotIndices: [1],
     });
     expect(shotsRepository.inserts[1]).toMatchObject({
+      sceneletRef: '22222222-2222-2222-2222-222222222222',
       sceneletId: 'scenelet-2',
       sequence: 2,
       shotIndices: [1],
@@ -256,6 +266,7 @@ describe('runShotProductionTask', () => {
     });
     expect(shotsRepository.inserts).toHaveLength(1);
     expect(shotsRepository.inserts[0]).toMatchObject({
+      sceneletRef: '22222222-2222-2222-2222-222222222222',
       sceneletId: 'scenelet-2',
       sequence: 2,
       shotIndices: [1],

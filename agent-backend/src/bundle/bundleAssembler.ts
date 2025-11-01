@@ -234,6 +234,8 @@ export function buildManifestFromShotMap(
 ): AssetManifest {
   const manifest: AssetManifest = new Map();
 
+  // Keys in `shotsByScenelet` are scenelet UUIDs (`scenelet_ref`).
+  // The manifest preserves those UUID keys so lookups align with `SceneletRecord.id` values.
   for (const [sceneletId, shots] of Object.entries(shotsByScenelet)) {
     if (!Array.isArray(shots) || shots.length === 0) {
       continue;

@@ -5,6 +5,7 @@ const SHOTS_TABLE = 'shots';
 type ShotRow = {
   id: string;
   story_id: string;
+  scenelet_ref: string;
   scenelet_id: string;
   scenelet_sequence: number;
   shot_index: number;
@@ -16,6 +17,8 @@ type ShotRow = {
 };
 
 export interface ShotRecord {
+  sceneletRef: string;
+  sceneletId: string;
   sceneletSequence: number;
   shotIndex: number;
   storyboardPayload: unknown;
@@ -42,13 +45,25 @@ export interface ShotsMissingImages {
 }
 
 export interface ShotsRepository {
+  /**
+   * Get all shots for a story grouped by the scenelet UUID reference.
+   * Keys in the returned record correspond to the `scenelet_ref` UUID values.
+   */
   getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>>;
+
   createSceneletShots(
     storyId: string,
+    sceneletRef: string,
     sceneletId: string,
     sceneletSequence: number,
     shots: CreateShotInput[]
   ): Promise<void>;
+
+  /**
+   * Load every shot associated with a scenelet, identified by UUID reference.
+   */
+  getShotsBySceneletRef(sceneletRef: string): Promise<ShotRecord[]>;
+
   findSceneletIdsMissingShots(storyId: string, sceneletIds: string[]): Promise<string[]>;
   updateShotImagePaths(
     storyId: string,
@@ -88,6 +103,13 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
   }
 
   return {
+    /**
+     * Load every shot for a story and group them by `scenelet_ref` (scenelet UUID).
+     *
+     * The bundle assembler relies on UUID keys so `getShotsByStory` MUST return
+     * an object whose keys are the scenelet UUIDs rather than the human readable
+     * `scenelet_id` values (e.g. "scenelet-1").
+     */
     async getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>> {
       const trimmedStoryId = storyId?.trim();
       if (!trimmedStoryId) {
@@ -114,8 +136,8 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
           return a.scenelet_sequence - b.scenelet_sequence;
         }
 
-        if (a.scenelet_id !== b.scenelet_id) {
-          return a.scenelet_id.localeCompare(b.scenelet_id);
+        if (a.scenelet_ref !== b.scenelet_ref) {
+          return a.scenelet_ref.localeCompare(b.scenelet_ref);
         }
 
         if (a.shot_index !== b.shot_index) {
@@ -126,15 +148,23 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       });
 
       return sorted.reduce<Record<string, ShotRecord[]>>((acc, row) => {
-        const grouped = acc[row.scenelet_id] ?? [];
+        const grouped = acc[row.scenelet_ref] ?? [];
         grouped.push(mapRowToRecord(row));
-        acc[row.scenelet_id] = grouped;
+        acc[row.scenelet_ref] = grouped;
         return acc;
       }, {});
     },
 
+    /**
+     * Persist the full set of shots for a scenelet.
+     *
+     * Both identifiers are required:
+     * - `sceneletRef` provides the UUID foreign key to enforce referential integrity.
+     * - `sceneletId` keeps the human readable sequence ("scenelet-#") for ordering and display.
+     */
     async createSceneletShots(
       storyId: string,
+      sceneletRef: string,
       sceneletId: string,
       sceneletSequence: number,
       shots: CreateShotInput[]
@@ -142,6 +172,11 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       const trimmedStoryId = storyId?.trim();
       if (!trimmedStoryId) {
         throw new ShotsRepositoryError('Story id must be provided to persist shots.');
+      }
+
+      const trimmedSceneletRef = sceneletRef?.trim();
+      if (!trimmedSceneletRef) {
+        throw new ShotsRepositoryError('Scenelet reference must be provided to persist shots.');
       }
 
       const trimmedSceneletId = sceneletId?.trim();
@@ -161,7 +196,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
         .from(SHOTS_TABLE)
         .select('id')
         .eq('story_id', trimmedStoryId)
-        .eq('scenelet_id', trimmedSceneletId)
+        .eq('scenelet_ref', trimmedSceneletRef)
         .limit(1);
 
       if (checkError) {
@@ -185,6 +220,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
 
         return {
           story_id: trimmedStoryId,
+          scenelet_ref: trimmedSceneletRef,
           scenelet_id: trimmedSceneletId,
           scenelet_sequence: sceneletSequence,
           shot_index: shot.shotIndex,
@@ -198,6 +234,31 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       if (insertError) {
         throw new ShotsRepositoryError('Failed to persist scenelet shots.', insertError);
       }
+    },
+
+    /** Return every shot linked to a scenelet UUID (`scenelet_ref`). */
+    async getShotsBySceneletRef(sceneletRef: string): Promise<ShotRecord[]> {
+      const trimmedRef = sceneletRef?.trim();
+      if (!trimmedRef) {
+        throw new ShotsRepositoryError('Scenelet reference must be provided to load shots.');
+      }
+
+      const { data, error } = await client
+        .from(SHOTS_TABLE)
+        .select()
+        .eq('scenelet_ref', trimmedRef)
+        .order('shot_index', { ascending: true });
+
+      if (error) {
+        throw new ShotsRepositoryError(`Failed to load shots for scenelet ${trimmedRef}.`, error);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+
+      const sorted = [...data].sort((a, b) => a.shot_index - b.shot_index);
+      return sorted.map(mapRowToRecord);
     },
 
     async findSceneletIdsMissingShots(
@@ -359,6 +420,8 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
 
 function mapRowToRecord(row: ShotRow): ShotRecord {
   return {
+    sceneletRef: row.scenelet_ref,
+    sceneletId: row.scenelet_id,
     sceneletSequence: row.scenelet_sequence,
     shotIndex: row.shot_index,
     storyboardPayload: row.storyboard_payload,

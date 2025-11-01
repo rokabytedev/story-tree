@@ -163,12 +163,23 @@ export function mapStoryTreeEntriesToStoryboardData(
   entries: StoryTreeEntry[],
   shotsByScenelet: Record<string, ShotRecord[]> = {}
 ): StoryTreeData {
+  const shotsBySceneletId = new Map<string, ShotRecord[]>();
+  for (const shots of Object.values(shotsByScenelet)) {
+    if (!Array.isArray(shots) || shots.length === 0) {
+      continue;
+    }
+    const sceneletId = shots[0]?.sceneletId;
+    if (sceneletId) {
+      shotsBySceneletId.set(sceneletId, shots);
+    }
+  }
+
   const scenelets: StoryboardScenelet[] = [];
   const branchingPoints: StoryboardBranchingPoint[] = [];
 
   for (const entry of entries) {
     if (entry.kind === "scenelet") {
-      const sceneletShots = shotsByScenelet[entry.data.id] ?? [];
+      const sceneletShots = shotsBySceneletId.get(entry.data.id) ?? [];
       scenelets.push(transformSceneletDigest(entry.data, sceneletShots));
       continue;
     }

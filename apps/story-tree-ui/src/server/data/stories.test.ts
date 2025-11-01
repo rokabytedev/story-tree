@@ -9,6 +9,7 @@ describe("mapStoryTreeEntriesToStoryboardData", () => {
     const entries: StoryTreeEntry[] = [
       {
         kind: "scenelet",
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         data: {
           id: "scenelet-1",
           parentId: null,
@@ -36,6 +37,7 @@ describe("mapStoryTreeEntriesToStoryboardData", () => {
       },
       {
         kind: "scenelet",
+        id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         data: {
           id: "scenelet-2",
           parentId: "scenelet-1",

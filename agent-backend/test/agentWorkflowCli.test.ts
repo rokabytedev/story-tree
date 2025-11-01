@@ -34,7 +34,7 @@ vi.mock(new URL('../../supabase/src/shotsRepository.js', import.meta.url).pathna
 }));
 
 import { runCli } from '../src/cli/agentWorkflowCli.js';
-import type { ShotCreationInput, ShotProductionShotsRepository } from '../src/shot-production/types.js';
+import type { ShotCreationInput, ShotProductionShotsRepository, ShotRecord } from '../src/shot-production/types.js';
 
 interface StubStory {
   id: string;
@@ -195,33 +195,110 @@ function createSceneletsRepositoryStub(): {
 }
 
 function createShotsRepositoryStub() {
-  const created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }> = [];
+  const created: Array<{
+    storyId: string;
+    sceneletRef: string;
+    sceneletId: string;
+    sceneletSequence: number;
+    shotIndices: number[];
+  }> = [];
+  const shotsByStory = new Map<string, Record<string, ShotRecord[]>>();
   const repository = {
     createSceneletShots: vi.fn(async (
       storyId: string,
+      sceneletRef: string,
       sceneletId: string,
       sceneletSequence: number,
       shots: ShotCreationInput[]
     ) => {
       created.push({
         storyId,
+        sceneletRef,
         sceneletId,
         sceneletSequence,
         shotIndices: shots.map((shot) => shot.shotIndex),
       });
+
+      const records = shots.map<ShotRecord>((shot) => {
+        const payload = shot.storyboardPayload ?? {};
+        const audioAndNarrative = Array.isArray((payload as Record<string, unknown>).audioAndNarrative) &&
+          (payload as Record<string, unknown>).audioAndNarrative &&
+          (payload as Record<string, unknown>).audioAndNarrative instanceof Array &&
+          ((payload as Record<string, unknown>).audioAndNarrative as unknown[]).length > 0
+            ? (payload as Record<string, unknown>).audioAndNarrative
+            : [
+                {
+                  type: 'monologue',
+                  source: 'narrator',
+                  line: 'Narration',
+                  delivery: 'calm',
+                },
+              ];
+
+        return {
+          sceneletRef,
+          sceneletId,
+          sceneletSequence,
+          shotIndex: shot.shotIndex,
+          storyboardPayload: {
+            ...payload,
+            audioAndNarrative,
+          },
+          keyFrameImagePath: undefined,
+          audioFilePath: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      const existingShots = shotsByStory.get(storyId) ?? {};
+      existingShots[sceneletRef] = records;
+      shotsByStory.set(storyId, existingShots);
     }),
     findSceneletIdsMissingShots: vi.fn(async (_storyId: string, sceneletIds: string[]) => sceneletIds),
-    getShotsByStory: vi.fn(async (_storyId: string) => ({})),
+    getShotsByStory: vi.fn(async (storyId: string) => shotsByStory.get(storyId) ?? {}),
+    getShotsBySceneletRef: vi.fn(async (sceneletRef: string) => {
+      for (const storyShots of shotsByStory.values()) {
+        if (storyShots[sceneletRef]) {
+          return storyShots[sceneletRef];
+        }
+      }
+      return [];
+    }),
     findShotsMissingImages: vi.fn(async (_storyId: string) => []),
     updateShotImagePaths: vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number, _paths: unknown) => {}),
+    updateShotAudioPath: vi.fn(async (storyId: string, sceneletId: string, shotIndex: number, audioPath: string | null) => {
+      const storyShots = shotsByStory.get(storyId);
+      if (storyShots) {
+        for (const records of Object.values(storyShots)) {
+          for (const record of records) {
+            if (record.sceneletId === sceneletId && record.shotIndex === shotIndex) {
+              record.audioFilePath = audioPath ?? null;
+              record.updatedAt = new Date().toISOString();
+              return record;
+            }
+          }
+        }
+      }
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    }),
   } satisfies ShotProductionShotsRepository & {
-    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+    created: Array<{ storyId: string; sceneletRef: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
   };
   (repository as typeof repository & {
-    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+    created: Array<{ storyId: string; sceneletRef: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
   }).created = created;
   return repository as typeof repository & {
-    created: Array<{ storyId: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
+    created: Array<{ storyId: string; sceneletRef: string; sceneletId: string; sceneletSequence: number; shotIndices: number[] }>;
   };
 }
 

@@ -2,7 +2,12 @@ import { createGeminiJsonClient } from '../gemini/client.js';
 import type { GeminiJsonClient } from '../gemini/types.js';
 import { loadShotDirectorSystemPrompt } from '../prompts/shotDirectorPrompt.js';
 import { StoryTreeAssemblyError } from '../story-storage/errors.js';
-import type { SceneletDigest, StoryTreeEntry, StoryTreeSnapshot } from '../story-storage/types.js';
+import type {
+  SceneletDigest,
+  StoryTreeEntry,
+  StoryTreeSceneletEntry,
+  StoryTreeSnapshot,
+} from '../story-storage/types.js';
 import { buildShotProductionUserPrompt } from './promptBuilder.js';
 import { parseShotProductionResponse } from './parseGeminiResponse.js';
 import { ShotProductionTaskError } from './errors.js';
@@ -133,6 +138,8 @@ export async function runShotProductionTask(
   for (const [index, sceneletEntry] of sceneletsInOrder.entries()) {
     const scenelet = sceneletEntry.data;
     const sceneletSequence = index + 1;
+    // The snapshot provides both identifiers: `sceneletEntry.id` (UUID persisted in Supabase)
+    // and `scenelet.id` (deterministic "scenelet-#" label used in prompts and YAML).
 
     if (!missingSet.has(scenelet.id)) {
       if (resumeExisting) {
@@ -226,7 +233,13 @@ export async function runShotProductionTask(
       storyboardPayload: shot.storyboard,
     }));
 
-    await shotsRepository.createSceneletShots(trimmedStoryId, scenelet.id, sceneletSequence, shotInputs);
+    await shotsRepository.createSceneletShots(
+      trimmedStoryId,
+      sceneletEntry.id,
+      scenelet.id,
+      sceneletSequence,
+      shotInputs
+    );
 
     results.push({
       sceneletId: scenelet.id,
@@ -249,10 +262,8 @@ function ensureGeminiClient(client?: GeminiJsonClient): GeminiJsonClient {
   return createGeminiJsonClient();
 }
 
-function extractScenelets(entries: StoryTreeEntry[]): Array<{ data: SceneletDigest }> {
-  return entries.filter(
-    (entry): entry is { kind: 'scenelet'; data: SceneletDigest } => entry.kind === 'scenelet'
-  );
+function extractScenelets(entries: StoryTreeEntry[]): StoryTreeSceneletEntry[] {
+  return entries.filter((entry): entry is StoryTreeSceneletEntry => entry.kind === 'scenelet');
 }
 
 function readPersistedConstitution(story: ShotProductionStoryRecord): StoryConstitutionPayload | null {

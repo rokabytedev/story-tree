@@ -22,8 +22,15 @@ export interface BranchingPointDigest {
   choices: Array<{ label: string; leadsTo: string }>;
 }
 
+export interface StoryTreeSceneletEntry {
+  kind: 'scenelet';
+  /** UUID primary key for the scenelet record in storage. */
+  id: string;
+  data: SceneletDigest;
+}
+
 export type StoryTreeEntry =
-  | { kind: 'scenelet'; data: SceneletDigest }
+  | StoryTreeSceneletEntry
   | { kind: 'branching-point'; data: BranchingPointDigest };
 
 export interface StoryTreeSnapshot {

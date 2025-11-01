@@ -21,6 +21,7 @@ function createStory(): AgentWorkflowStoryRecord {
       character_designs: [
         { character_id: 'rhea' },
         { character_id: 'narrator' },
+        { character_id: 'testing-agent' },
       ],
     },
     audioDesignDocument: null,
@@ -55,6 +56,7 @@ const STORY_TREE: StoryTreeSnapshot = {
   entries: [
     {
       kind: 'scenelet',
+      id: '11111111-1111-1111-1111-111111111111',
       data: {
         id: 'scenelet-1',
         parentId: null,
@@ -67,6 +69,7 @@ const STORY_TREE: StoryTreeSnapshot = {
     },
     {
       kind: 'scenelet',
+      id: '22222222-2222-2222-2222-222222222222',
       data: {
         id: 'scenelet-2',
         parentId: 'scenelet-1',
@@ -96,11 +99,13 @@ const GEMINI_RESPONSE = JSON.stringify({
       {
         character_name: 'Rhea',
         voice_profile: 'Rhea profile brimming with energetic descriptors and thoughtful nuance.',
+        voice_description: 'Rhea description with ample detail to satisfy validation requirements easily.',
         voice_name: 'Puck',
       },
       {
         character_name: 'Testing Agent',
         voice_profile: 'Testing Agent profile emphasising upbeat precision with ample descriptive content.',
+        voice_description: 'Testing Agent description highlighting optimistic efficiency with narrative guidance.',
         voice_name: 'Deneb',
       },
     ],

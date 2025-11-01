@@ -120,15 +120,27 @@ The shots table MUST store complete storyboard entries in JSONB format without p
 - **AND** each array element MUST have `type`, `source`, and `line` fields
 - **AND** it MUST contain a `referenced_designs` object with `characters` and `environments` arrays.
 
+### Requirement: Link Shots to Scenelets
+The shots table MUST enforce referential integrity back to the scenelets it references.
+
+#### Scenario: Shots table references scenelet UUID
+- **GIVEN** the Supabase migrations are applied
+- **WHEN** the `public.shots` table is inspected
+- **THEN** it MUST include a `scenelet_ref` UUID column that references `public.scenelets(id)` with `ON DELETE CASCADE`
+- **AND** `scenelet_ref` MUST be declared `NOT NULL`
+- **AND** the table MUST expose a B-Tree index on `scenelet_ref` to support lookup queries
+- **AND** the existing `scenelet_id` (text) and `scenelet_sequence` (integer) columns MUST remain to preserve readable ordering information.
+
 ### Requirement: Provide Shots Repository API
 The repository MUST expose shot records including audio file paths and provide methods to update audio paths after generation.
 
-#### Scenario: Repository reads shots with audio file paths
-- **GIVEN** shots are stored with audio_file_path values
+#### Scenario: Repository groups shots by scenelet UUID
+- **GIVEN** shots exist for a story
 - **WHEN** `getShotsByStory` executes
-- **THEN** it MUST return shot records with `audioFilePath` property containing the relative path
-- **AND** it MUST group shots by scenelet and order them by `scenelet_sequence` and `shot_index`
-- **AND** shots without audio MUST have `audioFilePath` as undefined
+- **THEN** it MUST return an object whose keys are the scenelet UUIDs (`scenelet_ref`)
+- **AND** shot arrays MUST be ordered by `scenelet_sequence` then `shot_index`
+- **AND** each `ShotRecord` MUST expose both `sceneletRef` (UUID) and `sceneletId` (the "scenelet-#" label)
+- **AND** shots with stored audio MUST surface `audioFilePath`, while shots without audio MUST leave it undefined.
 
 #### Scenario: Repository provides audio path update method
 - **GIVEN** a shot exists in the database
@@ -137,6 +149,13 @@ The repository MUST expose shot records including audio file paths and provide m
 - **AND** it MUST update only the `audio_file_path` column without modifying other fields
 - **AND** it MUST return the refreshed shot record
 - **AND** it MUST throw a descriptive error if the shot is not found
+
+#### Scenario: Repository fetches shots by scenelet reference
+- **GIVEN** a scenelet UUID with stored shots
+- **WHEN** `getShotsBySceneletRef` executes
+- **THEN** it MUST return the shots ordered by `shot_index`
+- **AND** each record MUST expose `sceneletRef`, `sceneletId`, `sceneletSequence`, and the stored payload fields
+- **AND** it MUST return an empty array when no shots exist for the requested UUID.
 
 ### Requirement: Store Shot Audio File Paths
 The shots table MUST include an audio_file_path column to store the relative path to generated audio files for each shot.
@@ -165,7 +184,7 @@ The shots table MUST include an audio_file_path column to store the relative pat
 #### Scenario: Repository creates shots with optional audio paths
 - **GIVEN** the repository receives shots to persist with optional audioFilePath values
 - **WHEN** `createSceneletShots` executes
-- **THEN** it MUST accept audioFilePath as an optional field in the input
+- **THEN** it MUST require both the scenelet UUID (`scenelet_ref`) and string id (`scenelet_id`)
 - **AND** it MUST persist the value to `audio_file_path` when provided
 - **AND** it MUST insert NULL when audioFilePath is not provided
-
+- **AND** it MUST reject inserts when a row already exists for the given story and `scenelet_ref`.

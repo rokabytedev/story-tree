@@ -20,6 +20,7 @@ function createStoryRecord(): AgentWorkflowStoryRecord {
       character_designs: [
         { character_id: 'rhea' },
         { character_id: 'narrator' },
+        { character_id: 'testing-agent' },
       ],
     },
     audioDesignDocument: null,

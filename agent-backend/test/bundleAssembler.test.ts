@@ -33,6 +33,8 @@ function createScenelet(overrides: Partial<SceneletRecord> = {}): SceneletRecord
 
 function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
   return {
+    sceneletRef: overrides.sceneletRef ?? 'scenelet-ref',
+    sceneletId: overrides.sceneletId ?? 'scenelet-1',
     sceneletSequence: overrides.sceneletSequence ?? 1,
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload: overrides.storyboardPayload ?? {},
@@ -54,12 +56,16 @@ describe('assembleBundleJson', () => {
     const shotsByScenelet: Record<string, ShotRecord[]> = {
       root: [
         createShotRecord({
+          sceneletRef: 'root',
+          sceneletId: 'root',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/root/shot-1_key_frame.png`,
         }),
       ],
       child: [
         createShotRecord({
+          sceneletRef: 'child',
+          sceneletId: 'child',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/child/shot-1_key_frame.png`,
         }),
@@ -107,12 +113,16 @@ describe('assembleBundleJson', () => {
     const shotsByScenelet: Record<string, ShotRecord[]> = {
       root: [
         createShotRecord({
+          sceneletRef: 'root',
+          sceneletId: 'root',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/root/shot-1_key_frame.png`,
         }),
       ],
       left: [
         createShotRecord({
+          sceneletRef: 'left',
+          sceneletId: 'left',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/left/shot-1_key_frame.png`,
         }),
@@ -243,6 +253,9 @@ function makeDependencies(input: DependencyInput): BundleAssemblerDependencies {
       },
       findSceneletIdsMissingShots: async () => [],
       getShotsByStory: async () => shotsByScenelet,
+      getShotsBySceneletRef: async () => {
+        throw new Error('Not implemented');
+      },
       findShotsMissingImages: async () => [],
       updateShotImagePaths: async () => {
         throw new Error('Not implemented');

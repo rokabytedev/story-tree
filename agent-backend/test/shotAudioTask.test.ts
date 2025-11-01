@@ -40,6 +40,8 @@ function createStory(): AgentWorkflowStoryRecord {
 
 function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
   return {
+    sceneletRef: overrides.sceneletRef ?? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    sceneletId: overrides.sceneletId ?? 'scenelet-1',
     sceneletSequence: overrides.sceneletSequence ?? 1,
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload:
@@ -66,7 +68,7 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
   const savedPaths: string[] = [];
   const synthesize = vi.fn<[], Promise<Buffer>>().mockResolvedValue(Buffer.from('fake-wav'));
   const saveShotAudio = vi.fn().mockImplementation(async () => {
-    const path = 'generated/story-123/shots/scenelet-1/1_audio.wav';
+    const path = `generated/story-123/shots/${shot.sceneletId}/1_audio.wav`;
     savedPaths.push(path);
     return {
       relativePath: path,
@@ -75,7 +77,7 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
   });
 
   const updateShotAudioPath = vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number) => {
-    shot.audioFilePath = 'generated/story-123/shots/scenelet-1/1_audio.wav';
+    shot.audioFilePath = `generated/story-123/shots/${shot.sceneletId}/1_audio.wav`;
     return shot;
   });
 
@@ -87,8 +89,9 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
     } as any),
     shotsRepository: overrides.shotsRepository ?? ({
       getShotsByStory: vi.fn(async () => ({
-        'scenelet-1': [shot],
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [shot],
       })),
+      getShotsBySceneletRef: vi.fn(async () => [shot]),
       createSceneletShots: vi.fn(),
       findSceneletIdsMissingShots: vi.fn(),
       findShotsMissingImages: vi.fn(),

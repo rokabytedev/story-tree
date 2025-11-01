@@ -16,6 +16,8 @@ export interface ShotsMissingImages {
 }
 
 export interface ShotRecord {
+  sceneletRef: string;
+  sceneletId: string;
   sceneletSequence: number;
   shotIndex: number;
   storyboardPayload: unknown;
@@ -28,10 +30,12 @@ export interface ShotRecord {
 export interface ShotProductionShotsRepository {
   createSceneletShots(
     storyId: string,
+    sceneletRef: string,
     sceneletId: string,
     sceneletSequence: number,
     shots: ShotCreationInput[]
   ): Promise<void>;
+  getShotsBySceneletRef(sceneletRef: string): Promise<ShotRecord[]>;
   findSceneletIdsMissingShots(storyId: string, sceneletIds: string[]): Promise<string[]>;
   getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>>;
   findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]>;

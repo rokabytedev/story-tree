@@ -5,6 +5,7 @@ import type { StoryTreeEntry, StoryTreeSnapshot } from '../src/story-storage/typ
 
 const ROOT_SCENELET_ENTRY: StoryTreeEntry = {
   kind: 'scenelet',
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   data: {
     id: 'scenelet-root',
     parentId: null,
@@ -32,6 +33,7 @@ const BRANCH_ENTRY: StoryTreeEntry = {
 
 const TARGET_SCENELET_ENTRY: StoryTreeEntry = {
   kind: 'scenelet',
+  id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   data: {
     id: 'scenelet-control',
     parentId: 'scenelet-root',

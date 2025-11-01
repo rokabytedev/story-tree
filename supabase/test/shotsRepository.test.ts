@@ -10,6 +10,7 @@ import {
 type ShotRow = {
   id: string;
   story_id: string;
+  scenelet_ref: string;
   scenelet_id: string;
   scenelet_sequence: number;
   shot_index: number;
@@ -145,6 +146,7 @@ function makeShotRow(overrides: Partial<ShotRow> = {}): ShotRow {
   return {
     id: overrides.id ?? '9a8fe1f3-1d0e-4d0e-9cce-847275b82a4d',
     story_id: overrides.story_id ?? 'story-123',
+    scenelet_ref: overrides.scenelet_ref ?? '00000000-0000-0000-0000-000000000001',
     scenelet_id: overrides.scenelet_id ?? 'scenelet-1',
     scenelet_sequence: overrides.scenelet_sequence ?? 1,
     shot_index: overrides.shot_index ?? 1,
@@ -174,9 +176,14 @@ function makeRepository(responses: FakeResponses): {
 describe('shotsRepository.getShotsByStory', () => {
   it('groups shots by scenelet in shot order', async () => {
     const rows = [
-      makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 2 }),
-      makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 1 }),
-      makeShotRow({ scenelet_id: 'scenelet-2', shot_index: 1, scenelet_sequence: 3 }),
+      makeShotRow({ scenelet_ref: '11111111-1111-1111-1111-111111111111', scenelet_id: 'scenelet-1', shot_index: 2 }),
+      makeShotRow({ scenelet_ref: '11111111-1111-1111-1111-111111111111', scenelet_id: 'scenelet-1', shot_index: 1 }),
+      makeShotRow({
+        scenelet_ref: '22222222-2222-2222-2222-222222222222',
+        scenelet_id: 'scenelet-2',
+        shot_index: 1,
+        scenelet_sequence: 3,
+      }),
     ];
 
     const { repo, table } = makeRepository({
@@ -194,15 +201,27 @@ describe('shotsRepository.getShotsByStory', () => {
       ],
     });
 
-    expect(Object.keys(result)).toEqual(['scenelet-1', 'scenelet-2']);
-    expect(result['scenelet-1'][0]).toMatchObject({ shotIndex: 1 });
-    expect(result['scenelet-1'][1]).toMatchObject({ shotIndex: 2 });
-    expect(result['scenelet-2'][0]).toMatchObject({ sceneletSequence: 3 });
+    expect(Object.keys(result)).toEqual([
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',
+    ]);
+    expect(result['11111111-1111-1111-1111-111111111111'][0]).toMatchObject({
+      shotIndex: 1,
+      sceneletId: 'scenelet-1',
+      sceneletRef: '11111111-1111-1111-1111-111111111111',
+    });
+    expect(result['11111111-1111-1111-1111-111111111111'][1]).toMatchObject({ shotIndex: 2 });
+    expect(result['22222222-2222-2222-2222-222222222222'][0]).toMatchObject({ sceneletSequence: 3 });
   });
 
   it('maps audio file path when present', async () => {
     const rows = [
-      makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 1, audio_file_path: 'path/to/audio.wav' }),
+      makeShotRow({
+        scenelet_ref: '33333333-3333-3333-3333-333333333333',
+        scenelet_id: 'scenelet-1',
+        shot_index: 1,
+        audio_file_path: 'path/to/audio.wav',
+      }),
     ];
 
     const { repo } = makeRepository({
@@ -210,19 +229,26 @@ describe('shotsRepository.getShotsByStory', () => {
     });
 
     const result = await repo.getShotsByStory('story-123');
-    const [shot] = result['scenelet-1'];
+    const [shot] = result['33333333-3333-3333-3333-333333333333'];
     expect(shot.audioFilePath).toBe('path/to/audio.wav');
   });
 
   it('omits audio file path when null', async () => {
-    const rows = [makeShotRow({ scenelet_id: 'scenelet-1', shot_index: 1, audio_file_path: null })];
+    const rows = [
+      makeShotRow({
+        scenelet_ref: '44444444-4444-4444-4444-444444444444',
+        scenelet_id: 'scenelet-1',
+        shot_index: 1,
+        audio_file_path: null,
+      }),
+    ];
 
     const { repo } = makeRepository({
       selectStoryShots: { data: rows, error: null },
     });
 
     const result = await repo.getShotsByStory('story-123');
-    const [shot] = result['scenelet-1'];
+    const [shot] = result['44444444-4444-4444-4444-444444444444'];
     expect(shot.audioFilePath).toBeUndefined();
   });
 
@@ -257,7 +283,7 @@ describe('shotsRepository.createSceneletShots', () => {
       insert: { data: [], error: null },
     });
 
-    await repo.createSceneletShots('story-123', 'scenelet-9', 4, [
+    await repo.createSceneletShots('story-123', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scenelet-9', 4, [
       {
         shotIndex: 1,
         storyboardPayload: { framing_and_angle: 'Wide shot' },
@@ -272,7 +298,7 @@ describe('shotsRepository.createSceneletShots', () => {
       columns: 'id',
       filters: [
         { type: 'eq', column: 'story_id', value: 'story-123' },
-        { type: 'eq', column: 'scenelet_id', value: 'scenelet-9' },
+        { type: 'eq', column: 'scenelet_ref', value: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },
       ],
     });
 
@@ -281,6 +307,7 @@ describe('shotsRepository.createSceneletShots', () => {
     expect(insertedRows).toHaveLength(2);
     expect(insertedRows[0]).toMatchObject({
       story_id: 'story-123',
+      scenelet_ref: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       scenelet_id: 'scenelet-9',
       scenelet_sequence: 4,
       shot_index: 1,
@@ -299,7 +326,7 @@ describe('shotsRepository.createSceneletShots', () => {
       insert: { data: [], error: null },
     });
 
-    await repo.createSceneletShots('story-123', 'scenelet-9', 4, [
+    await repo.createSceneletShots('story-123', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'scenelet-9', 4, [
       {
         shotIndex: 1,
         storyboardPayload: { framing_and_angle: 'Wide shot' },
@@ -319,7 +346,7 @@ describe('shotsRepository.createSceneletShots', () => {
     });
 
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 1, [
+      repo.createSceneletShots('story-123', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -334,7 +361,7 @@ describe('shotsRepository.createSceneletShots', () => {
     });
 
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 1, [
+      repo.createSceneletShots('story-123', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -350,7 +377,7 @@ describe('shotsRepository.createSceneletShots', () => {
     });
 
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 1, [
+      repo.createSceneletShots('story-123', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -363,10 +390,10 @@ describe('shotsRepository.createSceneletShots', () => {
     const { repo } = makeRepository({});
 
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 1, [])
+      repo.createSceneletShots('story-123', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'scenelet-1', 1, [])
     ).rejects.toThrow(/at least one shot/i);
     await expect(
-      repo.createSceneletShots('', 'scenelet-1', 1, [
+      repo.createSceneletShots('', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -374,7 +401,7 @@ describe('shotsRepository.createSceneletShots', () => {
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
     await expect(
-      repo.createSceneletShots('story-123', ' ', 1, [
+      repo.createSceneletShots('story-123', ' ', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -382,7 +409,7 @@ describe('shotsRepository.createSceneletShots', () => {
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 0, [
+      repo.createSceneletShots('story-123', 'ffffffff-ffff-ffff-ffff-ffffffffffff', ' ', 1, [
         {
           shotIndex: 1,
           storyboardPayload: {},
@@ -390,13 +417,79 @@ describe('shotsRepository.createSceneletShots', () => {
       ])
     ).rejects.toBeInstanceOf(ShotsRepositoryError);
     await expect(
-      repo.createSceneletShots('story-123', 'scenelet-1', 1, [
+      repo.createSceneletShots('story-123', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'scenelet-1', 0, [
+        {
+          shotIndex: 1,
+          storyboardPayload: {},
+        },
+      ])
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+    await expect(
+      repo.createSceneletShots('story-123', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'scenelet-1', 1, [
         {
           shotIndex: 1,
           storyboardPayload: undefined,
         },
       ])
     ).rejects.toThrow(/storyboard payload/i);
+  });
+});
+
+describe('shotsRepository.getShotsBySceneletRef', () => {
+  it('returns shots ordered by shot index for the given scenelet', async () => {
+    const rows = [
+      makeShotRow({
+        scenelet_ref: '99999999-9999-9999-9999-999999999999',
+        scenelet_id: 'scenelet-42',
+        shot_index: 2,
+      }),
+      makeShotRow({
+        scenelet_ref: '99999999-9999-9999-9999-999999999999',
+        scenelet_id: 'scenelet-42',
+        shot_index: 1,
+      }),
+    ];
+
+    const { repo, table } = makeRepository({
+      selectStoryShots: { data: rows, error: null },
+    });
+
+    const result = await repo.getShotsBySceneletRef('99999999-9999-9999-9999-999999999999');
+
+    expect(table.selectCalls[0]).toMatchObject({
+      columns: undefined,
+      filters: [{ type: 'eq', column: 'scenelet_ref', value: '99999999-9999-9999-9999-999999999999' }],
+      order: [{ column: 'shot_index', ascending: true }],
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ shotIndex: 1 });
+    expect(result[1]).toMatchObject({ shotIndex: 2 });
+  });
+
+  it('returns an empty array when no shots exist', async () => {
+    const { repo } = makeRepository({
+      selectStoryShots: { data: [], error: null },
+    });
+
+    const result = await repo.getShotsBySceneletRef('99999999-9999-9999-9999-999999999999');
+    expect(result).toEqual([]);
+  });
+
+  it('throws when scenelet reference is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.getShotsBySceneletRef(' ')).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      selectStoryShots: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.getShotsBySceneletRef('99999999-9999-9999-9999-999999999999')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
   });
 });
 

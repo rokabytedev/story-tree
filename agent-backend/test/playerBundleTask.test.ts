@@ -34,6 +34,8 @@ function createScenelet(overrides: Partial<SceneletRecord> = {}): SceneletRecord
 
 function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
   return {
+    sceneletRef: overrides.sceneletRef ?? 'scenelet-ref',
+    sceneletId: overrides.sceneletId ?? 'scenelet-1',
     sceneletSequence: overrides.sceneletSequence ?? 1,
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload: overrides.storyboardPayload ?? {},
@@ -82,6 +84,8 @@ describe('runPlayerBundleTask', () => {
       shotsByScenelet: {
         root: [
           createShotRecord({
+            sceneletRef: 'root',
+            sceneletId: sceneletId,
             shotIndex: 1,
             keyFrameImagePath: `${storyId}/shots/${sceneletId}/shot-1_key_frame.png`,
             audioFilePath: `generated/${storyId}/shots/${sceneletId}/1_audio.wav`,
@@ -89,6 +93,8 @@ describe('runPlayerBundleTask', () => {
         ],
         leaf: [
           createShotRecord({
+            sceneletRef: 'leaf',
+            sceneletId: 'leaf',
             shotIndex: 1,
             keyFrameImagePath: `${storyId}/shots/leaf/shot-1_key_frame.png`,
           }),
@@ -144,6 +150,8 @@ describe('runPlayerBundleTask', () => {
       shotsByScenelet: {
         root: [
           createShotRecord({
+            sceneletRef: 'root',
+            sceneletId: 'root',
             shotIndex: 1,
             keyFrameImagePath: `${storyId}/shots/root/shot-1_key_frame.png`,
           }),
@@ -173,7 +181,7 @@ describe('runPlayerBundleTask', () => {
       storyId,
       scenelets: [createScenelet({ id: 'root', storyId })],
       shotsByScenelet: {
-        root: [createShotRecord({ shotIndex: 1 })],
+        root: [createShotRecord({ sceneletRef: 'root', sceneletId: 'root', shotIndex: 1 })],
       },
     });
 
@@ -242,6 +250,9 @@ function createDependencies(input: DependencyInput): PlayerBundleTaskDependencie
       },
       findSceneletIdsMissingShots: async () => [],
       getShotsByStory: async (id: string) => (id === storyId ? shotsByScenelet : {}),
+      getShotsBySceneletRef: async () => {
+        throw new Error('Not implemented');
+      },
       findShotsMissingImages: async () => [],
       updateShotImagePaths: async () => {
         throw new Error('Not implemented');

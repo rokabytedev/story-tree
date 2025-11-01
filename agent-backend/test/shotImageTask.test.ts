@@ -90,16 +90,37 @@ function createShotsRepository(
   const updates: Array<{ storyId: string; sceneletId: string; shotIndex: number; paths: unknown }> = [];
 
   return {
+    async createSceneletShots() {
+      throw new Error('Not implemented');
+    },
     async findShotsMissingImages() {
       return shotsMissingImages;
     },
     async getShotsByStory() {
       return shotsByScenelet;
     },
+    async getShotsBySceneletRef() {
+      return [];
+    },
     async updateShotImagePaths(storyId, sceneletId, shotIndex, paths) {
       updates.push({ storyId, sceneletId, shotIndex, paths });
     },
+    async updateShotAudioPath(_storyId, sceneletId, shotIndex, audioPath) {
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    },
     updates,
+    async findSceneletIdsMissingShots() {
+      return [];
+    },
   };
 }
 
@@ -120,6 +141,8 @@ function buildDependencies(
 
 function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
   return {
+    sceneletRef: overrides.sceneletRef ?? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    sceneletId: overrides.sceneletId ?? 'scenelet-1',
     sceneletSequence: overrides.sceneletSequence ?? 1,
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload:
@@ -164,7 +187,7 @@ describe('runShotImageTask', () => {
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [createShotRecord()],
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [createShotRecord()],
     };
 
     const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
@@ -240,8 +263,14 @@ describe('runShotImageTask', () => {
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [createShotRecord()],
-      'scenelet-2': [createShotRecord({ shotIndex: 1 })],
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [createShotRecord()],
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb': [
+        createShotRecord({
+          sceneletId: 'scenelet-2',
+          sceneletRef: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          shotIndex: 1,
+        }),
+      ],
     };
 
     const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
@@ -274,7 +303,7 @@ describe('runShotImageTask', () => {
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [
         createShotRecord({
           storyboardPayload: {
             framingAndAngle: 'Wide',
@@ -319,7 +348,7 @@ describe('runShotImageTask', () => {
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [createShotRecord()],
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [createShotRecord()],
     };
 
     const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);
@@ -345,7 +374,7 @@ describe('runShotImageTask', () => {
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [createShotRecord()],
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [createShotRecord()],
     };
 
     const shotsRepository = createShotsRepository(shotsMissingImages, shotsByScenelet);

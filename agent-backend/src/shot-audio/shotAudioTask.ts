@@ -21,6 +21,7 @@ import type { ShotProductionStoryboardEntry, ShotRecord } from '../shot-producti
 const DEFAULT_MODE: ShotAudioMode = 'default';
 
 interface ShotContext {
+  sceneletRef: string;
   sceneletId: string;
   shot: ShotRecord;
 }
@@ -267,18 +268,19 @@ function buildShotQueue(
 ): ShotContext[] {
   const entries: ShotContext[] = [];
 
-  for (const [sceneletId, shots] of Object.entries(shotsByScenelet)) {
-    if (targetSceneletId && sceneletId !== targetSceneletId) {
-      continue;
-    }
-
+  for (const shots of Object.values(shotsByScenelet)) {
     for (const shot of shots ?? []) {
+      if (targetSceneletId && shot.sceneletId !== targetSceneletId) {
+        continue;
+      }
+
       if (targetShotIndex !== undefined && shot.shotIndex !== targetShotIndex) {
         continue;
       }
 
       entries.push({
-        sceneletId,
+        sceneletRef: shot.sceneletRef,
+        sceneletId: shot.sceneletId,
         shot,
       });
     }

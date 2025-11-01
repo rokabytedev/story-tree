@@ -8,6 +8,7 @@ const STORY_TREE: StoryTreeSnapshot = {
   entries: [
     {
       kind: 'scenelet',
+      id: '11111111-1111-1111-1111-111111111111',
       data: {
         id: 'scenelet-1',
         parentId: null,
@@ -22,6 +23,7 @@ const STORY_TREE: StoryTreeSnapshot = {
     },
     {
       kind: 'scenelet',
+      id: '22222222-2222-2222-2222-222222222222',
       data: {
         id: 'scenelet-2',
         parentId: 'scenelet-1',
@@ -72,11 +74,13 @@ const BASE_AUDIO_DOCUMENT = {
       {
         character_name: 'Rhea',
         voice_profile: 'Rhea voice profile text brimming with expressive qualities and sufficient detail.',
+        voice_description: 'Voice description for Rhea that comfortably exceeds the minimum length required.',
         voice_name: 'Puck',
       },
       {
         character_name: 'Testing Agent',
         voice_profile: 'Testing Agent voice profile highlighting upbeat precision with abundant detail.',
+        voice_description: 'Testing Agent voice description conveying crisp optimism with ample supporting detail.',
         voice_name: 'Oberon',
       },
     ],
@@ -181,16 +185,18 @@ describe('parseAudioDesignResponse', () => {
       audio_design_document: {
         ...cloneBaseAudioDocument(),
         character_voice_profiles: [
-          {
-            character_name: 'Rhea',
-            voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
-            voice_name: 'Lyra',
-          },
-          {
-            character_name: 'Testing Agent',
-            voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
-            voice_name: 'Deneb',
-          },
+      {
+        character_name: 'Rhea',
+        voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
+        voice_description: 'Too short',
+        voice_name: 'Lyra',
+      },
+      {
+        character_name: 'Testing Agent',
+        voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
+        voice_description: 'Also short',
+        voice_name: 'Deneb',
+      },
         ],
       },
     });

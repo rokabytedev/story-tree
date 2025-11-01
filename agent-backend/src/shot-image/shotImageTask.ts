@@ -4,7 +4,7 @@ import { assembleKeyFramePrompt } from './keyFramePromptAssembler.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
 import { recommendReferenceImages, ReferenceImageRecommenderError } from '../reference-images/index.js';
 import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
-import type { ReferencedDesigns, ShotProductionStoryboardEntry } from '../shot-production/types.js';
+import type { ReferencedDesigns, ShotProductionStoryboardEntry, ShotRecord } from '../shot-production/types.js';
 import type { VisualDesignDocument } from '../visual-design/types.js';
 
 const DEFAULT_ASPECT_RATIO = '16:9';
@@ -97,13 +97,23 @@ export async function runShotImageTask(
 
   // Load all shots for the story
   const shotsByScenelet = await shotsRepository.getShotsByStory(storyId);
+  const shotsBySceneletId = new Map<string, ShotRecord[]>();
+  for (const shots of Object.values(shotsByScenelet)) {
+    if (!Array.isArray(shots) || shots.length === 0) {
+      continue;
+    }
+    const canonicalId = shots[0]?.sceneletId;
+    if (canonicalId) {
+      shotsBySceneletId.set(canonicalId, shots);
+    }
+  }
 
   let generatedKeyFrameImages = 0;
 
   // Process each shot that needs images
   for (const shotInfo of shotsToProcess) {
     const { sceneletId, shotIndex, missingKeyFrame } = shotInfo;
-    const shots = shotsByScenelet[sceneletId];
+    const shots = shotsBySceneletId.get(sceneletId);
     if (!shots) {
       logger?.debug?.('Scenelet not found in shots data', { sceneletId, storyId });
       continue;
