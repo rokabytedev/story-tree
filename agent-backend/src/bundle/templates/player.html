@@ -40,7 +40,7 @@
       }
 
       #player-root {
-        width: min(960px, 100%);
+        width: min(1344px, 100%);
         position: relative;
         background: rgba(10, 13, 20, 0.78);
         border-radius: 18px;
@@ -125,28 +125,27 @@
 
       .image-frame {
         position: relative;
-        width: 100%;
-        padding-top: 56.25%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         border-radius: 16px;
         overflow: hidden;
         background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
-      #shot-image,
-      #image-placeholder {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-      }
-
       #shot-image {
-        object-fit: contain;
+        position: relative;
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
         background: rgba(9, 11, 18, 0.6);
       }
 
       #image-placeholder {
+        position: relative;
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -356,6 +355,7 @@
           currentTimer: null,
           pendingAction: null,
           audioWasPlaying: false,
+          initialAudioUnlockPending: false,
         };
 
         document.addEventListener('DOMContentLoaded', initialize);
@@ -588,6 +588,7 @@
           elements.startScreen.classList.add('hidden');
           elements.playerScreen.classList.remove('hidden');
           elements.playPauseButton.disabled = false;
+          state.initialAudioUnlockPending = true;
           setStage('ramp-up');
           playScenelet(state.story.rootSceneletId);
         }
@@ -600,6 +601,7 @@
           state.isPaused = false;
           state.stage = 'idle';
           state.audioWasPlaying = false;
+          state.initialAudioUnlockPending = false;
           elements.audio.pause();
           elements.audio.src = '';
           hideAllOverlays();
@@ -625,7 +627,8 @@
 
         function displayShot(scenelet, shot) {
           state.currentSceneletId = scenelet.id;
-          state.currentShotIndex = scenelet.shots.indexOf(shot);
+          const shotIndex = scenelet.shots.indexOf(shot);
+          state.currentShotIndex = shotIndex;
           setStage('ramp-up');
           state.isPaused = false;
           updateControls();
@@ -641,7 +644,12 @@
           }
 
           if (shot.audioPath) {
-            scheduleAction(() => startAudioPlayback(shot.audioPath), RAMP_UP_MS);
+            if (state.initialAudioUnlockPending) {
+              state.initialAudioUnlockPending = false;
+              startAudioPlayback(shot.audioPath);
+            } else {
+              scheduleAction(() => startAudioPlayback(shot.audioPath), RAMP_UP_MS);
+            }
           } else {
             scheduleAction(() => {
               setStage('audio');
@@ -661,10 +669,21 @@
           elements.audio.currentTime = 0;
           state.audioWasPlaying = true;
           setStage('audio');
-          elements.audio.play().catch(() => {
+          elements.audio.play().catch((error) => {
+            if (error && typeof error === 'object' && error.name === 'NotAllowedError') {
+              state.initialAudioUnlockPending = true;
+            }
             state.audioWasPlaying = false;
-            onShotAudioComplete();
+            handleAudioPlaybackFallback();
           });
+        }
+
+        function handleAudioPlaybackFallback() {
+          elements.audio.pause();
+          elements.audio.removeAttribute('src');
+          elements.audio.load();
+          setStage('audio');
+          scheduleAction(() => onShotAudioComplete(), NO_AUDIO_HOLD_MS);
         }
 
         function onShotAudioComplete() {
