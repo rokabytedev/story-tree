@@ -198,6 +198,7 @@ describe('runShotImageTask', () => {
     });
 
     const saveImage = vi.fn(async () => 'story-1/shots/scenelet-1/shot-1_key_frame.png');
+    const retryOptions = { policy: { maxAttempts: 3 } };
 
     const result = (await runShotImageTask(
       'story-1',
@@ -206,6 +207,7 @@ describe('runShotImageTask', () => {
         shotsRepository,
         geminiImageClient: { generateImage },
         imageStorage: { saveImage },
+        retry: retryOptions,
       })
     )) as ShotImageTaskResult;
 
@@ -222,6 +224,7 @@ describe('runShotImageTask', () => {
     expect(generateImage).toHaveBeenCalledTimes(1);
     const [{ userPrompt, referenceImages }] = generateImage.mock.calls[0] ?? [];
     expect(referenceImages).toHaveLength(1);
+    expect(generateImage).toHaveBeenCalledWith(expect.objectContaining({ retry: retryOptions }));
     const parsedPrompt = JSON.parse(userPrompt as string);
     expect(parsedPrompt.global_aesthetic).toMatchObject({
       visual_style: story.visualDesignDocument.visual_style,

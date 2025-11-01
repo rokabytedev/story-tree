@@ -1,22 +1,7 @@
+import type { GeminiRetryOptions } from '../gemini/types.js';
+import type { GeminiImageClient } from '../image-generation/types.js';
 import type { ShotProductionShotsRepository } from '../shot-production/types.js';
 import type { AgentWorkflowStoriesRepository } from '../workflow/types.js';
-
-export interface GeminiImageClient {
-  generateImage(request: {
-    userPrompt: string;
-    referenceImages?: ReferenceImage[];
-    aspectRatio?: string;
-  }): Promise<{
-    imageData: Buffer;
-    mimeType: string;
-  }>;
-}
-
-export interface ReferenceImage {
-  data: Buffer;
-  mimeType: string;
-  name?: string;
-}
 
 export interface ImageStorage {
   saveImage(
@@ -36,6 +21,7 @@ export interface ShotImageTaskDependencies {
   targetSceneletId?: string;
   targetShotIndex?: number;
   aspectRatio?: string;
+  retry?: GeminiRetryOptions;
   verbose?: boolean;
 }
 

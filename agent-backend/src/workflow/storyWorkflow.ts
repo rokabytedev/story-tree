@@ -709,6 +709,10 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.targetShotIndex = overrides.targetShotIndex;
     }
 
+    if (overrides?.retry) {
+      dependencies.retry = overrides.retry;
+    }
+
     const logger = overrides?.logger ?? this.logger;
     if (logger) {
       dependencies.logger = logger;

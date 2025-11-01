@@ -648,8 +648,59 @@ describe('agentWorkflow CLI', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors.join(' ')).toContain(
-      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_IMAGES, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
     );
+  });
+
+  it('accepts --resume for CREATE_SHOT_IMAGES tasks', async () => {
+    const { repository } = createStoriesRepositoryStub([
+      {
+        id: 'story-1',
+        displayName: 'Test Story',
+        initialPrompt: 'Test prompt',
+        storyConstitution: null,
+        visualDesignDocument: {},
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    errors.length = 0;
+    logs.length = 0;
+    process.exitCode = undefined;
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_IMAGES',
+        '--story-id',
+        'story-1',
+        '--resume',
+        '--mode',
+        'stub',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBeUndefined();
+    expect(errors).toEqual([]);
+    const output = JSON.parse(logs[0]);
+    expect(output).toEqual({
+      storyId: 'story-1',
+      task: 'CREATE_SHOT_IMAGES',
+      status: 'completed',
+    });
   });
 
   it('accepts --resume for CREATE_SHOT_AUDIO tasks', async () => {

@@ -28,6 +28,7 @@ export async function runShotImageTask(
     imageStorage,
     logger,
     aspectRatio = DEFAULT_ASPECT_RATIO,
+    retry,
   } = dependencies;
 
   if (!geminiImageClient) {
@@ -180,6 +181,7 @@ export async function runShotImageTask(
       userPrompt: JSON.stringify(promptObject),
       referenceImages: referenceImageBuffers.slice(0, 3),
       aspectRatio,
+      retry,
     });
 
     const normalizedSceneletId = normalizeNameForPath(sceneletId);
