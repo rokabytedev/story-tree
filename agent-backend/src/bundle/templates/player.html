@@ -278,6 +278,7 @@
     </style>
   </head>
   <body>
+    <script id="story-data" type="application/json">__STORY_JSON_PLACEHOLDER__</script>
     <div id="player-root">
       <div id="error-panel" class="message hidden"></div>
       <div id="start-screen" class="panel hidden">
@@ -374,32 +375,37 @@
           elements.audio.addEventListener('ended', onShotAudioComplete);
           elements.audio.addEventListener('error', onAudioError);
 
-          const params = new URLSearchParams(window.location.search);
-          const storyPath = params.get('story');
-          if (!storyPath) {
-            showError('Missing story query parameter. Append ?story=story.json to the URL.');
+          const storyDataElement = document.getElementById('story-data');
+          const rawStoryData = storyDataElement?.textContent ?? '';
+          if (!rawStoryData.trim()) {
+            showError('Embedded story data is missing. Rebuild the bundle and try again.');
             return;
           }
 
           try {
-            const story = await loadStory(storyPath);
+            const story = loadEmbeddedStory(rawStoryData);
+            storyDataElement?.remove();
             prepareStory(story);
             showStartScreen();
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            showError(message);
+            showError(`Failed to load embedded story data.\n${message}`);
           }
         }
 
-        function loadStory(path) {
-          return fetch(path, { cache: 'no-store' })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`Failed to load story data (${response.status}).`);
-              }
-              return response.json();
-            })
-            .then(validateStoryData);
+        function loadEmbeddedStory(rawData) {
+          if (!rawData || !rawData.trim()) {
+            throw new Error('Story JSON is empty.');
+          }
+
+          let parsed;
+          try {
+            parsed = JSON.parse(rawData);
+          } catch (error) {
+            throw new Error('Story JSON is not valid.');
+          }
+
+          return validateStoryData(parsed);
         }
 
         function validateStoryData(data) {

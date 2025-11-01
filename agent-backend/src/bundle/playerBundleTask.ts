@@ -2,7 +2,7 @@ import path from 'node:path';
 import * as fsPromises from 'node:fs/promises';
 
 import { assembleBundleJson, BundleAssemblyError } from './bundleAssembler.js';
-import { copyAssets, copyPlayerTemplate } from './assetCopier.js';
+import { copyAssets } from './assetCopier.js';
 import type {
   BundleAssemblerDependencies,
   PlayerBundleTaskDependencies,
@@ -42,7 +42,6 @@ export async function runPlayerBundleTask(
 
   const fsAdapter = dependencies.fileSystem ?? fsPromises;
   const copyAssetsImpl = dependencies.copyAssets ?? copyAssets;
-  const copyTemplateImpl = dependencies.copyPlayerTemplate ?? copyPlayerTemplate;
   const logger = dependencies.logger;
 
   logger?.debug?.('Starting player bundle task', { storyId: trimmedStoryId });
@@ -119,7 +118,11 @@ export async function runPlayerBundleTask(
   const templatePath = options.templatePath ? path.resolve(options.templatePath) : DEFAULT_TEMPLATE_PATH;
 
   await fsAdapter.mkdir(storyOutputDir, { recursive: true });
-  await copyTemplateImpl(templatePath, storyOutputDir);
+
+  const playerTemplate = await fsPromises.readFile(templatePath, 'utf-8');
+  const playerHtml = injectStoryJsonIntoTemplate(playerTemplate, bundle);
+  const playerHtmlPath = path.join(storyOutputDir, 'player.html');
+  await fsAdapter.writeFile(playerHtmlPath, playerHtml, 'utf-8');
 
   const storyJsonPath = path.join(storyOutputDir, 'story.json');
   await fsAdapter.writeFile(storyJsonPath, JSON.stringify(bundle, null, 2), 'utf-8');
@@ -133,6 +136,18 @@ export async function runPlayerBundleTask(
     storyId: trimmedStoryId,
     outputPath: storyOutputDir,
   };
+}
+
+function injectStoryJsonIntoTemplate(template: string, story: unknown): string {
+  const placeholder = '__STORY_JSON_PLACEHOLDER__';
+  if (!template.includes(placeholder)) {
+    throw new PlayerBundleTaskError('Player template is missing the story data placeholder.');
+  }
+
+  const rawJson = JSON.stringify(story);
+  const escapedJson = rawJson.replace(/<\/script/gi, '<\\/script');
+
+  return template.replace(placeholder, escapedJson);
 }
 
 async function pathExists(

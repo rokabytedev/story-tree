@@ -67,7 +67,15 @@ describe('runPlayerBundleTask', () => {
     const outputRoot = path.join(root, 'output');
     const templatePath = path.join(root, 'player-template.html');
 
-    await fs.writeFile(templatePath, '<html><body>Player Template</body></html>', 'utf-8');
+    const templateMarkup = `
+      <html>
+        <body>
+          <script id="story-data" type="application/json">__STORY_JSON_PLACEHOLDER__</script>
+          Player Template
+        </body>
+      </html>
+    `;
+    await fs.writeFile(templatePath, templateMarkup, 'utf-8');
 
     const sceneletId = 'root';
     const shotsDir = path.join(generatedRoot, storyId, 'shots', sceneletId);
@@ -125,7 +133,10 @@ describe('runPlayerBundleTask', () => {
 
     expect(storyJson.metadata.exportedAt).toBe(ISO_NOW);
     expect(storyJson.scenelets).toHaveLength(2);
-    expect(await fs.readFile(playerHtmlPath, 'utf-8')).toContain('Player Template');
+    const playerHtml = await fs.readFile(playerHtmlPath, 'utf-8');
+    expect(playerHtml).toContain('Player Template');
+    expect(playerHtml).not.toContain('__STORY_JSON_PLACEHOLDER__');
+    expect(playerHtml).toContain('"metadata"');
 
     const imageTarget = path.join(result.outputPath, 'assets', 'shots', 'root', '1_key_frame.png');
     const audioTarget = path.join(result.outputPath, 'assets', 'shots', 'root', '1_audio.wav');
