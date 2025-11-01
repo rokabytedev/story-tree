@@ -61,17 +61,65 @@
       }
 
       #start-screen {
-        padding: 48px 42px;
+        position: relative;
+        padding: 48px 24px;
         text-align: center;
         display: flex;
-        flex-direction: column;
-        gap: 28px;
+        align-items: center;
+        justify-content: center;
+        min-height: 420px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+
+      #start-screen.has-visual {
+        background: transparent;
       }
 
       #start-screen h1 {
         margin: 0;
         font-size: clamp(28px, 4vw, 36px);
         font-weight: 600;
+      }
+
+      .start-visual {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .start-visual::before {
+        content: "";
+        position: absolute;
+        inset: -6%;
+        background-image: var(--start-image, none);
+        background-size: cover;
+        background-position: center;
+        filter: blur(22px);
+        transform: scale(1.05);
+        opacity: 0.7;
+      }
+
+      .start-visual::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(7, 10, 16, 0.2), rgba(7, 10, 16, 0.82));
+      }
+
+      .start-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        align-items: center;
+        width: min(420px, 100%);
+        background: rgba(12, 15, 23, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        padding: 40px 48px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
       }
 
       button {
@@ -266,6 +314,17 @@
           border-radius: 14px;
         }
 
+        #start-screen {
+          padding: 36px 18px;
+          min-height: 340px;
+        }
+
+        .start-content {
+          width: 100%;
+          padding: 32px 24px;
+          gap: 20px;
+        }
+
         .player-footer {
           justify-content: center;
         }
@@ -281,8 +340,11 @@
     <div id="player-root">
       <div id="error-panel" class="message hidden"></div>
       <div id="start-screen" class="panel hidden">
-        <h1 id="start-title"></h1>
-        <button id="start-button">Start Story</button>
+        <div id="start-visual" class="start-visual hidden"></div>
+        <div class="start-content">
+          <h1 id="start-title"></h1>
+          <button id="start-button">Start Story</button>
+        </div>
       </div>
       <div id="player-screen" class="hidden">
         <header class="player-header">
@@ -329,6 +391,7 @@
         const elements = {
           error: document.getElementById('error-panel'),
           startScreen: document.getElementById('start-screen'),
+          startVisual: document.getElementById('start-visual'),
           startTitle: document.getElementById('start-title'),
           startButton: document.getElementById('start-button'),
           playerScreen: document.getElementById('player-screen'),
@@ -568,6 +631,34 @@
           document.title = `${story.metadata.title} · Story Player`;
           elements.startTitle.textContent = story.metadata.title;
           elements.storyTitle.textContent = story.metadata.title;
+          updateStartScreenVisual(story);
+        }
+
+        function sanitizeUrlForCss(path) {
+          return String(path).replace(/(["'\\)])/g, '\\$1');
+        }
+
+        function updateStartScreenVisual(story) {
+          if (!elements.startVisual || !elements.startScreen) {
+            return;
+          }
+
+          const rootScenelet = story.scenelets.get(story.rootSceneletId);
+          const imagePath =
+            rootScenelet?.shots?.find(
+              (shot) => typeof shot.imagePath === 'string' && shot.imagePath
+            )?.imagePath ?? null;
+
+          if (imagePath) {
+            const sanitized = sanitizeUrlForCss(imagePath);
+            elements.startVisual.style.setProperty('--start-image', `url("${sanitized}")`);
+            elements.startVisual.classList.remove('hidden');
+            elements.startScreen.classList.add('has-visual');
+          } else {
+            elements.startVisual.classList.add('hidden');
+            elements.startScreen.classList.remove('has-visual');
+            elements.startVisual.style.removeProperty('--start-image');
+          }
         }
 
         function showStartScreen() {
