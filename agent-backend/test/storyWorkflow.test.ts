@@ -727,6 +727,7 @@ describe('runAllTasks', () => {
       runVisualReferenceTask: visualReference.runner,
       runAudioDesignTask: audioDesign.runner,
       runShotProductionTask: shotProduction.runner,
+      runShotAudioTask: async () => ({ generatedAudio: 0, skippedShots: 0, totalShots: 0 }),
       shotImageTaskOptions: {
         geminiImageClient: {
           async generateImage() {

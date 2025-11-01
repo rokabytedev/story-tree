@@ -27,6 +27,7 @@ import type {
   ShotAudioTaskDependencies,
   ShotAudioTaskRunner,
 } from '../shot-audio/types.js';
+import type { PlayerBundleTaskOptions, PlayerBundleTaskResult } from '../bundle/types.js';
 import type {
   CharacterModelSheetTaskDependencies,
   CharacterModelSheetTaskRunner,
@@ -111,6 +112,11 @@ export interface AgentWorkflowOptions {
   runCharacterModelSheetTask?: CharacterModelSheetTaskRunner;
   environmentReferenceTaskOptions?: EnvironmentReferenceTaskOptions;
   runEnvironmentReferenceTask?: EnvironmentReferenceTaskRunner;
+  playerBundleTaskOptions?: PlayerBundleTaskOptions;
+  runPlayerBundleTask?: (
+    storyId: string,
+    options?: PlayerBundleTaskOptions
+  ) => Promise<PlayerBundleTaskResult>;
 }
 
 export interface AgentWorkflowResult {
@@ -130,7 +136,8 @@ export type StoryWorkflowTask =
   | 'CREATE_SHOT_IMAGES'
   | 'CREATE_SHOT_AUDIO'
   | 'CREATE_CHARACTER_MODEL_SHEETS'
-  | 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
+  | 'CREATE_ENVIRONMENT_REFERENCE_IMAGE'
+  | 'CREATE_PLAYER_BUNDLE';
 
 export interface StoryWorkflow {
   readonly storyId: string;

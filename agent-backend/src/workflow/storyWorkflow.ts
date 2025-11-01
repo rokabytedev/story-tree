@@ -62,6 +62,8 @@ import type {
   CharacterModelSheetTaskRunner,
   CharacterModelSheetTaskDependencies,
 } from '../character-model-sheet/types.js';
+import { runPlayerBundleTask as runPlayerBundleTaskImpl } from '../bundle/playerBundleTask.js';
+import type { PlayerBundleTaskOptions, PlayerBundleTaskResult } from '../bundle/types.js';
 import type {
   AgentWorkflowConstitutionGenerator,
   AgentWorkflowInteractiveGenerator,
@@ -170,6 +172,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly characterModelSheetOptions?: CharacterModelSheetTaskOptions;
   private readonly environmentReferenceTaskRunner: EnvironmentReferenceTaskRunner;
   private readonly environmentReferenceOptions?: EnvironmentReferenceTaskOptions;
+  private readonly playerBundleTaskRunner?: (
+    storyId: string,
+    options?: PlayerBundleTaskOptions
+  ) => Promise<PlayerBundleTaskResult>;
+  private readonly playerBundleOptions?: PlayerBundleTaskOptions;
 
   constructor(storyId: string, dependencies: StoryWorkflowDependencies) {
     this.storyId = storyId;
@@ -187,6 +194,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.interactiveOptions = dependencies.interactiveStoryOptions
       ? { ...dependencies.interactiveStoryOptions }
       : undefined;
+    this.logger = dependencies.logger;
     this.storyTreeLoader = dependencies.storyTreeLoader;
     this.shotsRepository = dependencies.shotsRepository;
     this.visualDesignTaskRunner =
@@ -234,7 +242,26 @@ class StoryWorkflowImpl implements StoryWorkflow {
     this.environmentReferenceOptions = dependencies.environmentReferenceTaskOptions
       ? { ...dependencies.environmentReferenceTaskOptions }
       : undefined;
-    this.logger = dependencies.logger;
+    this.playerBundleOptions = dependencies.playerBundleTaskOptions
+      ? { ...dependencies.playerBundleTaskOptions }
+      : undefined;
+    this.playerBundleTaskRunner =
+      dependencies.runPlayerBundleTask ??
+      ((storyId, overrideOptions) =>
+        runPlayerBundleTaskImpl(
+          storyId,
+          {
+            storiesRepository: this.storiesRepository,
+            sceneletPersistence: this.sceneletPersistence,
+            shotsRepository: this.shotsRepository,
+            logger: this.logger
+              ? {
+                  debug: this.logger.debug?.bind(this.logger),
+                }
+              : undefined,
+          },
+          { ...this.playerBundleOptions, ...overrideOptions }
+        ));
   }
 
   async runTask(task: StoryWorkflowTask): Promise<void> {
@@ -271,6 +298,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
         return;
       case 'CREATE_ENVIRONMENT_REFERENCE_IMAGE':
         await this.runEnvironmentReferenceImageTask();
+        return;
+      case 'CREATE_PLAYER_BUNDLE':
+        await this.runPlayerBundleGenerationTask();
         return;
       default:
         throw new AgentWorkflowError(`Unsupported workflow task: ${String(task)}.`);
@@ -478,6 +508,14 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private async runEnvironmentReferenceImageTask(): Promise<void> {
     const dependencies = this.buildEnvironmentReferenceDependencies();
     await this.environmentReferenceTaskRunner(this.storyId, dependencies);
+  }
+
+  private async runPlayerBundleGenerationTask(): Promise<void> {
+    if (!this.playerBundleTaskRunner) {
+      throw new AgentWorkflowError('Player bundle task is not configured.');
+    }
+
+    await this.playerBundleTaskRunner(this.storyId, this.playerBundleOptions);
   }
 
   private buildVisualDesignDependencies(): VisualDesignTaskDependencies {

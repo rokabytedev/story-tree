@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -29,9 +29,12 @@ import { createGeminiJsonClient } from '../gemini/client.js';
 import { ImageStorageService } from '../image-generation/imageStorage.js';
 import { createGeminiTtsClient } from '../shot-audio/geminiTtsClient.js';
 import { createFileSystemAudioStorage } from '../shot-audio/audioFileStorage.js';
+import { runPlayerBundleTask as runPlayerBundleTaskCli } from '../bundle/index.js';
+import type { PlayerBundleTaskOptions } from '../bundle/types.js';
 
 const CLI_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(CLI_DIRECTORY, '../..');
+const MONOREPO_ROOT = resolve(REPO_ROOT, '..');
 const CONSTITUTION_FIXTURE = resolve(REPO_ROOT, 'fixtures/story-constitution/stub-gemini-responses.json');
 const INTERACTIVE_FIXTURE = resolve(REPO_ROOT, 'fixtures/interactive-story/stub-gemini-responses.json');
 const VISUAL_DESIGN_FIXTURE = resolve(REPO_ROOT, 'fixtures/visual-design/stub-gemini-response.json');
@@ -59,6 +62,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_SHOT_AUDIO',
   'CREATE_CHARACTER_MODEL_SHEETS',
   'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
+  'CREATE_PLAYER_BUNDLE',
 ];
 
 type CliMode = 'stub' | 'real';
@@ -91,6 +95,8 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   sceneletId?: string;
   shotIndex?: number;
   override?: boolean;
+  outputPath?: string;
+  overwrite?: boolean;
 }
 
 interface RunAllCommandOptions extends BaseCliOptions {
@@ -401,6 +407,33 @@ async function buildWorkflowDependencies(
     },
   };
 
+  if (options.command === 'run-task' && options.task === 'CREATE_PLAYER_BUNDLE') {
+    workflowOptions.playerBundleTaskOptions = {
+      ...(workflowOptions.playerBundleTaskOptions ?? {}),
+      outputPath: options.outputPath,
+      overwrite: options.overwrite,
+    };
+    const bundleLogger = logger
+      ? {
+          debug: logger.debug?.bind(logger),
+        }
+      : undefined;
+    workflowOptions.runPlayerBundleTask = (storyId: string, taskOptions?: PlayerBundleTaskOptions) =>
+      runPlayerBundleTaskCli(
+        storyId,
+        {
+          storiesRepository,
+          sceneletPersistence,
+          shotsRepository,
+          logger: bundleLogger,
+        },
+        {
+          ...workflowOptions.playerBundleTaskOptions,
+          ...taskOptions,
+        }
+      );
+  }
+
   if (
     (options.command === 'run-task' || options.command === 'run-all') &&
     options.resumeInteractiveScript
@@ -416,6 +449,29 @@ async function buildWorkflowDependencies(
   }
 
   if (mode === 'stub') {
+    const generatedAssetsRoot = resolve(MONOREPO_ROOT, 'apps/story-tree-ui/public/generated');
+    const publicRoot = resolve(MONOREPO_ROOT, 'apps/story-tree-ui/public');
+
+    const persistStubImage = async (
+      storyId: string,
+      category: string,
+      filename: string,
+      data: Buffer
+    ): Promise<string> => {
+      const targetDir = resolve(generatedAssetsRoot, storyId, category);
+      await mkdir(targetDir, { recursive: true });
+      const targetPath = resolve(targetDir, filename);
+      await writeFile(targetPath, data);
+      return `${storyId}/${category}/${filename}`;
+    };
+
+    const persistStubAudio = async (relativePath: string, data: Buffer): Promise<string> => {
+      const targetPath = resolve(publicRoot, relativePath);
+      await mkdir(dirname(targetPath), { recursive: true });
+      await writeFile(targetPath, data);
+      return targetPath;
+    };
+
     const interactiveResponses = await loadInteractiveResponses();
     const geminiClient = new FixtureGeminiClient(interactiveResponses);
     workflowOptions.generateStoryConstitution = async (prompt) => loadStubConstitution(prompt);
@@ -448,8 +504,11 @@ async function buildWorkflowDependencies(
         },
       },
       imageStorage: {
-        async saveImage(_buffer, storyId, category, filename) {
-          return `${storyId}/${category}/${filename}`;
+        async saveImage(buffer, storyId, category, filename) {
+          const content = Buffer.isBuffer(buffer)
+            ? buffer
+            : Buffer.from(buffer ?? []);
+          return persistStubImage(storyId, category, filename, content);
         },
       },
     };
@@ -483,8 +542,11 @@ async function buildWorkflowDependencies(
         },
       },
       imageStorage: {
-        async saveImage(_buffer, storyId, category, filename) {
-          return `${storyId}/${category}/${filename}`;
+        async saveImage(buffer, storyId, category, filename) {
+          const content = Buffer.isBuffer(buffer)
+            ? buffer
+            : Buffer.from(buffer ?? []);
+          return persistStubImage(storyId, category, filename, content);
         },
       },
     };
@@ -496,11 +558,13 @@ async function buildWorkflowDependencies(
         },
       },
       audioFileStorage: {
-        async saveShotAudio({ storyId, sceneletId, shotIndex }) {
+        async saveShotAudio({ storyId, sceneletId, shotIndex, audioData }) {
           const relativePath = `generated/${storyId}/shots/${sceneletId}/${shotIndex}_audio.wav`;
+          const data = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData ?? []);
+          const absolutePath = await persistStubAudio(relativePath, data);
           return {
             relativePath,
-            absolutePath: `/stub/${relativePath}`,
+            absolutePath,
           };
         },
       },
@@ -516,8 +580,11 @@ async function buildWorkflowDependencies(
         },
       },
       imageStorage: {
-        async saveImage(_buffer, storyId, category, filename) {
-          return `${storyId}/${category}/${filename}`;
+        async saveImage(buffer, storyId, category, filename) {
+          const content = Buffer.isBuffer(buffer)
+            ? buffer
+            : Buffer.from(buffer ?? []);
+          return persistStubImage(storyId, category, filename, content);
         },
       },
     };
@@ -532,11 +599,21 @@ async function buildWorkflowDependencies(
         },
       },
       imageStorage: {
-        async saveImage(_buffer, storyId, category, filename) {
-          return `${storyId}/${category}/${filename}`;
+        async saveImage(buffer, storyId, category, filename) {
+          const content = Buffer.isBuffer(buffer)
+            ? buffer
+            : Buffer.from(buffer ?? []);
+          return persistStubImage(storyId, category, filename, content);
         },
       },
     };
+
+    if (options.command === 'run-task' && options.task === 'CREATE_PLAYER_BUNDLE') {
+      workflowOptions.playerBundleTaskOptions = {
+        ...(workflowOptions.playerBundleTaskOptions ?? {}),
+        generatedAssetsRoot,
+      };
+    }
   }
 
   return workflowOptions;
@@ -567,6 +644,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let overrideFlag: boolean | undefined;
   let resumeModelSheetsFlag = false;
   let resumeShotAudioFlag = false;
+  let bundleOutputPath: string | undefined;
+  let bundleOverwrite = false;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -646,6 +725,17 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         shotIndex = parsed;
         break;
       }
+      case '--output-path': {
+        const value = rest[++index];
+        if (!value) {
+          throw new CliParseError('Missing value for --output-path flag.');
+        }
+        bundleOutputPath = value;
+        break;
+      }
+      case '--overwrite':
+        bundleOverwrite = true;
+        break;
       case '--override': {
         const peek = rest[index + 1];
         if (!peek || peek.startsWith('-')) {
@@ -741,6 +831,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         shotIndex,
         override: overrideFlag,
         resumeCharacterModelSheets: resumeModelSheets,
+        outputPath: bundleOutputPath,
+        overwrite: bundleOverwrite,
         ...modeOptions,
       };
     }
@@ -977,6 +1069,8 @@ function printHelp(): void {
   console.log('  --scenelet-id <id>           Target a specific scenelet (CREATE_SHOT_IMAGES or CREATE_SHOT_AUDIO).');
   console.log('  --shot-index <number>        Target a specific shot (1-based, use with --scenelet-id).');
   console.log('  --override [true|false]      Regenerate outputs even if they already exist (model sheets, environment references, or shot audio).');
+  console.log('  --output-path <path>         Override player bundle output directory (CREATE_PLAYER_BUNDLE).');
+  console.log('  --overwrite                  Replace existing player bundle output when the folder already exists.');
   console.log('  --resume-model-sheets        Resume character model sheet generation (batch mode only).');
   console.log('  --resume-shot-audio          Resume shot audio generation (skips shots with existing audio).');
   console.log('  --help (-h)                  Show this help message.');
@@ -1014,6 +1108,9 @@ function printHelp(): void {
   console.log('');
   console.log('  # Generate environment reference for a single environment with override');
   console.log('  run-task --task CREATE_ENVIRONMENT_REFERENCE_IMAGE --story-id abc-123 --environment-id plaza --override true --mode stub');
+  console.log('');
+  console.log('  # Generate a standalone player bundle to ./output/stories');
+  console.log('  run-task --task CREATE_PLAYER_BUNDLE --story-id abc-123 --output-path ./output --overwrite');
   console.log('');
   console.log('Note: CREATE_SHOT_IMAGES automatically uses character model sheets and environment keyframes');
   console.log('      from the visual reference package based on the shot\'s referenced_designs field.');

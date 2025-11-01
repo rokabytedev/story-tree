@@ -1,0 +1,176 @@
+import path from 'node:path';
+import * as fsPromises from 'node:fs/promises';
+
+import { assembleBundleJson, BundleAssemblyError } from './bundleAssembler.js';
+import { copyAssets, copyPlayerTemplate } from './assetCopier.js';
+import type {
+  BundleAssemblerDependencies,
+  PlayerBundleTaskDependencies,
+  PlayerBundleTaskOptions,
+  PlayerBundleTaskResult,
+} from './types.js';
+
+const DEFAULT_OUTPUT_ROOT = path.resolve(process.cwd(), 'output/stories');
+const DEFAULT_TEMPLATE_PATH = path.resolve(
+  process.cwd(),
+  'agent-backend/src/bundle/templates/player.html'
+);
+
+/** Error wrapper used when bundle generation prerequisites fail. */
+export class PlayerBundleTaskError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'PlayerBundleTaskError';
+    if (options?.cause) {
+      this.cause = options.cause;
+    }
+  }
+}
+
+/**
+ * Orchestrates generation of the standalone player bundle for the supplied story id.
+ */
+export async function runPlayerBundleTask(
+  storyId: string,
+  dependencies: PlayerBundleTaskDependencies,
+  options: PlayerBundleTaskOptions = {}
+): Promise<PlayerBundleTaskResult> {
+  const trimmedStoryId = storyId?.trim?.() ?? '';
+  if (!trimmedStoryId) {
+    throw new PlayerBundleTaskError('Story id must be provided to create a player bundle.');
+  }
+
+  const fsAdapter = dependencies.fileSystem ?? fsPromises;
+  const copyAssetsImpl = dependencies.copyAssets ?? copyAssets;
+  const copyTemplateImpl = dependencies.copyPlayerTemplate ?? copyPlayerTemplate;
+  const logger = dependencies.logger;
+
+  logger?.debug?.('Starting player bundle task', { storyId: trimmedStoryId });
+
+  const assemblerDependencies: BundleAssemblerDependencies = {
+    storiesRepository: dependencies.storiesRepository,
+    sceneletPersistence: dependencies.sceneletPersistence,
+    shotsRepository: dependencies.shotsRepository,
+  };
+
+  const story = await assemblerDependencies.storiesRepository.getStoryById(trimmedStoryId);
+  if (!story) {
+    throw new PlayerBundleTaskError(`Story ${trimmedStoryId} was not found.`);
+  }
+
+  const shotsByScenelet = await assemblerDependencies.shotsRepository.getShotsByStory(trimmedStoryId);
+  const hasShots = Object.values(shotsByScenelet).some((entries) => entries?.length);
+  if (!hasShots) {
+    throw new PlayerBundleTaskError(
+      `Story ${trimmedStoryId} does not have any generated shots. Run CREATE_SHOT_PRODUCTION first.`
+    );
+  }
+
+  const outputRoot = options.outputPath
+    ? path.resolve(options.outputPath)
+    : DEFAULT_OUTPUT_ROOT;
+  const storyOutputDir = path.resolve(outputRoot, trimmedStoryId);
+
+  const overwrite = Boolean(options.overwrite);
+  const outputExists = await pathExists(fsAdapter, storyOutputDir);
+
+  if (outputExists && !overwrite) {
+    throw new PlayerBundleTaskError(
+      `Bundle output directory ${storyOutputDir} already exists. Re-run with overwrite enabled to replace it.`
+    );
+  }
+
+  if (outputExists && overwrite) {
+    await fsAdapter.rm(storyOutputDir, { recursive: true, force: true });
+  }
+
+  await fsAdapter.mkdir(outputRoot, { recursive: true });
+
+  const assetManifest = await copyAssetsImpl(trimmedStoryId, shotsByScenelet, outputRoot, {
+    generatedAssetsRoot: options.generatedAssetsRoot,
+    logger,
+  });
+
+  if (assetManifest.size === 0) {
+    throw new PlayerBundleTaskError(
+      `Story ${trimmedStoryId} does not have any playable assets. Complete shot generation before bundling.`
+    );
+  }
+
+  const exportedAt = options.exportedAt ?? new Date().toISOString();
+
+  let bundle;
+  try {
+    ({ bundle } = await assembleBundleJson(trimmedStoryId, assemblerDependencies, {
+      assetManifest,
+      preloadedShots: shotsByScenelet,
+      exportedAt,
+      logger,
+    }));
+  } catch (error) {
+    if (error instanceof BundleAssemblyError) {
+      throw new PlayerBundleTaskError(error.message, { cause: error });
+    }
+    throw error;
+  }
+
+  await validateAssetReferences(fsAdapter, storyOutputDir, bundle.scenelets);
+
+  const templatePath = options.templatePath ? path.resolve(options.templatePath) : DEFAULT_TEMPLATE_PATH;
+
+  await fsAdapter.mkdir(storyOutputDir, { recursive: true });
+  await copyTemplateImpl(templatePath, storyOutputDir);
+
+  const storyJsonPath = path.join(storyOutputDir, 'story.json');
+  await fsAdapter.writeFile(storyJsonPath, JSON.stringify(bundle, null, 2), 'utf-8');
+
+  logger?.debug?.('Player bundle generated', {
+    storyId: trimmedStoryId,
+    outputPath: storyOutputDir,
+  });
+
+  return {
+    storyId: trimmedStoryId,
+    outputPath: storyOutputDir,
+  };
+}
+
+async function pathExists(
+  fsAdapter: Pick<typeof fsPromises, 'access'>,
+  targetPath: string
+): Promise<boolean> {
+  try {
+    await fsAdapter.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function validateAssetReferences(
+  fsAdapter: Pick<typeof fsPromises, 'access'>,
+  storyOutputDir: string,
+  scenelets: ReadonlyArray<{ shots: ReadonlyArray<{ imagePath: string | null; audioPath: string | null }> }>
+): Promise<void> {
+  for (const scenelet of scenelets) {
+    for (const shot of scenelet.shots) {
+      if (shot.imagePath) {
+        await ensureFileExists(fsAdapter, path.join(storyOutputDir, shot.imagePath));
+      }
+      if (shot.audioPath) {
+        await ensureFileExists(fsAdapter, path.join(storyOutputDir, shot.audioPath));
+      }
+    }
+  }
+}
+
+async function ensureFileExists(fsAdapter: Pick<typeof fsPromises, 'access'>, targetPath: string): Promise<void> {
+  try {
+    await fsAdapter.access(targetPath);
+  } catch (error) {
+    throw new PlayerBundleTaskError(
+      `Bundle validation failed: required asset ${targetPath} is missing after copy.`,
+      { cause: error }
+    );
+  }
+}

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<!--
+  Standalone Story Tree player template
+  Sections:
+    • Error panel shown when JSON fails to load
+    • Start screen with title and launch button
+    • Player screen containing image frame, overlays, controls, and audio element
+  CSS and JavaScript are kept inline so the file can be distributed without a build step.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Story Tree Player</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1117;
+        --panel: rgba(18, 21, 28, 0.92);
+        --accent: #58a6ff;
+        --text: #f5f6fb;
+        --muted: #9aa0b5;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: radial-gradient(circle at 25% 25%, #1b2334, #090b12 65%);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      #player-root {
+        width: min(960px, 100%);
+        position: relative;
+        background: rgba(10, 13, 20, 0.78);
+        border-radius: 18px;
+        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(18px);
+        overflow: hidden;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .message {
+        padding: 32px;
+        text-align: center;
+        color: var(--danger);
+        font-size: 18px;
+      }
+
+      #start-screen {
+        padding: 48px 42px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      #start-screen h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 36px);
+        font-weight: 600;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #2563eb, #60a5fa);
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        padding: 14px 26px;
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      button:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 35px rgba(96, 165, 250, 0.4);
+      }
+
+      #player-screen {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        min-height: 540px;
+      }
+
+      .player-header {
+        padding: 22px 28px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .player-header .title {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .player-main {
+        position: relative;
+        padding: 18px 28px 8px;
+      }
+
+      .image-frame {
+        position: relative;
+        width: 100%;
+        padding-top: 56.25%;
+        border-radius: 16px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #shot-image,
+      #image-placeholder {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #shot-image {
+        object-fit: contain;
+        background: rgba(9, 11, 18, 0.6);
+      }
+
+      #image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: var(--muted);
+        letter-spacing: 0.4px;
+        padding: 24px;
+        text-align: center;
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(4, 6, 10, 0.78);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        backdrop-filter: blur(12px);
+      }
+
+      .choice-content {
+        width: 100%;
+        max-width: 620px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        text-align: center;
+      }
+
+      #choice-prompt {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      .choice-options {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .choice-button {
+        border-radius: 16px;
+        overflow: hidden;
+        background: rgba(15, 18, 26, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        transition: transform 120ms ease, border-color 120ms ease;
+      }
+
+      .choice-button:hover {
+        transform: translateY(-3px);
+        border-color: rgba(88, 166, 255, 0.65);
+      }
+
+      .choice-button img,
+      .choice-button .thumbnail-placeholder {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .choice-button .thumbnail-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 14px;
+        padding: 12px;
+      }
+
+      .choice-button span {
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .overlay-content {
+        background: rgba(12, 15, 23, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 32px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        width: min(360px, 100%);
+      }
+
+      .overlay-content p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .player-footer {
+        padding: 20px 28px 26px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      #play-pause-button {
+        min-width: 130px;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 12px;
+        }
+
+        #player-root {
+          border-radius: 14px;
+        }
+
+        .player-footer {
+          justify-content: center;
+        }
+
+        .choice-options {
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="player-root">
+      <div id="error-panel" class="message hidden"></div>
+      <div id="start-screen" class="panel hidden">
+        <h1 id="start-title"></h1>
+        <button id="start-button">Start Story</button>
+      </div>
+      <div id="player-screen" class="hidden">
+        <header class="player-header">
+          <div class="title" id="story-title"></div>
+        </header>
+        <main class="player-main">
+          <div class="image-frame">
+            <img id="shot-image" alt="Current story shot" class="hidden" />
+            <div id="image-placeholder" class="hidden">Visual not available for this moment.</div>
+            <div id="choice-overlay" class="overlay hidden">
+              <div class="choice-content">
+                <h2 id="choice-prompt"></h2>
+                <div id="choice-options" class="choice-options"></div>
+              </div>
+            </div>
+            <div id="terminal-overlay" class="overlay hidden">
+              <div class="overlay-content">
+                <p>You reached a story ending. Feel free to experience it again.</p>
+                <button id="restart-button">Start Over</button>
+              </div>
+            </div>
+            <div id="incomplete-overlay" class="overlay hidden">
+              <div class="overlay-content">
+                <p>
+                  This path is still being authored. The story will resume once more content is
+                  available.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+        <footer class="player-footer">
+          <button id="play-pause-button" disabled>Pause</button>
+        </footer>
+        <audio id="shot-audio" preload="auto"></audio>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const RAMP_UP_MS = 500;
+        const RAMP_DOWN_MS = 500;
+
+        const elements = {
+          error: document.getElementById('error-panel'),
+          startScreen: document.getElementById('start-screen'),
+          startTitle: document.getElementById('start-title'),
+          startButton: document.getElementById('start-button'),
+          playerScreen: document.getElementById('player-screen'),
+          storyTitle: document.getElementById('story-title'),
+          shotImage: document.getElementById('shot-image'),
+          imagePlaceholder: document.getElementById('image-placeholder'),
+          playPauseButton: document.getElementById('play-pause-button'),
+          audio: document.getElementById('shot-audio'),
+          choiceOverlay: document.getElementById('choice-overlay'),
+          choicePrompt: document.getElementById('choice-prompt'),
+          choiceOptions: document.getElementById('choice-options'),
+          terminalOverlay: document.getElementById('terminal-overlay'),
+          restartButton: document.getElementById('restart-button'),
+          incompleteOverlay: document.getElementById('incomplete-overlay'),
+        };
+
+        const state = {
+          story: null,
+          scenelets: new Map(),
+          currentSceneletId: null,
+          currentShotIndex: 0,
+          isPaused: false,
+          stage: 'idle',
+          currentTimer: null,
+          pendingAction: null,
+          audioWasPlaying: false,
+        };
+
+        document.addEventListener('DOMContentLoaded', initialize);
+
+        async function initialize() {
+          elements.startScreen.classList.add('hidden');
+          elements.playerScreen.classList.add('hidden');
+          elements.playPauseButton.disabled = true;
+
+          elements.startButton.addEventListener('click', () => {
+            elements.error.classList.add('hidden');
+            hideAllOverlays();
+            beginPlayback();
+          });
+          elements.playPauseButton.addEventListener('click', togglePause);
+          elements.restartButton.addEventListener('click', resetToStart);
+          elements.audio.addEventListener('ended', onShotAudioComplete);
+          elements.audio.addEventListener('error', onAudioError);
+
+          const params = new URLSearchParams(window.location.search);
+          const storyPath = params.get('story');
+          if (!storyPath) {
+            showError('Missing story query parameter. Append ?story=story.json to the URL.');
+            return;
+          }
+
+          try {
+            const story = await loadStory(storyPath);
+            prepareStory(story);
+            showStartScreen();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            showError(message);
+          }
+        }
+
+        function loadStory(path) {
+          return fetch(path, { cache: 'no-store' })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`Failed to load story data (${response.status}).`);
+              }
+              return response.json();
+            })
+            .then(validateStoryData);
+        }
+
+        function validateStoryData(data) {
+          if (!data || typeof data !== 'object') {
+            throw new Error('Story JSON must contain an object.');
+          }
+
+          const metadata = data.metadata;
+          if (!metadata || typeof metadata !== 'object') {
+            throw new Error('Story JSON missing metadata block.');
+          }
+
+          const title = typeof metadata.title === 'string' && metadata.title.trim()
+            ? metadata.title.trim()
+            : 'Untitled Story';
+
+          const rootId = typeof data.rootSceneletId === 'string' && data.rootSceneletId.trim()
+            ? data.rootSceneletId.trim()
+            : null;
+          if (!rootId) {
+            throw new Error('Story JSON missing rootSceneletId.');
+          }
+
+          if (!Array.isArray(data.scenelets) || data.scenelets.length === 0) {
+            throw new Error('Story JSON missing scenelets array.');
+          }
+
+          const scenelets = new Map();
+          for (const entry of data.scenelets) {
+            if (!entry || typeof entry !== 'object') {
+              throw new Error('Each scenelet must be an object.');
+            }
+            const sceneletId = typeof entry.id === 'string' && entry.id.trim()
+              ? entry.id.trim()
+              : null;
+            if (!sceneletId) {
+              throw new Error('Scenelet missing id field.');
+            }
+            if (scenelets.has(sceneletId)) {
+              throw new Error(`Duplicate scenelet id detected: ${sceneletId}`);
+            }
+
+            const description = typeof entry.description === 'string'
+              ? entry.description
+              : typeof entry.description === 'object' && entry.description !== null
+                ? JSON.stringify(entry.description)
+                : '';
+
+            if (!Array.isArray(entry.shots) || entry.shots.length === 0) {
+              throw new Error(`Scenelet ${sceneletId} is missing playable shots.`);
+            }
+
+            const normalizedShots = entry.shots
+              .map((shot) => {
+                if (!shot || typeof shot !== 'object') {
+                  throw new Error(`Scenelet ${sceneletId} contains an invalid shot.`);
+                }
+                if (!Number.isInteger(shot.shotIndex)) {
+                  throw new Error(`Scenelet ${sceneletId} shot is missing shotIndex.`);
+                }
+                return {
+                  shotIndex: shot.shotIndex,
+                  imagePath: typeof shot.imagePath === 'string' ? shot.imagePath : null,
+                  audioPath: typeof shot.audioPath === 'string' ? shot.audioPath : null,
+                };
+              })
+              .sort((a, b) => a.shotIndex - b.shotIndex);
+
+            const next = normalizeNext(entry.next);
+
+            scenelets.set(sceneletId, {
+              id: sceneletId,
+              description,
+              shots: normalizedShots,
+              next,
+            });
+          }
+
+          if (!scenelets.has(rootId)) {
+            throw new Error(`Story root scenelet ${rootId} does not exist in scenelets array.`);
+          }
+
+          for (const scenelet of scenelets.values()) {
+            if (scenelet.next.type === 'linear' && scenelet.next.sceneletId) {
+              if (!scenelets.has(scenelet.next.sceneletId)) {
+                throw new Error(
+                  `Scenelet ${scenelet.id} references missing scenelet ${scenelet.next.sceneletId}.`
+                );
+              }
+            }
+            if (scenelet.next.type === 'branch') {
+              for (const choice of scenelet.next.choices) {
+                if (!scenelets.has(choice.sceneletId)) {
+                  throw new Error(
+                    `Scenelet ${scenelet.id} choice references missing scenelet ${choice.sceneletId}.`
+                  );
+                }
+              }
+            }
+          }
+
+          return {
+            metadata: {
+              title,
+              exportedAt: typeof metadata.exportedAt === 'string' ? metadata.exportedAt : '',
+              storyId: typeof metadata.storyId === 'string' ? metadata.storyId : '',
+            },
+            rootSceneletId: rootId,
+            scenelets,
+          };
+        }
+
+        function normalizeNext(rawNext) {
+          if (!rawNext || typeof rawNext !== 'object') {
+            return { type: 'terminal' };
+          }
+
+          const type = typeof rawNext.type === 'string' ? rawNext.type : 'terminal';
+          switch (type) {
+            case 'linear': {
+              const targetId = typeof rawNext.sceneletId === 'string' ? rawNext.sceneletId.trim() : '';
+              if (!targetId) {
+                return { type: 'incomplete' };
+              }
+              return { type: 'linear', sceneletId: targetId };
+            }
+            case 'branch': {
+              const prompt = typeof rawNext.choicePrompt === 'string'
+                ? rawNext.choicePrompt.trim()
+                : '';
+              const choices = Array.isArray(rawNext.choices)
+                ? rawNext.choices
+                    .map((choice) => {
+                      if (!choice || typeof choice !== 'object') {
+                        return null;
+                      }
+                      const label = typeof choice.label === 'string' ? choice.label.trim() : '';
+                      const childId = typeof choice.sceneletId === 'string'
+                        ? choice.sceneletId.trim()
+                        : '';
+                      return label && childId ? { label, sceneletId: childId } : null;
+                    })
+                    .filter(Boolean)
+                : [];
+              if (!prompt || choices.length === 0) {
+                return { type: 'incomplete' };
+              }
+              return { type: 'branch', choicePrompt: prompt, choices };
+            }
+            case 'incomplete':
+              return { type: 'incomplete' };
+            default:
+              return { type: 'terminal' };
+          }
+        }
+
+        function prepareStory(story) {
+          state.story = story;
+          state.scenelets = story.scenelets;
+          document.title = `${story.metadata.title} · Story Player`;
+          elements.startTitle.textContent = story.metadata.title;
+          elements.storyTitle.textContent = story.metadata.title;
+        }
+
+        function showStartScreen() {
+          hideAllOverlays();
+          elements.error.classList.add('hidden');
+          elements.playerScreen.classList.add('hidden');
+          elements.startScreen.classList.remove('hidden');
+          elements.playPauseButton.disabled = true;
+          elements.playPauseButton.textContent = 'Pause';
+          setStage('idle');
+        }
+
+        function beginPlayback() {
+          if (!state.story) {
+            return;
+          }
+          resetPlaybackState();
+          elements.startScreen.classList.add('hidden');
+          elements.playerScreen.classList.remove('hidden');
+          elements.playPauseButton.disabled = false;
+          setStage('ramp-up');
+          playScenelet(state.story.rootSceneletId);
+        }
+
+        function resetPlaybackState() {
+          clearCurrentTimer();
+          state.pendingAction = null;
+          state.currentSceneletId = null;
+          state.currentShotIndex = 0;
+          state.isPaused = false;
+          state.stage = 'idle';
+          state.audioWasPlaying = false;
+          elements.audio.pause();
+          elements.audio.src = '';
+          hideAllOverlays();
+          updateControls();
+        }
+
+        function resetToStart() {
+          resetPlaybackState();
+          showStartScreen();
+        }
+
+        function playScenelet(sceneletId) {
+          hideAllOverlays();
+          const scenelet = state.scenelets.get(sceneletId);
+          if (!scenelet) {
+            showError(`Scenelet ${sceneletId} is missing from story data.`);
+            return;
+          }
+          state.currentSceneletId = sceneletId;
+          state.currentShotIndex = 0;
+          displayShot(scenelet, scenelet.shots[0]);
+        }
+
+        function displayShot(scenelet, shot) {
+          state.currentSceneletId = scenelet.id;
+          state.currentShotIndex = scenelet.shots.indexOf(shot);
+          setStage('ramp-up');
+          state.isPaused = false;
+          updateControls();
+
+          if (shot.imagePath) {
+            elements.shotImage.src = shot.imagePath;
+            elements.shotImage.classList.remove('hidden');
+            elements.imagePlaceholder.classList.add('hidden');
+          } else {
+            elements.shotImage.src = '';
+            elements.shotImage.classList.add('hidden');
+            elements.imagePlaceholder.classList.remove('hidden');
+          }
+
+          if (shot.audioPath) {
+            scheduleAction(() => startAudioPlayback(shot.audioPath), RAMP_UP_MS);
+          } else {
+            scheduleAction(() => onShotAudioComplete(), RAMP_UP_MS + RAMP_DOWN_MS);
+          }
+        }
+
+        function startAudioPlayback(path) {
+          if (state.isPaused) {
+            state.pendingAction = () => startAudioPlayback(path);
+            return;
+          }
+
+          elements.audio.pause();
+          elements.audio.src = path;
+          elements.audio.currentTime = 0;
+          state.audioWasPlaying = true;
+          setStage('audio');
+          elements.audio.play().catch(() => {
+            state.audioWasPlaying = false;
+            onShotAudioComplete();
+          });
+        }
+
+        function onShotAudioComplete() {
+          elements.audio.pause();
+          state.audioWasPlaying = false;
+          setStage('ramp-down');
+          scheduleAction(advanceAfterShot, RAMP_DOWN_MS);
+        }
+
+        function onAudioError() {
+          onShotAudioComplete();
+        }
+
+        function advanceAfterShot() {
+          const scenelet = state.scenelets.get(state.currentSceneletId);
+          if (!scenelet) {
+            return;
+          }
+          const nextIndex = state.currentShotIndex + 1;
+          if (nextIndex < scenelet.shots.length) {
+            displayShot(scenelet, scenelet.shots[nextIndex]);
+            return;
+          }
+
+          handleSceneletTransition(scenelet);
+        }
+
+        function handleSceneletTransition(scenelet) {
+          const next = scenelet.next ?? { type: 'terminal' };
+          switch (next.type) {
+            case 'linear':
+              playScenelet(next.sceneletId);
+              break;
+            case 'branch':
+              showChoiceOverlay(next);
+              break;
+            case 'incomplete':
+              showIncompleteOverlay();
+              break;
+            case 'terminal':
+            default:
+              showTerminalOverlay();
+              break;
+          }
+        }
+
+        function showChoiceOverlay(next) {
+          setStage('choice');
+          state.isPaused = true;
+          updateControls();
+          elements.choicePrompt.textContent = next.choicePrompt;
+          elements.choiceOptions.innerHTML = '';
+
+          for (const choice of next.choices) {
+            const button = document.createElement('button');
+            button.className = 'choice-button';
+
+            const targetScenelet = state.scenelets.get(choice.sceneletId);
+            const previewShot = targetScenelet?.shots?.[0] ?? null;
+            if (previewShot?.imagePath) {
+              const img = document.createElement('img');
+              img.src = previewShot.imagePath;
+              img.alt = choice.label;
+              button.appendChild(img);
+            } else {
+              const placeholder = document.createElement('div');
+              placeholder.className = 'thumbnail-placeholder';
+              placeholder.textContent = 'Preview unavailable';
+              button.appendChild(placeholder);
+            }
+
+            const label = document.createElement('span');
+            label.textContent = choice.label;
+            button.appendChild(label);
+
+            button.addEventListener('click', () => {
+              elements.choiceOverlay.classList.add('hidden');
+              state.isPaused = false;
+              playScenelet(choice.sceneletId);
+            });
+
+            elements.choiceOptions.appendChild(button);
+          }
+
+          elements.choiceOverlay.classList.remove('hidden');
+        }
+
+        function showTerminalOverlay() {
+          setStage('terminal');
+          state.isPaused = true;
+          updateControls();
+          elements.terminalOverlay.classList.remove('hidden');
+        }
+
+        function showIncompleteOverlay() {
+          setStage('terminal');
+          state.isPaused = true;
+          updateControls();
+          elements.incompleteOverlay.classList.remove('hidden');
+        }
+
+        function hideAllOverlays() {
+          elements.choiceOverlay.classList.add('hidden');
+          elements.terminalOverlay.classList.add('hidden');
+          elements.incompleteOverlay.classList.add('hidden');
+        }
+
+        function scheduleAction(callback, delay) {
+          clearCurrentTimer();
+          state.pendingAction = callback;
+          if (state.isPaused) {
+            return;
+          }
+          state.currentTimer = window.setTimeout(() => {
+            state.currentTimer = null;
+            const action = state.pendingAction;
+            state.pendingAction = null;
+            if (typeof action === 'function') {
+              action();
+            }
+          }, delay);
+        }
+
+        function clearCurrentTimer() {
+          if (state.currentTimer !== null) {
+            clearTimeout(state.currentTimer);
+            state.currentTimer = null;
+          }
+        }
+
+        function togglePause() {
+          if (state.stage === 'choice' || state.stage === 'terminal') {
+            return;
+          }
+
+          state.isPaused = !state.isPaused;
+
+          if (state.isPaused) {
+            clearCurrentTimer();
+            if (state.stage === 'audio' && !elements.audio.paused) {
+              state.audioWasPlaying = true;
+              elements.audio.pause();
+            } else {
+              state.audioWasPlaying = false;
+            }
+          } else {
+            if (state.audioWasPlaying) {
+              state.audioWasPlaying = false;
+              elements.audio.play().catch(() => onShotAudioComplete());
+            } else if (state.pendingAction) {
+              const action = state.pendingAction;
+              state.pendingAction = null;
+              action();
+            }
+          }
+
+          updateControls();
+        }
+
+        function setStage(stage) {
+          state.stage = stage;
+          updateControls();
+        }
+
+        function updateControls() {
+          const shouldDisable = state.stage === 'choice' || state.stage === 'terminal';
+          elements.playPauseButton.disabled = shouldDisable;
+          elements.playPauseButton.textContent = state.isPaused ? 'Play' : 'Pause';
+        }
+
+        function showError(message) {
+          resetPlaybackState();
+          elements.playerScreen.classList.add('hidden');
+          elements.startScreen.classList.add('hidden');
+          elements.error.textContent = message;
+          elements.error.classList.remove('hidden');
+        }
+      })();
+    </script>
+  </body>
+</html>
