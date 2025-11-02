@@ -72,6 +72,8 @@ export async function assembleBundleJson(
   const shotsByScenelet = options.preloadedShots ?? (await shotsRepository.getShotsByStory(normalizedId));
   const manifest = options.assetManifest ?? buildManifestFromShotMap(shotsByScenelet, options.logger);
 
+  const sceneletAliasMap = buildSceneletAliasMap(shotsByScenelet);
+
   if (!manifest.size) {
     throw new BundleAssemblyError(`Story ${normalizedId} does not have any playable shots.`);
   }
@@ -128,6 +130,7 @@ export async function assembleBundleJson(
   const music = buildMusicManifest({
     audioDesign: story.audioDesignDocument,
     sceneletIdsInBundle: new Set(nodes.map((node) => node.id)),
+    sceneletAliases: sceneletAliasMap,
     logger: options.logger,
   });
 
@@ -385,6 +388,7 @@ export function buildMusicRelativePath(cueName: string): string {
 interface MusicManifestInput {
   audioDesign: unknown;
   sceneletIdsInBundle: Set<string>;
+  sceneletAliases: Map<string, string>;
   logger?: BundleLogger;
 }
 
@@ -394,7 +398,7 @@ function buildMusicManifest(input: MusicManifestInput): StoryMusicManifest {
     sceneletCueMap: {},
   };
 
-  const { audioDesign, sceneletIdsInBundle, logger } = input;
+  const { audioDesign, sceneletIdsInBundle, sceneletAliases, logger } = input;
   if (!audioDesign) {
     return manifest;
   }
@@ -427,31 +431,33 @@ function buildMusicManifest(input: MusicManifestInput): StoryMusicManifest {
     const filteredScenelets: string[] = [];
 
     for (const sceneletIdRaw of sceneletIdsRaw) {
-      const sceneletId = sceneletIdRaw.trim();
-      if (!sceneletIdsInBundle.has(sceneletId)) {
+      const alias = sceneletIdRaw.trim();
+      const resolvedSceneletId = sceneletAliases.get(alias) ?? alias;
+      if (!sceneletIdsInBundle.has(resolvedSceneletId)) {
         logger?.warn?.('Music cue references scenelet not present in bundle', {
           cueName,
-          sceneletId,
+          sceneletAlias: alias,
+          resolvedSceneletId,
         });
         continue;
       }
 
-      if (seenForCue.has(sceneletId)) {
+      if (seenForCue.has(resolvedSceneletId)) {
         continue;
       }
-      seenForCue.add(sceneletId);
+      seenForCue.add(resolvedSceneletId);
 
-      const existing = assignedScenelets.get(sceneletId);
+      const existing = assignedScenelets.get(resolvedSceneletId);
       if (existing && existing !== cueName) {
         logger?.warn?.('Scenelet already assigned to different music cue', {
-          sceneletId,
+          sceneletId: resolvedSceneletId,
           existingCue: existing,
           newCue: cueName,
         });
         continue;
       }
 
-      filteredScenelets.push(sceneletId);
+      filteredScenelets.push(resolvedSceneletId);
     }
 
     if (!filteredScenelets.length) {
@@ -472,6 +478,26 @@ function buildMusicManifest(input: MusicManifestInput): StoryMusicManifest {
   });
 
   return manifest;
+}
+
+function buildSceneletAliasMap(shotsByScenelet: Record<string, ShotRecord[]>): Map<string, string> {
+  const map = new Map<string, string>();
+
+  for (const [sceneletRef, shots] of Object.entries(shotsByScenelet)) {
+    if (!Array.isArray(shots)) {
+      continue;
+    }
+
+    for (const shot of shots) {
+      const alias = shot?.sceneletId?.toString?.().trim?.();
+      if (alias && !map.has(alias)) {
+        map.set(alias, sceneletRef);
+        break;
+      }
+    }
+  }
+
+  return map;
 }
 
 export function extractMusicCuesFromAudioDesign(raw: unknown, logger?: BundleLogger): AudioMusicCue[] {

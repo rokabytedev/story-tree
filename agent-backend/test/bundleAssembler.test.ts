@@ -234,28 +234,31 @@ describe('buildManifestFromShotMap', () => {
   it('includes music manifest and logs warnings for invalid cue mappings', async () => {
     const storyId = 'music-story';
     const scenelets = [
-      createScenelet({ id: 'scenelet-1', storyId }),
-      createScenelet({ id: 'scenelet-2', storyId, parentId: 'scenelet-1' }),
-      createScenelet({ id: 'scenelet-3', storyId, parentId: 'scenelet-2', isTerminalNode: true }),
+      createScenelet({ id: 'scenelet-ref-1', storyId }),
+      createScenelet({ id: 'scenelet-ref-2', storyId, parentId: 'scenelet-ref-1' }),
+      createScenelet({ id: 'scenelet-ref-3', storyId, parentId: 'scenelet-ref-2', isTerminalNode: true }),
     ];
 
     const shotsByScenelet: Record<string, ShotRecord[]> = {
-      'scenelet-1': [
+      'scenelet-ref-1': [
         createShotRecord({
+          sceneletRef: 'scenelet-ref-1',
           sceneletId: 'scenelet-1',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/scenelet-1/shot-1_key_frame.png`,
         }),
       ],
-      'scenelet-2': [
+      'scenelet-ref-2': [
         createShotRecord({
+          sceneletRef: 'scenelet-ref-2',
           sceneletId: 'scenelet-2',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/scenelet-2/shot-1_key_frame.png`,
         }),
       ],
-      'scenelet-3': [
+      'scenelet-ref-3': [
         createShotRecord({
+          sceneletRef: 'scenelet-ref-3',
           sceneletId: 'scenelet-3',
           shotIndex: 1,
           keyFrameImagePath: `${storyId}/shots/scenelet-3/shot-1_key_frame.png`,
@@ -306,24 +309,36 @@ describe('buildManifestFromShotMap', () => {
     expect(bundle.music.cues).toEqual([
       {
         cueName: 'Cue One',
-        sceneletIds: ['scenelet-1', 'scenelet-2'],
+        sceneletIds: ['scenelet-ref-1', 'scenelet-ref-2'],
         audioPath: 'assets/music/Cue One.m4a',
       },
       {
         cueName: 'Cue Two',
-        sceneletIds: ['scenelet-3'],
+        sceneletIds: ['scenelet-ref-3'],
         audioPath: 'assets/music/Cue Two.m4a',
       },
     ]);
 
     expect(bundle.music.sceneletCueMap).toEqual({
-      'scenelet-1': 'Cue One',
-      'scenelet-2': 'Cue One',
-      'scenelet-3': 'Cue Two',
+      'scenelet-ref-1': 'Cue One',
+      'scenelet-ref-2': 'Cue One',
+      'scenelet-ref-3': 'Cue Two',
     });
 
-    expect(warnings.some(({ message }) => message === 'Music cue associated scenelets are not consecutive')).toBe(true);
-    expect(warnings.some(({ message, metadata }) => message === 'Music cue references scenelet not present in bundle' && metadata?.sceneletId === 'scenelet-5')).toBe(true);
+    expect(
+      warnings.some(
+        ({ message, metadata }) =>
+          message === 'Music cue associated scenelets are not consecutive' &&
+          Array.isArray(metadata?.sceneletIds)
+      )
+    ).toBe(true);
+    expect(
+      warnings.some(
+        ({ message, metadata }) =>
+          message === 'Music cue references scenelet not present in bundle' &&
+          metadata?.sceneletAlias === 'scenelet-5'
+      )
+    ).toBe(true);
   });
 });
 
