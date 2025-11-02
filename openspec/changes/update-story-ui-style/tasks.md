@@ -1,0 +1,5 @@
+1. [x] Update the `/story` grid so cards span two columns, remove the color dot/author/explorer chrome, and source the logline from the constitution "Logline" bullet when present.
+2. [x] Flatten the story detail sidebar by removing card wrappers, make the thumbnail full-width with the title underneath, and refresh the tab bar with a subtle selected-state highlight.
+3. [x] Establish a shared subtle card elevation token that uses a near-flat shadow by default and a slightly brighter hover state across Story Tree UI surfaces.
+4. [x] Restructure Visual tab character and environment cards so artwork spans full width, metadata lists as flat rows, and associated scenelets render in a compact footer.
+5. [ ] Run Story Tree UI workspace checks (`npm run lint` and `npm run test -- --scope=apps/story-tree-ui` or equivalent) to confirm no regressions. _(Blocked: no `lint` script defined; `npx tsc --noEmit -p apps/story-tree-ui/tsconfig.json` currently fails on pre-existing storyboard type errors.)_

@@ -21,6 +21,7 @@ export interface VisualCharacterSummary {
   physique?: string | null;
   facialFeatures?: string | null;
   imagePath?: string | null;
+  sceneletIds: string[];
 }
 
 export interface VisualEnvironmentSummary {
@@ -241,6 +242,11 @@ function parseCharacterDesigns(record: UnknownRecord): VisualCharacterSummary[] 
 
       const name =
         coerceString(entry.character_name ?? entry.characterName) ?? id;
+      const sceneletIds = coerceStringArray(
+        entry.associated_scenelet_ids ??
+          entry.associatedSceneletIds ??
+          entry.scenelets
+      );
 
       return {
         id,
@@ -251,6 +257,7 @@ function parseCharacterDesigns(record: UnknownRecord): VisualCharacterSummary[] 
         physique,
         facialFeatures,
         imagePath,
+        sceneletIds,
       } satisfies VisualCharacterSummary;
     })
     .filter((entry): entry is VisualCharacterSummary => Boolean(entry));

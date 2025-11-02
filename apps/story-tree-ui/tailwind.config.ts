@@ -24,7 +24,8 @@ const config: Config = {
         mono: ["var(--font-geist-mono)", "var(--font-mono-stack)"],
       },
       boxShadow: {
-        panel: "0 18px 48px rgba(108, 88, 76, 0.22)",
+        panel: "0 1px 2px rgba(46, 37, 27, 0.12), 0 3px 6px rgba(108, 88, 76, 0.08)",
+        "panel-hover": "0 4px 14px rgba(108, 88, 76, 0.12)",
       },
       borderRadius: {
         xl: "1.25rem",

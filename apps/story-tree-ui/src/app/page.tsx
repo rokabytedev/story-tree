@@ -20,7 +20,7 @@ export default function Home() {
             href="https://github.com/rokabyte/story-tree"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary shadow-panel transition hover:border-highlight hover:shadow-[0_20px_45px_rgba(10,16,32,0.55)]"
+            className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary shadow-panel transition hover:border-highlight hover:shadow-panel-hover"
           >
             Project Repository
           </a>

@@ -7,7 +7,6 @@ import { storybookPalette } from "@/theme/palette";
 
 type StorySidebarHeaderProps = {
   title?: string | null;
-  author?: string | null;
   thumbnailSrc?: string | null;
   accentColor?: string | null;
 };
@@ -25,12 +24,10 @@ function buildAccentBackground(accentColor?: string | null) {
 
 export function StorySidebarHeader({
   title,
-  author,
   thumbnailSrc,
   accentColor,
 }: StorySidebarHeaderProps) {
   const displayTitle = title?.trim() || "Story unavailable";
-  const displayAuthor = author?.trim();
   const initial = displayTitle.slice(0, 1).toUpperCase() || "?";
   const accentBackground = buildAccentBackground(accentColor);
 
@@ -48,33 +45,33 @@ export function StorySidebarHeader({
           Story Tree
         </span>
       </div>
-      <div className="flex items-center gap-4 rounded-3xl border border-border bg-surface-elevated px-4 py-4 shadow-panel">
-        <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-border bg-surface">
+      <div className="flex flex-col gap-4">
+        <div
+          className="relative w-full overflow-hidden rounded-3xl border border-border bg-surface"
+          style={{ aspectRatio: "4 / 3" }}
+        >
           {thumbnailSrc ? (
             <Image
               src={thumbnailSrc}
               alt={`${displayTitle} thumbnail`}
               fill
               className="object-cover"
-              sizes="64px"
+              sizes="(min-width: 1024px) 280px, 100vw"
             />
           ) : (
             <div
-              className="flex h-full w-full items-center justify-center rounded-2xl text-lg font-semibold uppercase text-page"
+              className="flex h-full w-full items-center justify-center rounded-3xl text-2xl font-semibold uppercase text-page"
               style={{ background: accentBackground }}
             >
               {initial}
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-text-muted">
             Story Explorer
           </p>
-          <h2 className="text-lg font-semibold leading-tight text-text-primary">{displayTitle}</h2>
-          {displayAuthor ? (
-            <p className="text-xs text-text-muted">by {displayAuthor}</p>
-          ) : null}
+          <h2 className="text-xl font-semibold leading-tight text-text-primary">{displayTitle}</h2>
         </div>
       </div>
     </div>

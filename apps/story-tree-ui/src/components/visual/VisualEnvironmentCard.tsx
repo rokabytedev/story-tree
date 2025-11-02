@@ -15,7 +15,7 @@ function formatMultiline(value: string | null | undefined) {
 }
 
 export function VisualEnvironmentCard({ environment }: VisualEnvironmentCardProps) {
-  const detailItems = [
+  const metadata = [
     { label: "Overview", value: environment.overallDescription },
     { label: "Lighting & Atmosphere", value: environment.lighting },
     { label: "Color Tones", value: environment.colorTones },
@@ -23,20 +23,23 @@ export function VisualEnvironmentCard({ environment }: VisualEnvironmentCardProp
   ].filter((item) => Boolean(item.value));
 
   return (
-    <article className="space-y-5 rounded-3xl border border-border bg-surface-elevated px-6 py-6 shadow-panel">
-      <header className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative h-40 overflow-hidden rounded-2xl border border-border bg-surface sm:w-40">
+    <article className="space-y-4 rounded-3xl border border-border bg-surface-elevated px-6 py-6 shadow-panel">
+      <div className="flex flex-col gap-3">
+        <div
+          className="relative w-full overflow-hidden rounded-3xl border border-border bg-surface"
+          style={{ aspectRatio: "16 / 9" }}
+        >
           {environment.referenceImagePath ? (
             <Image
               src={environment.referenceImagePath}
               alt={`${environment.name ?? environment.id} reference`}
               fill
               className="object-cover"
-              sizes="(min-width: 640px) 160px, 100vw"
+              sizes="(min-width: 1024px) 320px, 100vw"
             />
           ) : (
             <div
-              className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-accent-muted/50 text-center text-xs font-medium text-text-muted"
+              className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-3xl text-center text-xs font-medium text-text-muted"
               style={{
                 backgroundImage: `linear-gradient(135deg, ${storybookPalette.surfaceMuted} 0%, ${storybookPalette.accentMuted} 100%)`,
               }}
@@ -44,53 +47,48 @@ export function VisualEnvironmentCard({ environment }: VisualEnvironmentCardProp
               <span className="text-sm font-semibold text-text-primary">
                 No reference art yet
               </span>
-              <span className="max-w-[10rem] leading-snug text-text-muted">
+              <span className="max-w-[14rem] leading-snug text-text-muted">
                 Generate environment reference art to display here.
               </span>
             </div>
           )}
         </div>
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-semibold leading-tight text-text-primary">
-              {environment.name ?? environment.id}
-            </h3>
-            <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium text-text-muted">
-              Environment
-            </span>
-          </div>
-          {environment.sceneletIds.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {environment.sceneletIds.map((sceneletId) => (
-                <span
-                  key={sceneletId}
-                  className="rounded-full border border-border/50 bg-accent-muted/60 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-text-primary"
-                >
-                  {sceneletId}
-                </span>
-              ))}
-            </div>
-          ) : null}
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold leading-tight text-text-primary">
+            {environment.name ?? environment.id}
+          </h3>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
+            {(environment.id || "environment").toUpperCase()} · Environment
+          </p>
         </div>
-      </header>
+      </div>
 
-      {detailItems.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {detailItems.map(({ label, value }) => (
-            <div
-              key={label}
-              className="rounded-2xl border border-border/60 bg-surface px-4 py-3"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
-                {label}
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-text-muted">
-                {formatMultiline(value)}
-              </p>
-            </div>
-          ))}
-        </div>
+      {metadata.length > 0 && (
+        <dl className="space-y-2">
+          {metadata.map(({ label, value }) => {
+            const formatted = formatMultiline(value);
+            if (!formatted) {
+              return null;
+            }
+            return (
+              <div key={label} className="space-y-1">
+                <dt className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
+                  {label}
+                </dt>
+                <dd className="whitespace-pre-wrap text-sm leading-relaxed text-text-muted">
+                  {formatted}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
       )}
+
+      {environment.sceneletIds.length > 0 ? (
+        <footer className="text-[10px] font-medium uppercase tracking-[0.3em] text-text-muted">
+          Scenelets: {environment.sceneletIds.join(", ")}
+        </footer>
+      ) : null}
     </article>
   );
 }

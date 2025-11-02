@@ -43,7 +43,7 @@ export default async function StoryIndexPage() {
           </p>
         </header>
         {hasStories ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             {stories.map((story) => {
               const placeholderStyle: CSSProperties = {
                 backgroundImage: `linear-gradient(135deg, ${story.accentColor} 0%, ${storybookPalette.accentMuted} 100%)`,
@@ -53,7 +53,7 @@ export default async function StoryIndexPage() {
                 <Link
                   key={story.id}
                   href={`/story/${story.id}/constitution`}
-                  className="group flex gap-4 rounded-3xl border border-border bg-surface-elevated p-4 shadow-panel transition hover:-translate-y-1 hover:shadow-[0_30px_65px_rgba(108,88,76,0.25)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight"
+                  className="group flex gap-5 rounded-3xl border border-border/40 bg-surface-elevated p-5 shadow-panel transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight hover:shadow-panel-hover"
                 >
                   <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-border bg-surface">
                     {story.thumbnailImagePath ? (
@@ -78,31 +78,15 @@ export default async function StoryIndexPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-1 flex-col justify-between gap-3 py-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <h2 className="text-lg font-semibold leading-tight text-text-primary">
-                          {story.title}
-                        </h2>
-                        <p className="text-xs font-medium uppercase tracking-[0.25em] text-text-muted/80">
-                          By {story.author}
-                        </p>
-                      </div>
-                      <span
-                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor: story.accentColor,
-                          boxShadow: `0 0 0 2px ${storybookPalette.surface}`,
-                        }}
-                        aria-hidden="true"
-                      />
+                  <div className="flex flex-1 flex-col justify-between gap-4 py-1">
+                    <div className="space-y-2">
+                      <h2 className="text-xl font-semibold leading-tight text-text-primary">
+                        {story.title}
+                      </h2>
+                      <p className="max-h-32 overflow-hidden text-sm leading-relaxed text-text-muted">
+                        {story.logline ?? "Logline coming soon."}
+                      </p>
                     </div>
-                    <p className="max-h-24 overflow-hidden text-sm leading-relaxed text-text-muted">
-                      {story.logline ?? "Logline not available yet."}
-                    </p>
-                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-highlight">
-                      Open Explorer →
-                    </span>
                   </div>
                 </Link>
               );

@@ -57,7 +57,6 @@ export default async function StoryLayout({ children, params }: StoryLayoutProps
   const sidebarStory = story
     ? {
         title: story.title,
-        author: story.author,
         accentColor: story.accentColor,
         thumbnailSrc: story.thumbnailImagePath,
       }

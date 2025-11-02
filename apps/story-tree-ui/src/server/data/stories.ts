@@ -201,6 +201,8 @@ function extractLoglineFromMarkdown(markdown: string | null): string | null {
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
+    const plainLine = stripMarkdownFormatting(line).trim();
+    const normalizedPlain = plainLine.toLowerCase();
 
     if (!inLoglineSection) {
       if (/^#{1,6}\s+logline\b/i.test(line)) {
@@ -208,8 +210,31 @@ function extractLoglineFromMarkdown(markdown: string | null): string | null {
         continue;
       }
 
-      if (/^logline\s*:/i.test(line)) {
-        const inline = line.replace(/^logline\s*:/i, "").trim();
+      const strippedPrefix = stripMarkdownFormatting(line)
+        .replace(/^[\d.\-*_()\s]+/, "")
+        .trim()
+        .toLowerCase();
+
+      if (normalizedPlain === "logline" || normalizedPlain === "logline.") {
+        inLoglineSection = true;
+        continue;
+      }
+
+      if (normalizedPlain.startsWith("logline:")) {
+        const inline = stripMarkdownFormatting(line)
+          .replace(/^[\d.\-*_()\s]*logline\s*:/i, "")
+          .trim();
+        if (inline) {
+          return stripMarkdownFormatting(inline);
+        }
+        inLoglineSection = true;
+        continue;
+      }
+
+      if (strippedPrefix.startsWith("logline:")) {
+        const inline = stripMarkdownFormatting(line)
+          .replace(/^[\d.\-*_()\s]*logline\s*:/i, "")
+          .trim();
         if (inline) {
           return stripMarkdownFormatting(inline);
         }
@@ -226,7 +251,16 @@ function extractLoglineFromMarkdown(markdown: string | null): string | null {
       break;
     }
 
-    const normalized = stripMarkdownFormatting(line.replace(/^[-*+]\s+/, "").trim());
+    if (
+      plainLine &&
+      /^(\d+(\.\d+)*)[\s).:-]/.test(plainLine) &&
+      !normalizedPlain.startsWith("logline")
+    ) {
+      break;
+    }
+
+    const bulletContent = line.replace(/^[-*+]\s+/, "").trim();
+    const normalized = stripMarkdownFormatting(bulletContent);
     if (normalized) {
       return normalized;
     }

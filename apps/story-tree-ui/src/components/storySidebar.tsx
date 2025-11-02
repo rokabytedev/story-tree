@@ -57,7 +57,6 @@ type StorySidebarProps = {
   storyId: string;
   story?: {
     title?: string | null;
-    author?: string | null;
     thumbnailSrc?: string | null;
     accentColor?: string | null;
   };
@@ -72,11 +71,10 @@ export function StorySidebar({ storyId, story, className = "" }: StorySidebarPro
     <nav className={composedClassName}>
       <StorySidebarHeader
         title={story?.title}
-        author={story?.author}
         thumbnailSrc={story?.thumbnailSrc ?? null}
         accentColor={story?.accentColor ?? null}
       />
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1">
         {storyTabs.map(({ slug, label, description, Icon }) => {
           const href = `/story/${storyId}/${slug}`;
           const isActive = pathname === href;
@@ -86,17 +84,17 @@ export function StorySidebar({ storyId, story, className = "" }: StorySidebarPro
                 href={href}
                 aria-label={`${label} — ${description}`}
                 aria-current={isActive ? "page" : undefined}
-                className={`group flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
+                className={`group flex items-start gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
                   isActive
-                    ? "border-border bg-surface-elevated text-text-primary shadow-panel"
-                    : "border-transparent text-text-muted hover:border-border/60 hover:bg-surface-elevated/80 hover:text-text-primary"
+                    ? "bg-surface-elevated font-semibold text-text-primary"
+                    : "text-text-muted hover:bg-surface-elevated hover:text-text-primary"
                 }`}
               >
                 <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl transition ${
                     isActive
-                      ? "border-highlight bg-highlight/15 text-highlight"
-                      : "border-border/70 text-text-muted group-hover:border-border group-hover:text-text-primary"
+                      ? "text-highlight"
+                      : "text-text-muted group-hover:text-highlight"
                   }`}
                   aria-hidden="true"
                 >
