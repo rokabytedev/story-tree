@@ -4,101 +4,40 @@
 TBD - created by archiving change extend-visual-tab-ui. Update Purpose after archive.
 ## Requirements
 ### Requirement: Display Character Reference Images
+The Visual tab MUST display character design data from the visual design document as curated profile cards.
 
-The Visual tab MUST display character reference images from the visual reference package in a browsable grid layout with detailed metadata access.
-
-#### Scenario: User views character reference images
-
-- **GIVEN** a story has a visual reference package with character model sheets
+#### Scenario: User views character design card
+- **GIVEN** a story has a `visualDesignDocument` with at least one entry in `character_designs`
 - **WHEN** the user navigates to `/story/{storyId}/visual`
-- **THEN** the page MUST display a "Characters" section
-- **AND** for each character in `character_model_sheets`, the page MUST display a subsection with the character ID as the heading
-- **AND** each character subsection MUST display a grid of image cards for all reference plates
-- **AND** each image card MUST show the image (or placeholder if `image_path` is missing) and the `plate_description` text below it
-- **AND** the image card MUST be clickable to open a detail panel
-
-#### Scenario: User clicks character reference image to view details
-
-- **GIVEN** a character reference image card is displayed
-- **WHEN** the user clicks on the image card
-- **THEN** a right-side detail panel MUST open (similar to storyboard shot detail panel)
-- **AND** the panel MUST display the full image at the top
-- **AND** the panel MUST display the image type (e.g., "CHARACTER_MODEL_SHEET")
-- **AND** the panel MUST display the `plate_description` text
-- **AND** the panel MUST display the full `image_generation_prompt` with proper formatting (rendering `\n` as line breaks)
-- **AND** the user MUST be able to close the panel by clicking a close button, clicking outside, or pressing the ESC key
-
-#### Scenario: User views character design details from visual design document
-
-- **GIVEN** a story has both a visual design document and visual reference package
-- **WHEN** the user views a character's reference images
-- **THEN** below the image grid, the page MUST display the character's design details from the visual design document
-- **AND** the design details MUST include all fields from the `detailed_description` object (e.g., `attire`, `physique`, `facial_features`)
-- **AND** each field MUST be labeled and formatted for readability (not raw JSON)
-- **AND** newline characters (`\n`) in the text MUST be rendered as actual line breaks
-
----
+- **THEN** the page MUST show a "Characters" section containing one card per character design
+- **AND** each card MUST render a single primary image sourced from `character_model_sheet_image_path` (after normalizing relative paths to `/generated/...`)
+- **AND** when the image path is missing, the card MUST display a placeholder illustration and helper text indicating the model sheet is not generated yet
+- **AND** metadata blocks MUST present the character role plus detailed description fields (attire, physique, facial features) with readable labels rather than raw JSON
+- **AND** the implementation MUST NOT depend on `visual_reference_package` data structures to populate character content
+- **AND** cards MUST remain keyboard focusable so users can tab through characters and read metadata without using a pointing device.
 
 ### Requirement: Display Environment Keyframe Images
+The Visual tab MUST present environment designs stored on the visual design document as focused reference cards.
 
-The Visual tab MUST display environment keyframe images from the visual reference package in a browsable grid layout with detailed metadata access.
-
-#### Scenario: User views environment keyframe images
-
-- **GIVEN** a story has a visual reference package with environment keyframes
+#### Scenario: User views environment design card
+- **GIVEN** a story has a `visualDesignDocument` with entries in `environment_designs`
 - **WHEN** the user navigates to `/story/{storyId}/visual`
-- **THEN** the page MUST display an "Environments" section
-- **AND** for each environment in `environment_keyframes`, the page MUST display a subsection with the environment ID as the heading
-- **AND** each environment subsection MUST display a grid of image cards for all keyframes
-- **AND** each image card MUST show the image (or placeholder if `image_path` is missing) and the `keyframe_description` text below it
-- **AND** the image card MUST be clickable to open a detail panel
-
-#### Scenario: User clicks environment keyframe image to view details
-
-- **GIVEN** an environment keyframe image card is displayed
-- **WHEN** the user clicks on the image card
-- **THEN** a right-side detail panel MUST open
-- **AND** the panel MUST display the full image at the top
-- **AND** the panel MUST display the `keyframe_description` text
-- **AND** the panel MUST display the full `image_generation_prompt` with proper formatting (rendering `\n` as line breaks)
-- **AND** the user MUST be able to close the panel by clicking a close button, clicking outside, or pressing the ESC key
-
-#### Scenario: User views environment design details from visual design document
-
-- **GIVEN** a story has both a visual design document and visual reference package
-- **WHEN** the user views an environment's keyframe images
-- **THEN** below the image grid, the page MUST display the environment's design details from the visual design document
-- **AND** the design details MUST include all fields from the `detailed_description` object (e.g., `overall_description`, `lighting_and_atmosphere`, `color_tones`, `key_elements`)
-- **AND** each field MUST be labeled and formatted for readability (not raw JSON)
-- **AND** newline characters (`\n`) in the text MUST be rendered as actual line breaks
-
----
+- **THEN** the page MUST show an "Environments" section containing one card per environment design
+- **AND** each card MUST render the single reference image from `environment_reference_image_path`, normalizing the storage path as needed
+- **AND** when no image path is present, the card MUST show a placeholder illustration and copy inviting the user to generate environment art
+- **AND** metadata blocks MUST present the environment name (or ID), overall description, lighting and atmosphere, color tones, key elements, and associated scenelet IDs formatted as chips or a comma-separated list
+- **AND** the implementation MUST NOT depend on `visual_reference_package` data structures to populate environment content
+- **AND** cards MUST respond to keyboard focus with visible outlines to maintain accessibility.
 
 ### Requirement: Display Global Aesthetic
-
 The Visual tab MUST display the global aesthetic information (visual style and master color palette) from the visual design document in a scannable, user-friendly format.
 
 #### Scenario: User views global aesthetic section
-
 - **GIVEN** a story has a visual design document with `global_aesthetic`
 - **WHEN** the user navigates to `/story/{storyId}/visual`
-- **THEN** the page MUST display a "Global Aesthetic" section
-- **AND** the section MUST display the visual style name prominently
-- **AND** the section MUST display the visual style description with proper formatting
-- **AND** newline characters (`\n`) in the description MUST be rendered as actual line breaks
-
-#### Scenario: User views master color palette
-
-- **GIVEN** a story has a visual design document with a `master_color_palette`
-- **WHEN** the user views the global aesthetic section
-- **THEN** the section MUST display the master color palette in a grid layout
-- **AND** each color entry MUST display a color swatch filled with the `hex_code` color
-- **AND** each color entry MUST display the `color_name` text
-- **AND** each color entry MUST display the `hex_code` text
-- **AND** each color entry MUST display the `usage_notes` text
-- **AND** the layout MUST be concise and scannable (grid with adequate spacing)
-
----
+- **THEN** the page MUST render the visual style name/description and master color palette swatches using the refreshed UI theme tokens (no raw JSON)
+- **AND** each palette entry MUST list the color name and hex value with sufficient contrast against the new background colors
+- **AND** the section MUST render ahead of the character and environment lists so users understand the overarching art direction before drilling into assets.
 
 ### Requirement: Preserve Visual Design and Reference JSON Display
 
@@ -227,4 +166,13 @@ The image detail panel MUST support keyboard navigation and accessible interacti
 - **THEN** the panel MUST have a descriptive `aria-label` or accessible heading
 - **AND** the close button MUST have an accessible label (e.g., "Close panel")
 - **AND** all metadata fields MUST be properly labeled for screen readers
+
+### Requirement: Visual Tab Handles Missing Data Gracefully
+The Visual tab MUST provide reassuring empty states when the visual design document is unavailable or lacks specific sections.
+
+#### Scenario: Visual tab shows empty state when document missing
+- **GIVEN** `visualDesignDocument` is `null`, undefined, or does not contain any of the expected sections
+- **WHEN** the user opens `/story/{storyId}/visual`
+- **THEN** the page MUST display an empty state explaining that visual design data is not yet available and referencing the workflow needed to populate it
+- **AND** no errors MUST surface in the console, and the layout MUST remain aligned with the rest of the Story Tree theme.
 

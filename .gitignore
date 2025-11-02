@@ -43,5 +43,7 @@ supabase/.branches
 supabase/config.toml
 **/dist/
 
-apps/story-tree-ui/public/generated/
+apps/story-tree-ui/public/generated/*
+!apps/story-tree-ui/public/generated/8f87d2c0-e9fd-442d-aff2-a63a70036ee1/music/
+!apps/story-tree-ui/public/generated/8f87d2c0-e9fd-442d-aff2-a63a70036ee1/music/**
 output

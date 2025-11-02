@@ -7,6 +7,7 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildGeneratedMusicPath } from "../../lib/audioPaths";
 
 import { CodeBlock } from "@/components/codeBlock";
 import type {
@@ -356,18 +357,11 @@ function AudioCueCard({
     if (cue.audioFilePath) {
       return normalizeAudioPath(cue.audioFilePath);
     }
-    const slug = cue.cueName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    if (!slug) {
+    const generatedPath = buildGeneratedMusicPath(storyId, cue.cueName);
+    if (!generatedPath) {
       return null;
     }
-    const trimmedStoryId = storyId.trim();
-    if (!trimmedStoryId) {
-      return null;
-    }
-    return `/generated/${trimmedStoryId}/music/${slug}.m4a`;
+    return normalizeAudioPath(generatedPath);
   }, [cue.audioFilePath, cue.cueName, storyId]);
 
   useEffect(() => {
