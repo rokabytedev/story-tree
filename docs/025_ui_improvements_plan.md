@@ -1,0 +1,32 @@
+improvements to the apps/story-tree-ui
+- the ui color is too dark. make it more delightful, the style should be more matching "children storybook". but keep the style professional.
+    - use this color palette:
+        - f0ead2 (page background, etc)
+        - dde5b6
+        - adc178
+        - a98467
+        - 6c584c
+        - other compatible colors..
+        - make the color palette part of the theme file so it's easy to swap.
+- constitution markdwon render
+    - right now it shows raw markdown text
+- fix the layout of the story page
+    - move story title to the side panel top. add a story thumbnail (the same as the image as in the story list page, the first shot's image)
+        - home icon button to go back to story list page
+        - thumbnail image on left, story title on right.
+        - below the title area, is the navigation tabs
+    - let the main canvas area take the full area. don't add the story title to the canvas area (the main working area)
+    - remove the purple dot on the top right corner
+    - side panel should be fix, do not scroll with the main area
+- fix the side panel icons. use proper icon library
+- fix the side panel text (a few words to say "why" this tab is important, don't like "raw json")
+- fix the visual tab to fit the new data structure for characters and environments
+    - it is broken now after we deprecate the use of visual reference package.
+    - show characters with a single model sheet image and all metadata properly shown in ui element.
+- story list page
+    - for each story entry
+        - left: story thumbnail image (the first shot's image), with proper size
+        - right:
+            - first row: bigger heavier font: story title
+            - second row: find from the "logline" section from story constitution markdown, smaller lighter font.
+        - remove the "purple dot" thing
