@@ -10,7 +10,6 @@ export interface AudioVoiceProfileViewModel {
   characterId: string;
   characterName?: string | null;
   voiceName?: string | null;
-  voiceDescription?: string | null;
   voiceProfile?: string | null;
   usageNotes?: string | null;
   isNarrator?: boolean;
@@ -127,9 +126,12 @@ function parseNarratorProfile(record: UnknownRecord): AudioVoiceProfileViewModel
   }
 
   const voiceName = coerceString(narrator.voice_name ?? narrator.voiceName);
-  const voiceProfile = coerceString(narrator.voice_profile ?? narrator.voiceProfile);
+  const voiceProfile =
+    coerceString(narrator.voice_profile ?? narrator.voiceProfile) ??
+    coerceString(narrator.voice_description ?? narrator.voiceDescription);
+  const usageNotes = coerceString(narrator.usage_notes ?? narrator.usageNotes ?? narrator.notes);
 
-  if (!voiceName && !voiceProfile && !voiceDescription) {
+  if (!voiceName && !voiceProfile && !usageNotes) {
     return null;
   }
 
@@ -138,7 +140,7 @@ function parseNarratorProfile(record: UnknownRecord): AudioVoiceProfileViewModel
     characterName: "Narrator",
     voiceName,
     voiceProfile,
-    voiceDescription,
+    usageNotes,
     isNarrator: true,
   };
 }
@@ -169,7 +171,9 @@ function parseVoiceProfiles(record: UnknownRecord): AudioVoiceProfileViewModel[]
         characterId,
         characterName: coerceString(entry.character_name ?? entry.characterName) ?? characterId,
         voiceName: coerceString(entry.voice_name ?? entry.voiceName),
-        voiceProfile: coerceString(entry.voice_profile ?? entry.voiceProfile),
+        voiceProfile:
+          coerceString(entry.voice_profile ?? entry.voiceProfile) ??
+          coerceString(entry.voice_description ?? entry.voiceDescription),
         usageNotes: coerceString(entry.usage_notes ?? entry.usageNotes ?? entry.notes),
       } satisfies AudioVoiceProfileViewModel;
     })

@@ -216,20 +216,10 @@ function VoiceProfileCard({ profile }: { profile: AudioVoiceProfileViewModel }) 
           ) : null}
         </div>
       </header>
-      {profile.voiceDescription ? (
-        <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
-            Description
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-text-muted">
-            {profile.voiceDescription}
-          </p>
-        </div>
-      ) : null}
       {profile.voiceProfile ? (
         <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
-            Performance notes
+            Voice profile
           </p>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-text-muted">
             {profile.voiceProfile}
