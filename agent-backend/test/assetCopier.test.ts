@@ -191,4 +191,81 @@ describe('copyAssets', () => {
     await expect(fs.stat(targetAudio)).rejects.toThrow();
     expect(warn).not.toHaveBeenCalled();
   });
+
+  it('copies music cue assets referenced in the audio design document', async () => {
+    const root = await createTempRoot();
+    tempRoots.push(root);
+
+    const generatedRoot = path.join(root, 'generated');
+    const storyId = 'story-music';
+    const musicDir = path.join(generatedRoot, storyId, 'music');
+    await fs.mkdir(musicDir, { recursive: true });
+    const cueSource = path.join(musicDir, 'Cue One.m4a');
+    await fs.writeFile(cueSource, Buffer.from('music-data'));
+
+    const audioDesignDocument = {
+      audio_design_document: {
+        music_and_ambience_cues: [
+          {
+            cue_name: 'Cue One',
+            associated_scenelet_ids: ['scenelet-1'],
+            cue_description: 'Primary cue',
+            music_generation_prompt: 'Prompt',
+          },
+          {
+            cue_name: 'Cue One',
+            associated_scenelet_ids: ['scenelet-2'],
+            cue_description: 'Duplicate entry to test dedupe',
+            music_generation_prompt: 'Prompt',
+          },
+        ],
+      },
+    };
+
+    const outputRoot = path.join(root, 'output');
+
+    const manifest = await copyAssets(storyId, {}, outputRoot, {
+      generatedAssetsRoot: generatedRoot,
+      audioDesignDocument,
+    });
+
+    expect(manifest.size).toBe(0);
+
+    const targetCue = path.join(outputRoot, storyId, 'assets', 'music', 'Cue One.m4a');
+    await expect(fs.stat(targetCue)).resolves.toBeDefined();
+  });
+
+  it('logs warning when a referenced music cue asset is missing', async () => {
+    const root = await createTempRoot();
+    tempRoots.push(root);
+
+    const generatedRoot = path.join(root, 'generated');
+    const storyId = 'story-missing-music';
+
+    const audioDesignDocument = {
+      audio_design_document: {
+        music_and_ambience_cues: [
+          {
+            cue_name: 'Missing Cue',
+            associated_scenelet_ids: ['scenelet-9'],
+            cue_description: 'Missing asset test',
+            music_generation_prompt: 'Prompt',
+          },
+        ],
+      },
+    };
+
+    const warn = vi.fn();
+
+    await copyAssets(storyId, {}, path.join(root, 'output'), {
+      generatedAssetsRoot: generatedRoot,
+      audioDesignDocument,
+      logger: { warn },
+    });
+
+    expect(warn).toHaveBeenCalledWith('Missing music cue asset for bundle', expect.objectContaining({
+      storyId,
+      cueName: 'Missing Cue',
+    }));
+  });
 });

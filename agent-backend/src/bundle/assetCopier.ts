@@ -3,7 +3,14 @@ import * as fsPromises from 'node:fs/promises';
 
 import type { ShotRecord } from '../shot-production/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../shot-audio/constants.js';
-import { buildAudioRelativePath, buildImageRelativePath, BundleAssemblyError } from './bundleAssembler.js';
+import type { AudioMusicCue } from '../audio-design/types.js';
+import {
+  buildAudioRelativePath,
+  buildImageRelativePath,
+  buildMusicRelativePath,
+  BundleAssemblyError,
+  extractMusicCuesFromAudioDesign,
+} from './bundleAssembler.js';
 import type {
   AssetCopierOptions,
   AssetManifest,
@@ -135,6 +142,21 @@ export async function copyAssets(
     }
   }
 
+  const musicCues = options.audioDesignDocument
+    ? extractMusicCuesFromAudioDesign(options.audioDesignDocument, logger)
+    : [];
+
+  if (musicCues.length > 0) {
+    await copyMusicAssets({
+      storyId: normalizedStoryId,
+      cues: musicCues,
+      generatedRoot,
+      storyOutputDir: normalizedOutputDir,
+      fsAdapter,
+      logger,
+    });
+  }
+
   return manifest;
 }
 
@@ -208,6 +230,57 @@ function resolveSourcePath(root: string, relativePath?: string | null): string |
   }
 
   return path.join(root, normalized);
+}
+
+interface CopyMusicAssetsOptions {
+  storyId: string;
+  cues: AudioMusicCue[];
+  generatedRoot: string;
+  storyOutputDir: string;
+  fsAdapter: FileSystemAdapter;
+  logger?: BundleLogger;
+}
+
+async function copyMusicAssets(options: CopyMusicAssetsOptions): Promise<void> {
+  const { storyId, cues, generatedRoot, storyOutputDir, fsAdapter, logger } = options;
+  const musicSourceDir = path.join(generatedRoot, storyId, 'music');
+  const seenCueNames = new Set<string>();
+  let musicDirPrepared = false;
+
+  for (const cue of cues) {
+    const rawName = cue.cue_name?.toString?.().trim?.();
+    if (!rawName) {
+      logger?.warn?.('Skipping music cue without cue_name during asset copy');
+      continue;
+    }
+
+    if (seenCueNames.has(rawName)) {
+      continue;
+    }
+    seenCueNames.add(rawName);
+
+    const sourcePath = path.join(musicSourceDir, `${rawName}.m4a`);
+    const exists = await fileExists(fsAdapter, sourcePath);
+    if (!exists) {
+      logger?.warn?.('Missing music cue asset for bundle', {
+        storyId,
+        cueName: rawName,
+        sourcePath,
+      });
+      continue;
+    }
+
+    if (!musicDirPrepared) {
+      const musicOutputDir = path.join(storyOutputDir, 'assets', 'music');
+      await ensureDirectory(fsAdapter, musicOutputDir);
+      musicDirPrepared = true;
+    }
+
+    const targetRelativePath = buildMusicRelativePath(rawName);
+    const targetPath = path.join(storyOutputDir, targetRelativePath);
+    await ensureDirectory(fsAdapter, path.dirname(targetPath));
+    await fsAdapter.copyFile(sourcePath, targetPath);
+  }
 }
 
 function getErrorMessage(error: unknown): string {

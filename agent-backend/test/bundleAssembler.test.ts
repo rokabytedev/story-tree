@@ -7,7 +7,11 @@ import {
   buildManifestFromShotMap,
   BundleAssemblyError,
 } from '../src/bundle/bundleAssembler.js';
-import type { AssetManifest, BundleAssemblerDependencies } from '../src/bundle/types.js';
+import type {
+  AssetManifest,
+  BundleAssemblerDependencies,
+  BundleLogger,
+} from '../src/bundle/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
 
 const ISO_NOW = '2024-01-01T00:00:00.000Z';
@@ -226,16 +230,112 @@ describe('buildManifestFromShotMap', () => {
       audioPath: null,
     });
   });
+
+  it('includes music manifest and logs warnings for invalid cue mappings', async () => {
+    const storyId = 'music-story';
+    const scenelets = [
+      createScenelet({ id: 'scenelet-1', storyId }),
+      createScenelet({ id: 'scenelet-2', storyId, parentId: 'scenelet-1' }),
+      createScenelet({ id: 'scenelet-3', storyId, parentId: 'scenelet-2', isTerminalNode: true }),
+    ];
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      'scenelet-1': [
+        createShotRecord({
+          sceneletId: 'scenelet-1',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/scenelet-1/shot-1_key_frame.png`,
+        }),
+      ],
+      'scenelet-2': [
+        createShotRecord({
+          sceneletId: 'scenelet-2',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/scenelet-2/shot-1_key_frame.png`,
+        }),
+      ],
+      'scenelet-3': [
+        createShotRecord({
+          sceneletId: 'scenelet-3',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/scenelet-3/shot-1_key_frame.png`,
+        }),
+      ],
+    };
+
+    const audioDesignDocument = {
+      audio_design_document: {
+        music_and_ambience_cues: [
+          {
+            cue_name: 'Cue One',
+            associated_scenelet_ids: ['scenelet-1', 'scenelet-2'],
+            cue_description: 'First cue',
+            music_generation_prompt: 'Play softly',
+          },
+          {
+            cue_name: 'Cue Two',
+            associated_scenelet_ids: ['scenelet-3', 'scenelet-5'],
+            cue_description: 'Second cue',
+            music_generation_prompt: 'Play brightly',
+          },
+        ],
+      },
+    };
+
+    const dependencies = makeDependencies({
+      storyId,
+      scenelets,
+      shotsByScenelet,
+      audioDesignDocument,
+    });
+
+    const warnings: Array<{ message: string; metadata?: Record<string, unknown> }> = [];
+    const logger: BundleLogger = {
+      warn: (message, metadata) => warnings.push({ message, metadata }),
+    };
+
+    const manifest = buildManifestFromShotMap(shotsByScenelet);
+
+    const { bundle } = await assembleBundleJson(storyId, dependencies, {
+      assetManifest: manifest,
+      preloadedShots: shotsByScenelet,
+      exportedAt: ISO_NOW,
+      logger,
+    });
+
+    expect(bundle.music.cues).toEqual([
+      {
+        cueName: 'Cue One',
+        sceneletIds: ['scenelet-1', 'scenelet-2'],
+        audioPath: 'assets/music/Cue One.m4a',
+      },
+      {
+        cueName: 'Cue Two',
+        sceneletIds: ['scenelet-3'],
+        audioPath: 'assets/music/Cue Two.m4a',
+      },
+    ]);
+
+    expect(bundle.music.sceneletCueMap).toEqual({
+      'scenelet-1': 'Cue One',
+      'scenelet-2': 'Cue One',
+      'scenelet-3': 'Cue Two',
+    });
+
+    expect(warnings.some(({ message }) => message === 'Music cue associated scenelets are not consecutive')).toBe(true);
+    expect(warnings.some(({ message, metadata }) => message === 'Music cue references scenelet not present in bundle' && metadata?.sceneletId === 'scenelet-5')).toBe(true);
+  });
 });
 
 interface DependencyInput {
   storyId: string;
   scenelets: SceneletRecord[];
   shotsByScenelet: Record<string, ShotRecord[]>;
+  audioDesignDocument?: unknown;
 }
 
 function makeDependencies(input: DependencyInput): BundleAssemblerDependencies {
-  const { storyId, scenelets, shotsByScenelet } = input;
+  const { storyId, scenelets, shotsByScenelet, audioDesignDocument } = input;
 
   return {
     storiesRepository: {
@@ -254,7 +354,7 @@ function makeDependencies(input: DependencyInput): BundleAssemblerDependencies {
         updatedAt: ISO_NOW,
         storyConstitution: null,
         visualDesignDocument: null,
-        audioDesignDocument: null,
+        audioDesignDocument: audioDesignDocument ?? null,
         visualReferencePackage: null,
       }),
     },

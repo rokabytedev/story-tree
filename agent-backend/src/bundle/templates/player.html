@@ -380,6 +380,8 @@
           <button id="play-pause-button" disabled>Pause</button>
         </footer>
         <audio id="shot-audio" preload="auto"></audio>
+        <audio id="music-primary" preload="auto" loop></audio>
+        <audio id="music-secondary" preload="auto" loop></audio>
       </div>
     </div>
     <script>
@@ -387,6 +389,9 @@
         const RAMP_UP_MS = 500;
         const RAMP_DOWN_MS = 500;
         const NO_AUDIO_HOLD_MS = 3000;
+        const MUSIC_VOLUME = 0.35;
+        const MUSIC_CROSSFADE_MS = 500;
+        const MUSIC_FADE_INTERVAL_MS = 50;
 
         const elements = {
           error: document.getElementById('error-panel'),
@@ -400,6 +405,8 @@
           imagePlaceholder: document.getElementById('image-placeholder'),
           playPauseButton: document.getElementById('play-pause-button'),
           audio: document.getElementById('shot-audio'),
+          musicPrimary: document.getElementById('music-primary'),
+          musicSecondary: document.getElementById('music-secondary'),
           choiceOverlay: document.getElementById('choice-overlay'),
           choicePrompt: document.getElementById('choice-prompt'),
           choiceOptions: document.getElementById('choice-options'),
@@ -419,9 +426,24 @@
           pendingAction: null,
           audioWasPlaying: false,
           initialAudioUnlockPending: false,
+          music: createMusicState(),
         };
 
         document.addEventListener('DOMContentLoaded', initialize);
+
+        function createMusicState() {
+          return {
+            cuesByName: new Map(),
+            sceneletCueMap: new Map(),
+            activeElement: null,
+            currentCue: null,
+            pendingCue: null,
+            pendingElement: null,
+            fadeTimer: null,
+            failedCues: new Set(),
+            pausedElements: [],
+          };
+        }
 
         async function initialize() {
           elements.startScreen.classList.add('hidden');
@@ -437,6 +459,15 @@
           elements.restartButton.addEventListener('click', resetToStart);
           elements.audio.addEventListener('ended', onShotAudioComplete);
           elements.audio.addEventListener('error', onAudioError);
+
+          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
+            if (!element) {
+              return;
+            }
+            element.volume = 0;
+            element.loop = true;
+            element.addEventListener('error', () => onMusicPlaybackError(element));
+          });
 
           const storyDataElement = document.getElementById('story-data');
           const rawStoryData = storyDataElement?.textContent ?? '';
@@ -570,6 +601,8 @@
             }
           }
 
+          const music = normalizeMusicManifest(data.music, scenelets);
+
           return {
             metadata: {
               title,
@@ -578,6 +611,7 @@
             },
             rootSceneletId: rootId,
             scenelets,
+            music,
           };
         }
 
@@ -625,6 +659,72 @@
           }
         }
 
+        function normalizeMusicManifest(rawMusic, scenelets) {
+          const cuesByName = new Map();
+          const sceneletCueMap = new Map();
+
+          if (!rawMusic || typeof rawMusic !== 'object') {
+            return { cuesByName, sceneletCueMap };
+          }
+
+          const cueEntries = Array.isArray(rawMusic.cues) ? rawMusic.cues : [];
+          for (const entry of cueEntries) {
+            if (!entry || typeof entry !== 'object') {
+              console.warn('Skipping invalid music cue entry in story bundle.', entry);
+              continue;
+            }
+
+            const cueName = typeof entry.cueName === 'string' ? entry.cueName.trim() : '';
+            const audioPath = typeof entry.audioPath === 'string' ? entry.audioPath.trim() : '';
+            if (!cueName || !audioPath) {
+              console.warn('Music cue missing cueName or audioPath; skipping.', entry);
+              continue;
+            }
+
+            if (cuesByName.has(cueName)) {
+              console.warn('Duplicate music cue encountered; keeping first instance.', { cueName });
+              continue;
+            }
+
+            const rawSceneletIds = Array.isArray(entry.sceneletIds) ? entry.sceneletIds : [];
+            const sceneletIds = rawSceneletIds
+              .map((id) => (typeof id === 'string' ? id.trim() : ''))
+              .filter((id) => id && scenelets.has(id));
+
+            cuesByName.set(cueName, {
+              audioPath,
+              sceneletIds,
+            });
+          }
+
+          const mapping = rawMusic.sceneletCueMap;
+          if (mapping && typeof mapping === 'object') {
+            for (const [sceneletIdRaw, cueNameRaw] of Object.entries(mapping)) {
+              const sceneletId = typeof sceneletIdRaw === 'string' ? sceneletIdRaw.trim() : '';
+              if (!sceneletId) {
+                continue;
+              }
+              if (!scenelets.has(sceneletId)) {
+                console.warn('Music cue map references unknown scenelet.', { sceneletId });
+                continue;
+              }
+
+              const cueName = typeof cueNameRaw === 'string' ? cueNameRaw.trim() : '';
+              if (!cueName) {
+                continue;
+              }
+              if (!cuesByName.has(cueName)) {
+                console.warn('Music cue map references unknown cue.', { sceneletId, cueName });
+                continue;
+              }
+
+              sceneletCueMap.set(sceneletId, cueName);
+            }
+          }
+
+          return { cuesByName, sceneletCueMap };
+        }
+
         function prepareStory(story) {
           state.story = story;
           state.scenelets = story.scenelets;
@@ -632,6 +732,30 @@
           elements.startTitle.textContent = story.metadata.title;
           elements.storyTitle.textContent = story.metadata.title;
           updateStartScreenVisual(story);
+          initializeMusicState(story.music);
+        }
+
+        function initializeMusicState(musicManifest) {
+          const target = state.music;
+          target.cuesByName = musicManifest?.cuesByName instanceof Map
+            ? musicManifest.cuesByName
+            : new Map();
+          target.sceneletCueMap = musicManifest?.sceneletCueMap instanceof Map
+            ? musicManifest.sceneletCueMap
+            : new Map();
+          target.currentCue = null;
+          target.pendingCue = null;
+          target.pendingElement = null;
+          target.activeElement = null;
+          target.failedCues = new Set();
+          target.pausedElements = [];
+          clearMusicFadeTimer();
+          if (elements.musicPrimary) {
+            clearMusicElement(elements.musicPrimary);
+          }
+          if (elements.musicSecondary) {
+            clearMusicElement(elements.musicSecondary);
+          }
         }
 
         function sanitizeUrlForCss(path) {
@@ -695,6 +819,7 @@
           state.initialAudioUnlockPending = false;
           elements.audio.pause();
           elements.audio.src = '';
+          stopMusicPlayback();
           hideAllOverlays();
           updateControls();
         }
@@ -718,6 +843,7 @@
 
         function displayShot(scenelet, shot) {
           state.currentSceneletId = scenelet.id;
+          ensureBackgroundMusicForScenelet(scenelet.id);
           const shotIndex = scenelet.shots.indexOf(shot);
           state.currentShotIndex = shotIndex;
           setStage('ramp-up');
@@ -786,6 +912,298 @@
 
         function onAudioError() {
           onShotAudioComplete();
+        }
+
+        function ensureBackgroundMusicForScenelet(sceneletId) {
+          const musicState = state.music;
+          const cueMap = musicState.sceneletCueMap instanceof Map
+            ? musicState.sceneletCueMap
+            : new Map();
+          const cuesByName = musicState.cuesByName instanceof Map
+            ? musicState.cuesByName
+            : new Map();
+
+          if (!cueMap.size || !cuesByName.size) {
+            if (musicState.currentCue || musicState.pendingCue) {
+              fadeOutMusic();
+            }
+            return;
+          }
+
+          const targetCue = cueMap.get(sceneletId) ?? null;
+          if (!targetCue) {
+            if (musicState.currentCue || musicState.pendingCue) {
+              fadeOutMusic();
+            }
+            return;
+          }
+
+          if (musicState.currentCue === targetCue || musicState.pendingCue === targetCue) {
+            return;
+          }
+
+          if (musicState.failedCues.has(targetCue)) {
+            console.warn('Skipping background music cue that previously failed to play.', {
+              cueName: targetCue,
+            });
+            if (musicState.currentCue && musicState.currentCue !== targetCue) {
+              fadeOutMusic();
+            }
+            return;
+          }
+
+          const cueEntry = cuesByName.get(targetCue);
+          if (!cueEntry) {
+            console.warn('Scenelet references unknown music cue.', {
+              sceneletId,
+              cueName: targetCue,
+            });
+            fadeOutMusic();
+            return;
+          }
+
+          const audioPath = typeof cueEntry.audioPath === 'string' ? cueEntry.audioPath.trim() : '';
+          if (!audioPath) {
+            console.warn('Music cue is missing an audioPath.', { cueName: targetCue });
+            fadeOutMusic();
+            return;
+          }
+
+          crossfadeToCue(targetCue, audioPath);
+        }
+
+        function crossfadeToCue(cueName, audioPath) {
+          const musicState = state.music;
+          const incoming = getInactiveMusicElement();
+          if (!incoming) {
+            console.warn('No audio element available for background music playback.');
+            return;
+          }
+
+          clearMusicFadeTimer();
+          musicState.pendingCue = cueName;
+          musicState.pendingElement = incoming;
+
+          clearMusicElement(incoming);
+          incoming.dataset.cueName = cueName;
+          incoming.src = audioPath;
+          incoming.currentTime = 0;
+          incoming.volume = 0;
+
+          const playPromise = incoming.play();
+          if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch((error) => {
+              console.warn('Unable to start background music cue.', {
+                cueName,
+                error,
+              });
+              state.music.failedCues.add(cueName);
+              if (musicState.pendingCue === cueName) {
+                musicState.pendingCue = null;
+                musicState.pendingElement = null;
+              }
+              fadeOutMusic(true);
+            });
+          }
+
+          const outgoing = musicState.activeElement && musicState.activeElement !== incoming
+            ? musicState.activeElement
+            : null;
+
+          if (MUSIC_CROSSFADE_MS === 0) {
+            if (outgoing) {
+              clearMusicElement(outgoing);
+            }
+            incoming.volume = MUSIC_VOLUME;
+            musicState.activeElement = incoming;
+            musicState.currentCue = cueName;
+            musicState.pendingCue = null;
+            musicState.pendingElement = null;
+            return;
+          }
+
+          const startTime = performance.now();
+          musicState.fadeTimer = window.setInterval(() => {
+            const elapsed = performance.now() - startTime;
+            const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
+            incoming.volume = MUSIC_VOLUME * progress;
+            if (outgoing) {
+              outgoing.volume = MUSIC_VOLUME * (1 - progress);
+            }
+
+            if (progress >= 1) {
+              clearMusicFadeTimer();
+              if (outgoing) {
+                clearMusicElement(outgoing);
+              }
+              incoming.volume = MUSIC_VOLUME;
+              musicState.activeElement = incoming;
+              musicState.currentCue = cueName;
+              musicState.pendingCue = null;
+              musicState.pendingElement = null;
+            }
+          }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+        }
+
+        function fadeOutMusic(immediate = false) {
+          const musicState = state.music;
+          musicState.pendingCue = null;
+          const active = musicState.activeElement;
+          const pendingElement = musicState.pendingElement;
+
+          if (Array.isArray(musicState.pausedElements) && musicState.pausedElements.length) {
+            musicState.pausedElements = musicState.pausedElements.filter(
+              (element) => element && element !== active && element !== pendingElement
+            );
+          }
+
+          if (pendingElement && pendingElement !== active) {
+            clearMusicElement(pendingElement);
+          }
+          musicState.pendingElement = null;
+
+          if (!active) {
+            musicState.currentCue = null;
+            return;
+          }
+
+          if (immediate || MUSIC_CROSSFADE_MS === 0) {
+            clearMusicFadeTimer();
+            clearMusicElement(active);
+            musicState.activeElement = null;
+            musicState.currentCue = null;
+            return;
+          }
+
+          clearMusicFadeTimer();
+          const startTime = performance.now();
+          musicState.fadeTimer = window.setInterval(() => {
+            const elapsed = performance.now() - startTime;
+            const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
+            active.volume = MUSIC_VOLUME * (1 - progress);
+
+            if (progress >= 1) {
+              clearMusicFadeTimer();
+              clearMusicElement(active);
+              musicState.activeElement = null;
+              musicState.currentCue = null;
+            }
+          }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+        }
+
+        function stopMusicPlayback() {
+          clearMusicFadeTimer();
+          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
+            if (element) {
+              clearMusicElement(element);
+            }
+          });
+          state.music.activeElement = null;
+          state.music.currentCue = null;
+          state.music.pendingCue = null;
+          state.music.pendingElement = null;
+          state.music.pausedElements = [];
+        }
+
+        function pauseMusicForPause() {
+          const pausedElements = [];
+          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
+            if (!element) {
+              return;
+            }
+            if (!element.paused && element.currentTime > 0) {
+              element.pause();
+              pausedElements.push(element);
+            }
+          });
+          state.music.pausedElements = pausedElements;
+        }
+
+        function resumeMusicAfterPause() {
+          const pausedElements = Array.isArray(state.music.pausedElements)
+            ? state.music.pausedElements
+            : [];
+          state.music.pausedElements = [];
+
+          pausedElements.forEach((element) => {
+            element.play().catch((error) => {
+              const cueName = element.dataset?.cueName ?? state.music.currentCue ?? '';
+              if (cueName) {
+                state.music.failedCues.add(cueName);
+              }
+              console.warn('Background music failed to resume after pause.', {
+                cueName,
+                error,
+              });
+              fadeOutMusic(true);
+            });
+          });
+        }
+
+        function getInactiveMusicElement() {
+          const primary = elements.musicPrimary;
+          const secondary = elements.musicSecondary;
+          if (!primary && !secondary) {
+            return null;
+          }
+
+          const active = state.music.activeElement;
+          if (!active) {
+            return primary ?? secondary;
+          }
+
+          if (active === primary) {
+            return secondary ?? primary;
+          }
+          return primary ?? secondary;
+        }
+
+        function clearMusicFadeTimer() {
+          if (state.music.fadeTimer !== null) {
+            clearInterval(state.music.fadeTimer);
+            state.music.fadeTimer = null;
+          }
+        }
+
+        function clearMusicElement(element) {
+          if (!element) {
+            return;
+          }
+          element.pause();
+          if (element.hasAttribute('src')) {
+            element.removeAttribute('src');
+            element.load();
+          }
+          element.volume = 0;
+          if (element.dataset) {
+            element.dataset.cueName = '';
+          }
+        }
+
+        function onMusicPlaybackError(element) {
+          if (!element) {
+            return;
+          }
+          const cueName = element.dataset?.cueName ?? '';
+          if (cueName) {
+            console.warn('Background music playback error.', {
+              cueName,
+              src: element.currentSrc,
+            });
+            state.music.failedCues.add(cueName);
+          } else {
+            console.warn('Background music element encountered an error.', {
+              src: element.currentSrc,
+            });
+          }
+          if (state.music.currentCue === cueName) {
+            fadeOutMusic(true);
+          } else if (state.music.pendingCue === cueName) {
+            state.music.pendingCue = null;
+            if (state.music.pendingElement === element) {
+              state.music.pendingElement = null;
+            }
+          }
         }
 
         function advanceAfterShot() {
@@ -867,6 +1285,7 @@
           state.isPaused = true;
           updateControls();
           elements.terminalOverlay.classList.remove('hidden');
+          fadeOutMusic();
         }
 
         function showIncompleteOverlay() {
@@ -874,6 +1293,7 @@
           state.isPaused = true;
           updateControls();
           elements.incompleteOverlay.classList.remove('hidden');
+          fadeOutMusic();
         }
 
         function hideAllOverlays() {
@@ -914,6 +1334,7 @@
 
           if (state.isPaused) {
             clearCurrentTimer();
+            pauseMusicForPause();
             if (state.stage === 'audio' && !elements.audio.paused) {
               state.audioWasPlaying = true;
               elements.audio.pause();
@@ -921,6 +1342,7 @@
               state.audioWasPlaying = false;
             }
           } else {
+            resumeMusicAfterPause();
             if (state.audioWasPlaying) {
               state.audioWasPlaying = false;
               elements.audio.play().catch(() => onShotAudioComplete());

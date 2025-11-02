@@ -87,6 +87,7 @@ export async function runPlayerBundleTask(
 
   const assetManifest = await copyAssetsImpl(trimmedStoryId, shotsByScenelet, outputRoot, {
     generatedAssetsRoot: options.generatedAssetsRoot,
+    audioDesignDocument: story.audioDesignDocument,
     logger,
   });
 

@@ -2,6 +2,7 @@ import { normalizeStoredSceneletContent } from '../interactive-story/sceneletUti
 import type { SceneletRecord } from '../interactive-story/types.js';
 import type { ShotRecord } from '../shot-production/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../shot-audio/constants.js';
+import type { AudioMusicCue } from '../audio-design/types.js';
 import {
   type AssetManifest,
   type BundleAssemblerDependencies,
@@ -14,6 +15,7 @@ import {
   type ShotAssetPaths,
   type ShotNode,
   type StoryBundle,
+  type StoryMusicManifest,
 } from './types.js';
 
 class BundleAssemblyError extends Error {
@@ -123,10 +125,17 @@ export async function assembleBundleJson(
     exportedAt: options.exportedAt ?? new Date().toISOString(),
   } satisfies StoryBundle['metadata'];
 
+  const music = buildMusicManifest({
+    audioDesign: story.audioDesignDocument,
+    sceneletIdsInBundle: new Set(nodes.map((node) => node.id)),
+    logger: options.logger,
+  });
+
   const bundle: StoryBundle = {
     metadata,
     rootSceneletId: rootScenelet.id,
     scenelets: nodes,
+    music,
   };
 
   options.logger?.debug?.('Assembled story bundle JSON', {
@@ -365,4 +374,196 @@ export function buildImageRelativePath(sceneletId: string, shotIndex: number): s
 /** Returns the normalized bundle-relative path for a shot audio asset. */
 export function buildAudioRelativePath(sceneletId: string, shotIndex: number): string {
   return `assets/shots/${sceneletId}/${shotIndex}_audio.wav`;
+}
+
+export function buildMusicRelativePath(cueName: string): string {
+  const base = typeof cueName === 'string' ? cueName.trim() : '';
+  const sanitized = sanitizeCueFileName(base);
+  return `assets/music/${sanitized}.m4a`;
+}
+
+interface MusicManifestInput {
+  audioDesign: unknown;
+  sceneletIdsInBundle: Set<string>;
+  logger?: BundleLogger;
+}
+
+function buildMusicManifest(input: MusicManifestInput): StoryMusicManifest {
+  const manifest: StoryMusicManifest = {
+    cues: [],
+    sceneletCueMap: {},
+  };
+
+  const { audioDesign, sceneletIdsInBundle, logger } = input;
+  if (!audioDesign) {
+    return manifest;
+  }
+
+  const cues = extractMusicCuesFromAudioDesign(audioDesign, logger);
+  if (!cues.length) {
+    return manifest;
+  }
+
+  const assignedScenelets = new Map<string, string>();
+
+  cues.forEach((cue, index) => {
+    const cueName = cue.cue_name?.toString?.().trim?.();
+    if (!cueName) {
+      logger?.warn?.('Skipping music cue without cue_name', { cueIndex: index });
+      return;
+    }
+
+    const sceneletIdsRaw = normalizeAssociatedScenelets(cue);
+    if (!sceneletIdsRaw.length) {
+      logger?.warn?.('Skipping music cue without associated scenelet ids', {
+        cueName,
+      });
+      return;
+    }
+
+    warnIfNonConsecutive(sceneletIdsRaw, cueName, logger);
+
+    const seenForCue = new Set<string>();
+    const filteredScenelets: string[] = [];
+
+    for (const sceneletIdRaw of sceneletIdsRaw) {
+      const sceneletId = sceneletIdRaw.trim();
+      if (!sceneletIdsInBundle.has(sceneletId)) {
+        logger?.warn?.('Music cue references scenelet not present in bundle', {
+          cueName,
+          sceneletId,
+        });
+        continue;
+      }
+
+      if (seenForCue.has(sceneletId)) {
+        continue;
+      }
+      seenForCue.add(sceneletId);
+
+      const existing = assignedScenelets.get(sceneletId);
+      if (existing && existing !== cueName) {
+        logger?.warn?.('Scenelet already assigned to different music cue', {
+          sceneletId,
+          existingCue: existing,
+          newCue: cueName,
+        });
+        continue;
+      }
+
+      filteredScenelets.push(sceneletId);
+    }
+
+    if (!filteredScenelets.length) {
+      return;
+    }
+
+    const audioPath = buildMusicRelativePath(cueName);
+    manifest.cues.push({
+      cueName,
+      sceneletIds: filteredScenelets,
+      audioPath,
+    });
+
+    filteredScenelets.forEach((sceneletId) => {
+      assignedScenelets.set(sceneletId, cueName);
+      manifest.sceneletCueMap[sceneletId] = cueName;
+    });
+  });
+
+  return manifest;
+}
+
+export function extractMusicCuesFromAudioDesign(raw: unknown, logger?: BundleLogger): AudioMusicCue[] {
+  let payload: unknown = raw;
+
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload) as Record<string, unknown>;
+    } catch (error) {
+      logger?.warn?.('Audio design document could not be parsed as JSON', {
+        message: (error as Error).message,
+      });
+      return [];
+    }
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    logger?.warn?.('Audio design document is not an object; skipping music cues');
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nested = record.audio_design_document ?? record.audioDesignDocument;
+  const doc = nested && typeof nested === 'object' ? (nested as Record<string, unknown>) : record;
+
+  const cues = doc.music_and_ambience_cues ?? doc.musicAndAmbienceCues;
+  if (!Array.isArray(cues)) {
+    return [];
+  }
+
+  return cues.filter((cue): cue is AudioMusicCue => {
+    if (!cue || typeof cue !== 'object') {
+      logger?.warn?.('Skipping invalid music cue entry', { type: typeof cue });
+      return false;
+    }
+    return true;
+  });
+}
+
+function normalizeAssociatedScenelets(cue: AudioMusicCue): string[] {
+  const list =
+    (Array.isArray((cue as Record<string, unknown>).associated_scenelet_ids)
+      ? (cue as Record<string, unknown>).associated_scenelet_ids
+      : Array.isArray((cue as Record<string, unknown>).associatedSceneletIds)
+        ? (cue as Record<string, unknown>).associatedSceneletIds
+        : []) as unknown[];
+
+  return list
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+}
+
+function warnIfNonConsecutive(sceneletIds: string[], cueName: string, logger?: BundleLogger): void {
+  if (sceneletIds.length <= 1) {
+    return;
+  }
+
+  const numericIds = sceneletIds.map((id) => parseSceneletIndex(id)).filter((value): value is number => value !== null);
+  if (numericIds.length !== sceneletIds.length) {
+    return;
+  }
+
+  for (let index = 1; index < numericIds.length; index += 1) {
+    if (numericIds[index] !== numericIds[index - 1] + 1) {
+      logger?.warn?.('Music cue associated scenelets are not consecutive', {
+        cueName,
+        sceneletIds,
+      });
+      return;
+    }
+  }
+}
+
+function parseSceneletIndex(sceneletId: string): number | null {
+  const match = sceneletId.match(/scenelet-(\d+)/i);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? '', 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function sanitizeCueFileName(value: string): string {
+  const trimmed = value.trim();
+  const sanitized = trimmed
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (sanitized) {
+    return sanitized;
+  }
+
+  return 'music-cue';
 }

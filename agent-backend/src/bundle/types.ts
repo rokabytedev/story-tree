@@ -16,6 +16,17 @@ export interface ShotNode {
   audioPath: string | null;
 }
 
+export interface StoryMusicCue {
+  cueName: string;
+  sceneletIds: string[];
+  audioPath: string;
+}
+
+export interface StoryMusicManifest {
+  cues: StoryMusicCue[];
+  sceneletCueMap: Record<string, string>;
+}
+
 export interface BranchChoice {
   label: string;
   sceneletId: string;
@@ -38,6 +49,7 @@ export interface StoryBundle {
   metadata: StoryMetadata;
   rootSceneletId: string;
   scenelets: SceneletNode[];
+  music: StoryMusicManifest;
 }
 
 export interface ShotAssetPaths {
@@ -90,6 +102,7 @@ export interface AssetCopierOptions {
   generatedAssetsRoot?: string;
   logger?: BundleLogger;
   fileSystem?: FileSystemAdapter;
+  audioDesignDocument?: unknown;
 }
 
 export interface PlayerBundleTaskOptions {
