@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/emptyState";
 import { VisualReferenceView } from "@/components/visual/VisualReferenceView";
+import { parseVisualDesignDocument } from "@/lib/visualDesignDocument";
 import { getStory } from "@/server/data/stories";
 
 type PageProps = {
@@ -20,8 +21,9 @@ export default async function VisualTab({ params }: PageProps) {
       );
     }
 
-    // Show empty state only if both visual design doc and reference package are missing
-    if (!story.visualDesignDocument && !story.visualReferencePackage) {
+    const parsedDocument = parseVisualDesignDocument(story.visualDesignDocument);
+
+    if (!parsedDocument) {
       return (
         <EmptyState
           title="Visual design unavailable"
@@ -31,10 +33,7 @@ export default async function VisualTab({ params }: PageProps) {
     }
 
     return (
-      <VisualReferenceView
-        visualReferencePackage={story.visualReferencePackage}
-        visualDesignDocument={story.visualDesignDocument}
-      />
+      <VisualReferenceView document={parsedDocument} />
     );
   } catch (error) {
     const message =

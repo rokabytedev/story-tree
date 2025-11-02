@@ -19,32 +19,47 @@ import type {
   StoryboardScenelet,
   ShotImage,
 } from "@/components/storyboard/types";
+import { normalizeStoragePath } from "@/lib/visualDesignDocument";
 
 export interface StorySummaryViewModel {
   id: string;
   title: string;
   author: string;
   accentColor: string;
+  thumbnailImagePath: string | null;
+  logline: string | null;
 }
 
 export interface StoryDetailViewModel extends StorySummaryViewModel {
   constitutionMarkdown: string | null;
   visualDesignDocument: unknown | null;
-  visualReferencePackage: unknown | null;
   audioDesignDocument: unknown | null;
 }
 
 export async function getStoryList(): Promise<StorySummaryViewModel[]> {
   const client = getSupabaseClient();
   const storiesRepository = createStoriesRepository(client);
+  const shotsRepository = createShotsRepository(client);
   const stories = await storiesRepository.listStories();
 
-  return stories.map((record, index) => ({
-    id: record.id,
-    title: record.displayName,
-    author: DEFAULT_AUTHOR,
-    accentColor: deriveAccentColor(record.displayName ?? record.id, index),
-  }));
+  const enriched = await Promise.all(
+    stories.map(async (record, index) => {
+      const constitutionMarkdown = extractConstitutionMarkdown(record.storyConstitution);
+      const logline = extractLoglineFromMarkdown(constitutionMarkdown);
+      const thumbnailImagePath = await findStoryThumbnailImagePath(record.id, shotsRepository);
+
+      return {
+        id: record.id,
+        title: record.displayName,
+        author: DEFAULT_AUTHOR,
+        accentColor: deriveAccentColor(record.displayName ?? record.id, index),
+        thumbnailImagePath,
+        logline,
+      } satisfies StorySummaryViewModel;
+    })
+  );
+
+  return enriched;
 }
 
 export async function getStory(storyId: string): Promise<StoryDetailViewModel | null> {
@@ -55,13 +70,22 @@ export async function getStory(storyId: string): Promise<StoryDetailViewModel | 
 
   const client = getSupabaseClient();
   const storiesRepository = createStoriesRepository(client);
+  const shotsRepository = createShotsRepository(client);
   const record = await storiesRepository.getStoryById(trimmed);
 
   if (!record) {
     return null;
   }
 
-  return mapStoryRecordToDetail(record);
+  const constitutionMarkdown = extractConstitutionMarkdown(record.storyConstitution);
+  const logline = extractLoglineFromMarkdown(constitutionMarkdown);
+  const thumbnailImagePath = await findStoryThumbnailImagePath(trimmed, shotsRepository);
+
+  return mapStoryRecordToDetail(record, {
+    constitutionMarkdown,
+    logline,
+    thumbnailImagePath,
+  });
 }
 
 export async function getStoryTreeScript(storyId: string): Promise<string | null> {
@@ -114,17 +138,25 @@ export async function getStoryTreeData(storyId: string): Promise<StoryTreeData |
 }
 
 const DEFAULT_AUTHOR = "Story Tree Agent";
-const ACCENT_COLORS = ["#6366f1", "#0ea5e9", "#f97316", "#f43f5e", "#22c55e", "#a855f7"] as const;
+const ACCENT_COLORS = ["#6c584c", "#a98467", "#adc178", "#d8c3b1", "#dde5b6", "#f0ead2"] as const;
 
-function mapStoryRecordToDetail(record: StoryRecord): StoryDetailViewModel {
+function mapStoryRecordToDetail(
+  record: StoryRecord,
+  extras: {
+    constitutionMarkdown: string | null;
+    logline: string | null;
+    thumbnailImagePath: string | null;
+  }
+): StoryDetailViewModel {
   return {
     id: record.id,
     title: record.displayName,
     author: DEFAULT_AUTHOR,
     accentColor: deriveAccentColor(record.displayName ?? record.id),
-    constitutionMarkdown: extractConstitutionMarkdown(record.storyConstitution),
+    constitutionMarkdown: extras.constitutionMarkdown,
+    logline: extras.logline,
+    thumbnailImagePath: extras.thumbnailImagePath,
     visualDesignDocument: record.visualDesignDocument ?? null,
-    visualReferencePackage: record.visualReferencePackage ?? null,
     audioDesignDocument: record.audioDesignDocument ?? null,
   };
 }
@@ -154,6 +186,90 @@ function extractConstitutionMarkdown(value: unknown): string | null {
 
   if (typeof markdown === "string" && markdown.trim()) {
     return markdown;
+  }
+
+  return null;
+}
+
+function extractLoglineFromMarkdown(markdown: string | null): string | null {
+  if (!markdown) {
+    return null;
+  }
+
+  const lines = markdown.split(/\r?\n/);
+  let inLoglineSection = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!inLoglineSection) {
+      if (/^#{1,6}\s+logline\b/i.test(line)) {
+        inLoglineSection = true;
+        continue;
+      }
+
+      if (/^logline\s*:/i.test(line)) {
+        const inline = line.replace(/^logline\s*:/i, "").trim();
+        if (inline) {
+          return stripMarkdownFormatting(inline);
+        }
+        inLoglineSection = true;
+      }
+      continue;
+    }
+
+    if (!line) {
+      continue;
+    }
+
+    if (/^#{1,6}\s+/.test(line)) {
+      break;
+    }
+
+    const normalized = stripMarkdownFormatting(line.replace(/^[-*+]\s+/, "").trim());
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+function stripMarkdownFormatting(value: string): string {
+  return value
+    .replace(/\[(.+?)\]\((.*?)\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .replace(/\\/g, "")
+    .trim();
+}
+
+async function findStoryThumbnailImagePath(
+  storyId: string,
+  shotsRepository: ReturnType<typeof createShotsRepository>
+): Promise<string | null> {
+  try {
+    const shotsByScenelet = await shotsRepository.getShotsByStory(storyId);
+    const allShots = Object.values(shotsByScenelet).flat();
+
+    if (allShots.length === 0) {
+      return null;
+    }
+
+    allShots.sort((a, b) => {
+      if (a.sceneletSequence !== b.sceneletSequence) {
+        return a.sceneletSequence - b.sceneletSequence;
+      }
+      return a.shotIndex - b.shotIndex;
+    });
+
+    for (const shot of allShots) {
+      const normalized = normalizeStoragePath(shot.keyFrameImagePath);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to derive thumbnail image for story ${storyId}`, error);
   }
 
   return null;

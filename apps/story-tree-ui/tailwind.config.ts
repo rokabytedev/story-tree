@@ -12,8 +12,10 @@ const config: Config = {
         page: "var(--color-page)",
         surface: "var(--color-surface)",
         "surface-muted": "var(--color-surface-muted)",
+        "surface-elevated": "var(--color-surface-elevated)",
         border: "var(--color-border)",
         highlight: "var(--color-highlight)",
+        "accent-muted": "var(--color-accent-muted)",
         "text-primary": "var(--color-text-primary)",
         "text-muted": "var(--color-text-muted)",
       },
@@ -22,7 +24,7 @@ const config: Config = {
         mono: ["var(--font-geist-mono)", "var(--font-mono-stack)"],
       },
       boxShadow: {
-        panel: "0 16px 40px rgba(8, 15, 35, 0.45)",
+        panel: "0 18px 48px rgba(108, 88, 76, 0.22)",
       },
       borderRadius: {
         xl: "1.25rem",

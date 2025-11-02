@@ -54,47 +54,39 @@ export default async function StoryLayout({ children, params }: StoryLayoutProps
     notFound();
   }
 
-  const accentColor = story?.accentColor ?? "#6366f1";
+  const sidebarStory = story
+    ? {
+        title: story.title,
+        author: story.author,
+        accentColor: story.accentColor,
+        thumbnailSrc: story.thumbnailImagePath,
+      }
+    : undefined;
 
   return (
-    <div className="flex min-h-screen bg-page text-text-primary">
-      <aside className="hidden w-80 shrink-0 border-r border-border bg-[#0f172a] px-6 py-10 shadow-panel lg:flex">
-        <StorySidebar storyId={storyId} className="h-full" />
+    <div className="min-h-screen bg-page text-text-primary lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <aside className="hidden border-r border-border bg-surface lg:block lg:sticky lg:top-0 lg:h-screen">
+        <StorySidebar
+          storyId={storyId}
+          story={sidebarStory}
+          className="flex h-full flex-col overflow-y-auto px-6 py-10"
+        />
       </aside>
-      <main className="flex-1 overflow-y-auto px-6 py-10 lg:px-12">
-        <div className="mb-6 lg:hidden">
-          <StorySidebar
-            storyId={storyId}
-            className="rounded-3xl border border-border bg-surface px-4 py-6 shadow-panel"
-          />
+      <div className="flex min-h-screen flex-col">
+        <div className="border-b border-border bg-surface px-4 py-6 shadow-panel lg:hidden">
+          <StorySidebar storyId={storyId} story={sidebarStory} className="flex flex-col gap-6" />
         </div>
-        <header className="mb-10 flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-text-muted">
-              Story Explorer
+        <main className="flex-1 overflow-y-auto px-6 pb-12 pt-8 lg:px-12">
+          {loadError && (
+            <p className="mb-6 rounded-xl border border-border bg-surface-elevated px-4 py-3 text-sm text-text-muted">
+              {loadError.name === "SupabaseConfigurationError"
+                ? loadError.message
+                : "Unable to load complete story data from Supabase."}
             </p>
-            <h1 className="text-3xl font-semibold text-text-primary">
-              {story?.title ?? "Story unavailable"}
-            </h1>
-            <p className="text-sm text-text-muted">
-              Author: {story?.author ?? "Unknown"}
-            </p>
-            {loadError && (
-              <p className="mt-3 text-xs text-text-muted/70">
-                {loadError.name === "SupabaseConfigurationError"
-                  ? loadError.message
-                  : "Story data could not be loaded from Supabase."}
-              </p>
-            )}
-          </div>
-          <span
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: accentColor }}
-            aria-hidden="true"
-          />
-        </header>
-        {children}
-      </main>
+          )}
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

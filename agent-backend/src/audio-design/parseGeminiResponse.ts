@@ -213,29 +213,17 @@ function parseVoiceProfiles(
       30
     );
 
-    const voiceDescriptionSource =
-      record.voice_description ??
-      record.voiceDescription;
-
-    const voiceDescription = extractDetailedString(
-      voiceDescriptionSource,
-      `character_voice_profiles[${index}].voice_description`,
-      30
-    );
-
     const sanitizedProfile = {
       ...record,
       character_id: characterId,
       character_name: characterName,
       voice_profile: voiceProfile,
-      voice_description: voiceDescription,
       voice_name: voiceName,
     } as AudioVoiceProfile;
 
     delete (sanitizedProfile as Record<string, unknown>).characterId;
     delete (sanitizedProfile as Record<string, unknown>).characterName;
     delete (sanitizedProfile as Record<string, unknown>).voiceProfile;
-    delete (sanitizedProfile as Record<string, unknown>).voiceDescription;
     delete (sanitizedProfile as Record<string, unknown>).voiceName;
     delete (sanitizedProfile as Record<string, unknown>).ttsGenerationPrompt;
 

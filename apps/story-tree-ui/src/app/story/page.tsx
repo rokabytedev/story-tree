@@ -1,7 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { EmptyState } from "@/components/emptyState";
 import { getStoryList } from "@/server/data/stories";
 import type { StorySummaryViewModel } from "@/server/data/stories";
+import { storybookPalette } from "@/theme/palette";
 
 export const dynamic = "force-dynamic";
 
@@ -40,29 +43,70 @@ export default async function StoryIndexPage() {
           </p>
         </header>
         {hasStories ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {stories.map((story) => (
-              <Link
-                key={story.id}
-                href={`/story/${story.id}/constitution`}
-                className="group rounded-2xl border border-border bg-surface p-6 shadow-panel transition hover:border-highlight hover:shadow-[0_20px_55px_rgba(9,15,30,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-semibold">{story.title}</h2>
-                  <span
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: story.accentColor }}
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="mt-2 text-sm text-text-muted">
-                  Authored by {story.author}
-                </p>
-                <p className="mt-4 text-xs uppercase tracking-[0.3em] text-text-muted/70">
-                  Open Explorer →
-                </p>
-              </Link>
-            ))}
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {stories.map((story) => {
+              const placeholderStyle: CSSProperties = {
+                backgroundImage: `linear-gradient(135deg, ${story.accentColor} 0%, ${storybookPalette.accentMuted} 100%)`,
+              };
+
+              return (
+                <Link
+                  key={story.id}
+                  href={`/story/${story.id}/constitution`}
+                  className="group flex gap-4 rounded-3xl border border-border bg-surface-elevated p-4 shadow-panel transition hover:-translate-y-1 hover:shadow-[0_30px_65px_rgba(108,88,76,0.25)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight"
+                >
+                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-border bg-surface">
+                    {story.thumbnailImagePath ? (
+                      <Image
+                        src={story.thumbnailImagePath}
+                        alt={`${story.title} thumbnail`}
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center text-[11px] font-medium text-text-muted"
+                        style={placeholderStyle}
+                      >
+                        <span className="text-sm font-semibold text-text-primary">
+                          Artwork coming soon
+                        </span>
+                        <span className="max-w-[9rem] leading-snug text-text-muted">
+                          Generate storyboard shots to preview this story.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col justify-between gap-3 py-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <h2 className="text-lg font-semibold leading-tight text-text-primary">
+                          {story.title}
+                        </h2>
+                        <p className="text-xs font-medium uppercase tracking-[0.25em] text-text-muted/80">
+                          By {story.author}
+                        </p>
+                      </div>
+                      <span
+                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: story.accentColor,
+                          boxShadow: `0 0 0 2px ${storybookPalette.surface}`,
+                        }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="max-h-24 overflow-hidden text-sm leading-relaxed text-text-muted">
+                      {story.logline ?? "Logline not available yet."}
+                    </p>
+                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-highlight">
+                      Open Explorer →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <EmptyState

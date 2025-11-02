@@ -1,6 +1,7 @@
-import { CodeBlock } from "@/components/codeBlock";
 import { EmptyState } from "@/components/emptyState";
+import { AudioDesignView } from "@/components/audio/AudioDesignView";
 import { getStory } from "@/server/data/stories";
+import { parseAudioDesignDocument } from "@/lib/audioDesignDocument";
 
 type PageProps = {
   params: Promise<{ storyId: string }>;
@@ -20,30 +21,19 @@ export default async function AudioTab({ params }: PageProps) {
       );
     }
 
-    let formatted: string;
-    try {
-      formatted = JSON.stringify(story.audioDesignDocument, null, 2);
-    } catch {
+    const parsedDocument = parseAudioDesignDocument(story.audioDesignDocument);
+
+    if (!parsedDocument) {
       return (
         <EmptyState
           title="Audio design unavailable"
-          message="Audio design JSON could not be serialized."
+          message="Audio design data could not be parsed."
         />
       );
     }
 
     return (
-      <div className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm uppercase tracking-[0.3em] text-text-muted">
-            Audio Design Document
-          </p>
-          <p className="text-xs text-text-muted/80">
-            Raw JSON captured from the audio design task.
-          </p>
-        </header>
-        <CodeBlock content={formatted} languageLabel="json" />
-      </div>
+      <AudioDesignView storyId={storyId} document={parsedDocument} />
     );
   } catch (error) {
     const message =

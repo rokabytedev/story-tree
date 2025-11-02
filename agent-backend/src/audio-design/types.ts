@@ -41,7 +41,6 @@ export interface AudioSonicIdentity {
 export interface AudioVoiceProfile {
   character_id: string;
   character_name: string;
-  voice_description: string;
   voice_name: string;
   voice_profile?: string;
   [key: string]: unknown;

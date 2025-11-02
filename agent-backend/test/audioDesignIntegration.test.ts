@@ -80,13 +80,11 @@ const GEMINI_RESPONSE = JSON.stringify({
       {
         character_name: 'Rhea',
         voice_profile: 'Rhea integration profile rich with clarity and expressive tonal guidance.',
-        voice_description: 'Rhea description crafted for integration tests surpassing length requirements easily.',
         voice_name: 'Puck',
       },
       {
         character_name: 'Testing Agent',
         voice_profile: 'Testing Agent integration profile highlighting upbeat efficiency with detailed cues.',
-        voice_description: 'Testing Agent integration description emphasising precise optimism with enough length.',
         voice_name: 'Deneb',
       },
     ],

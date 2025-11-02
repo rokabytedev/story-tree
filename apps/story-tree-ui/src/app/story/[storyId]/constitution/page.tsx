@@ -21,12 +21,9 @@ export default async function ConstitutionTab({
     }
 
     return (
-      <div className="space-y-6">
-        <p className="text-sm uppercase tracking-[0.3em] text-text-muted">
-          Constitution Markdown
-        </p>
+      <section className="rounded-3xl border border-border bg-surface-elevated px-6 py-8 shadow-panel">
         <MarkdownPreview content={story.constitutionMarkdown} />
-      </div>
+      </section>
     );
   } catch (error) {
     const message =
