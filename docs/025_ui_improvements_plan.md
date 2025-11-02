@@ -30,3 +30,13 @@ improvements to the apps/story-tree-ui
             - first row: bigger heavier font: story title
             - second row: find from the "logline" section from story constitution markdown, smaller lighter font.
         - remove the "purple dot" thing
+
+your task
+- understand my requirements and ask clarification if any
+- expand this doc into detailed openspec spec doc + design doc + other docs
+    - expand the requirements with details to make the requirements very clear
+    - make sure the tasks doc has checklist
+    - tasks should be batched into major milestones
+    - tasks do not include manual verification or integration test etc.
+- let me review first
+- implementation once i confirm design is ok.
