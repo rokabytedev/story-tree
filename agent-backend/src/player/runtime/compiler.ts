@@ -22,6 +22,15 @@ export async function buildPlayerRuntimeSource(
   return transpiled.outputText;
 }
 
+export async function buildPlayerRuntimeInlineSource(): Promise<string> {
+  const source = await buildPlayerRuntimeSource({ minify: true });
+  const withoutExport = source.replace(
+    /export function createPlayerController/,
+    'function createPlayerController'
+  );
+  return withoutExport.trim();
+}
+
 export async function writePlayerRuntimeModule(
   outputDir: string,
   options: { fileName?: string } = {}

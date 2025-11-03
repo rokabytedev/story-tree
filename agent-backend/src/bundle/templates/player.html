@@ -385,8 +385,11 @@
         <audio id="music-secondary" preload="auto" loop></audio>
       </div>
     </div>
-        <script type="module">
-      import { createPlayerController } from "./player-runtime.js";
+    <script type="module">
+      const { createPlayerController } = (() => {
+__PLAYER_RUNTIME_PLACEHOLDER__
+        return { createPlayerController };
+      })();
 
       const MUSIC_VOLUME = 0.25;
       const MUSIC_CROSSFADE_MS = 500;

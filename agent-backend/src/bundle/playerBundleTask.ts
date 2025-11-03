@@ -9,7 +9,10 @@ import type {
   PlayerBundleTaskOptions,
   PlayerBundleTaskResult,
 } from './types.js';
-import { writePlayerRuntimeModule } from '../player/runtime/compiler.js';
+import {
+  buildPlayerRuntimeInlineSource,
+  writePlayerRuntimeModule,
+} from '../player/runtime/compiler.js';
 import { writePlayerThemeStyles } from '../player/theme.js';
 
 const DEFAULT_OUTPUT_ROOT = path.resolve(process.cwd(), 'output/stories');
@@ -123,7 +126,9 @@ export async function runPlayerBundleTask(
   await fsAdapter.mkdir(storyOutputDir, { recursive: true });
 
   const playerTemplate = await fsPromises.readFile(templatePath, 'utf-8');
-  const playerHtml = injectStoryJsonIntoTemplate(playerTemplate, bundle);
+  const inlineRuntimeSource = await buildPlayerRuntimeInlineSource();
+  const playerHtmlWithStory = injectStoryJsonIntoTemplate(playerTemplate, bundle);
+  const playerHtml = injectRuntimeIntoTemplate(playerHtmlWithStory, inlineRuntimeSource);
   const playerHtmlPath = path.join(storyOutputDir, 'player.html');
   await fsAdapter.writeFile(playerHtmlPath, playerHtml, 'utf-8');
 
@@ -141,6 +146,21 @@ export async function runPlayerBundleTask(
     storyId: trimmedStoryId,
     outputPath: storyOutputDir,
   };
+}
+
+function injectRuntimeIntoTemplate(template: string, runtimeSource: string): string {
+  const placeholder = '__PLAYER_RUNTIME_PLACEHOLDER__';
+  if (!template.includes(placeholder)) {
+    throw new PlayerBundleTaskError('Player template is missing the runtime placeholder.');
+  }
+
+  const escapedRuntime = runtimeSource.replace(/<\/script/gi, '<\\/script');
+  const indentedRuntime = escapedRuntime
+    .split('\n')
+    .map((line) => `        ${line}`)
+    .join('\n');
+
+  return template.replace(placeholder, indentedRuntime);
 }
 
 function injectStoryJsonIntoTemplate(template: string, story: unknown): string {

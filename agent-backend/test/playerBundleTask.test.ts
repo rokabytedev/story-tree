@@ -71,6 +71,12 @@ describe('runPlayerBundleTask', () => {
       <html>
         <body>
           <script id="story-data" type="application/json">__STORY_JSON_PLACEHOLDER__</script>
+          <script type="module">
+            const { createPlayerController } = (() => {
+__PLAYER_RUNTIME_PLACEHOLDER__
+              return { createPlayerController };
+            })();
+          </script>
           Player Template
         </body>
       </html>
@@ -136,6 +142,7 @@ describe('runPlayerBundleTask', () => {
     const playerHtml = await fs.readFile(playerHtmlPath, 'utf-8');
     expect(playerHtml).toContain('Player Template');
     expect(playerHtml).not.toContain('__STORY_JSON_PLACEHOLDER__');
+    expect(playerHtml).not.toContain('__PLAYER_RUNTIME_PLACEHOLDER__');
     expect(playerHtml).toContain('"metadata"');
 
     const imageTarget = path.join(result.outputPath, 'assets', 'shots', 'root', '1_key_frame.png');
