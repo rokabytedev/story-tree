@@ -46,21 +46,19 @@ export function StorySidebarHeader({
         </span>
       </div>
       <div className="flex flex-col gap-4">
-        <div
-          className="relative w-full overflow-hidden rounded-3xl border border-border bg-page"
-          style={{ aspectRatio: "4 / 3" }}
-        >
+        <div className="-mx-4 lg:-mx-6">
           {thumbnailSrc ? (
             <Image
               src={thumbnailSrc}
               alt={`${displayTitle} thumbnail`}
-              fill
-              className="object-cover"
-              sizes="(min-width: 1024px) 280px, 100vw"
+              width={1600}
+              height={900}
+              className="block h-auto w-full"
+              sizes="(min-width: 1024px) 320px, 100vw"
             />
           ) : (
             <div
-              className="flex h-full w-full items-center justify-center rounded-3xl text-2xl font-semibold uppercase text-page"
+              className="flex h-48 w-full items-center justify-center text-2xl font-semibold uppercase text-page"
               style={{ background: accentBackground }}
             >
               {initial}
