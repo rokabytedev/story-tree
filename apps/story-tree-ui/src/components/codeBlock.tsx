@@ -8,7 +8,7 @@ export function CodeBlock({
   languageLabel = "text",
 }: CodeBlockProps) {
   return (
-    <div className="rounded-2xl border border-border bg-surface-elevated/90">
+    <div className="rounded-2xl border border-border bg-page">
       <div className="flex items-center justify-between border-b border-border px-4 py-2 text-xs uppercase tracking-[0.3em] text-text-muted">
         <span>{languageLabel}</span>
         <span className="flex gap-1">

@@ -7,13 +7,13 @@ function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
   const { scenelet, onShotClick } = data;
 
   return (
-    <div className="w-[640px] overflow-hidden rounded-3xl border border-border bg-surface text-text shadow-sm transition-shadow duration-150 hover:shadow-lg">
+    <div className="w-[640px] overflow-hidden rounded-3xl border border-border bg-page text-text">
       <Handle
         type="target"
         position={Position.Top}
         className="!h-3 !w-3 !bg-highlight/60 !border-none"
       />
-      <header className="flex items-center justify-between border-b border-border/20 px-4 py-3">
+      <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-baseline gap-2">
           <p className="text-[10px] uppercase tracking-[0.3em] text-text-muted">{scenelet.id}</p>
         </div>
@@ -42,7 +42,7 @@ function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
               {scenelet.shotSuggestions.map((shot, index) => (
                 <div
                   key={`${scenelet.id}-shot-${index}`}
-                  className="flex w-40 min-w-[10rem] flex-col gap-2 rounded-2xl bg-surface-muted/70 p-3 ring-1 ring-border/50"
+                  className="flex w-40 min-w-[10rem] flex-col gap-2 rounded-2xl border border-border bg-page p-3"
                 >
                   <div className="aspect-video w-full rounded-xl bg-border/40" />
                   <p className="text-xs leading-snug text-text-muted/90">{shot}</p>

@@ -84,17 +84,17 @@ export function StorySidebar({ storyId, story, className = "" }: StorySidebarPro
                 href={href}
                 aria-label={`${label} — ${description}`}
                 aria-current={isActive ? "page" : undefined}
-                className={`group flex items-start gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
+                className={`group flex items-start gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
                   isActive
-                    ? "bg-surface-elevated font-semibold text-text-primary"
-                    : "text-text-muted hover:bg-surface-elevated hover:text-text-primary"
+                    ? "border-border bg-page font-semibold text-text-primary"
+                    : "border-transparent text-text-muted hover:bg-surface hover:text-text-primary"
                 }`}
               >
                 <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-2xl transition ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl border transition ${
                     isActive
-                      ? "text-highlight"
-                      : "text-text-muted group-hover:text-highlight"
+                      ? "border-border bg-page text-highlight"
+                      : "border-transparent text-text-muted group-hover:border-border group-hover:bg-page group-hover:text-highlight"
                   }`}
                   aria-hidden="true"
                 >
@@ -111,7 +111,7 @@ export function StorySidebar({ storyId, story, className = "" }: StorySidebarPro
           );
         })}
       </ul>
-      <footer className="mt-auto rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-4 py-4 text-xs text-text-muted">
+      <footer className="mt-auto rounded-3xl border border-dashed border-border bg-page px-4 py-4 text-xs text-text-muted">
         <p className="font-semibold uppercase tracking-[0.2em] text-text-muted">
           Preview Build
         </p>

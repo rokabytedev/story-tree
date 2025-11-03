@@ -17,7 +17,7 @@ export function GlobalAestheticSection({
 }: GlobalAestheticSectionProps) {
   if (!globalAesthetic) {
     return (
-      <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+      <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
         Global aesthetic information is not yet available for this story.
       </div>
     );
@@ -26,7 +26,7 @@ export function GlobalAestheticSection({
   const { visualStyleName, visualStyleDescription, palette } = globalAesthetic;
 
   return (
-    <div className="space-y-6 rounded-3xl border border-border bg-surface-elevated px-6 py-8 shadow-panel">
+    <div className="space-y-6 rounded-3xl border border-border bg-page px-6 py-8">
       {(visualStyleName || visualStyleDescription) && (
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-[0.3em] text-text-muted">
@@ -54,7 +54,7 @@ export function GlobalAestheticSection({
             {palette.map(({ name, hex, usageNotes }, index) => (
               <article
                 key={`${name}-${index}`}
-                className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm"
+                className="overflow-hidden rounded-2xl border border-border bg-page"
               >
                 <div
                   className="h-20 w-full"

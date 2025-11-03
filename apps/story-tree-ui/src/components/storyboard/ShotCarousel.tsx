@@ -51,7 +51,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
           <button
             type="button"
             onClick={() => scroll("left")}
-            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface p-2 shadow-lg ring-1 ring-border transition-all hover:bg-surface-muted hover:shadow-xl"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border bg-page p-2 transition-all hover:bg-surface"
             aria-label="Scroll left"
           >
             <svg
@@ -79,7 +79,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
               key={shot.shotIndex}
               type="button"
               onClick={() => onShotClick(shot)}
-              className="group relative aspect-video w-40 min-w-[10rem] shrink-0 overflow-hidden rounded-lg bg-border/40 transition-all hover:shadow-md"
+              className="group relative aspect-video w-40 min-w-[10rem] shrink-0 overflow-hidden rounded-lg border border-border bg-page transition-all hover:bg-surface"
               style={{ scrollSnapAlign: "start" }}
             >
               {shot.keyFrameImagePath ? (
@@ -103,7 +103,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
                   <span className="text-xs text-text-muted/60">No image</span>
                 </div>
               )}
-              <div className="absolute right-2 top-2 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-text opacity-0 shadow-sm ring-1 ring-border/30 transition-opacity group-hover:opacity-100">
+              <div className="absolute right-2 top-2 rounded-full border border-border bg-page px-2 py-0.5 text-[10px] font-semibold text-text opacity-0 transition-opacity group-hover:opacity-100">
                 Shot {shot.shotIndex}
               </div>
             </button>
@@ -113,7 +113,7 @@ export function ShotCarousel({ shots, onShotClick }: ShotCarouselProps) {
           <button
             type="button"
             onClick={() => scroll("right")}
-            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-surface p-2 shadow-lg ring-1 ring-border transition-all hover:bg-surface-muted hover:shadow-xl"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border bg-page p-2 transition-all hover:bg-surface"
             aria-label="Scroll right"
           >
             <svg

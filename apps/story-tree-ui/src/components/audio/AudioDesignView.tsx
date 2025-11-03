@@ -93,14 +93,14 @@ export function AudioDesignView({ storyId, document }: AudioDesignViewProps) {
 function SonicIdentityCard({ identity }: { identity: AudioSonicIdentityViewModel | null }) {
   if (!identity) {
     return (
-      <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+      <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
         Sonic identity details are not available yet.
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 rounded-3xl border border-border bg-surface-elevated px-6 py-6 shadow-panel">
+    <div className="space-y-5 rounded-3xl border border-border bg-page px-6 py-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-highlight/10 text-highlight">
           <MusicalNoteIcon className="h-5 w-5" aria-hidden />
@@ -116,7 +116,7 @@ function SonicIdentityCard({ identity }: { identity: AudioSonicIdentityViewModel
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {identity.musicalDirection ? (
-          <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
+          <div className="rounded-2xl border border-border bg-page px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
               Musical direction
             </p>
@@ -126,7 +126,7 @@ function SonicIdentityCard({ identity }: { identity: AudioSonicIdentityViewModel
           </div>
         ) : null}
         {identity.soundEffectPhilosophy ? (
-          <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
+          <div className="rounded-2xl border border-border bg-page px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
               Sound effect philosophy
             </p>
@@ -136,7 +136,7 @@ function SonicIdentityCard({ identity }: { identity: AudioSonicIdentityViewModel
           </div>
         ) : null}
         {identity.additionalNotes ? (
-          <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3 md:col-span-2">
+          <div className="rounded-2xl border border-border bg-page px-4 py-3 md:col-span-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
               Additional notes
             </p>
@@ -159,7 +159,7 @@ function VoiceProfilesSection({
 }) {
   if (!narrator && characters.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+      <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
         Voice casting notes will appear once the audio design workflow runs.
       </div>
     );
@@ -194,9 +194,9 @@ function VoiceProfileCard({ profile }: { profile: AudioVoiceProfileViewModel }) 
   }, [profile.characterId, profile.characterName, profile.isNarrator]);
 
   return (
-    <article className="space-y-4 rounded-3xl border border-border bg-surface-elevated px-5 py-5 shadow-panel">
+    <article className="space-y-4 rounded-3xl border border-border bg-page px-5 py-5 transition hover:bg-surface">
       <header className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-surface text-lg font-semibold text-text-primary">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-page text-lg font-semibold text-text-primary">
           {profile.voiceName ? (
             <span>{initials}</span>
           ) : (
@@ -208,7 +208,7 @@ function VoiceProfileCard({ profile }: { profile: AudioVoiceProfileViewModel }) 
             <h3 className="text-base font-semibold leading-tight text-text-primary">
               {profile.characterName ?? profile.characterId}
             </h3>
-            <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-text-muted">
+            <span className="rounded-full border border-border bg-page px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-text-muted">
               {badgeLabel}
             </span>
           </div>
@@ -218,7 +218,7 @@ function VoiceProfileCard({ profile }: { profile: AudioVoiceProfileViewModel }) 
         </div>
       </header>
       {profile.voiceProfile ? (
-        <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
+        <div className="rounded-2xl border border-border bg-page px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
             Voice profile
           </p>
@@ -228,7 +228,7 @@ function VoiceProfileCard({ profile }: { profile: AudioVoiceProfileViewModel }) 
         </div>
       ) : null}
       {profile.usageNotes ? (
-        <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
+        <div className="rounded-2xl border border-border bg-page px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
             Usage
           </p>
@@ -312,7 +312,7 @@ function CuePlaylist({ storyId, cues }: { storyId: string; cues: AudioCueViewMod
 
   if (cues.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+      <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
         Music cues have not been generated yet.
       </div>
     );
@@ -400,7 +400,7 @@ function AudioCueCard({
   const canPlay = Boolean(resolvedSource) && !hasError;
 
   return (
-    <article className="space-y-4 rounded-3xl border border-border bg-surface-elevated px-5 py-5 shadow-panel">
+    <article className="space-y-4 rounded-3xl border border-border bg-page px-5 py-5 transition hover:bg-surface">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -418,7 +418,7 @@ function AudioCueCard({
               {cue.sceneletIds.map((sceneletId) => (
                 <span
                   key={sceneletId}
-                  className="rounded-full border border-border/60 bg-surface px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-text-muted"
+                  className="rounded-full border border-border bg-page px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-text-muted"
                 >
                   {sceneletId}
                 </span>
@@ -430,7 +430,7 @@ function AudioCueCard({
           type="button"
           onClick={() => (isActive ? onStop(cue.cueName) : onPlay(cue.cueName))}
           disabled={!canPlay}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition hover:bg-highlight/10 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-page text-text-primary transition hover:bg-highlight/10 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={isActive ? `Pause ${cue.cueName}` : `Play ${cue.cueName}`}
         >
           {isActive ? <PauseIcon className="h-5 w-5" aria-hidden /> : <PlayIcon className="h-5 w-5" aria-hidden />}
@@ -444,7 +444,7 @@ function AudioCueCard({
       ) : null}
 
       {cue.prompt ? (
-        <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
+        <div className="rounded-2xl border border-border bg-page px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
             Generation prompt
           </p>

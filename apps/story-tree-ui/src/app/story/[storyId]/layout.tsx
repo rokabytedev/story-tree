@@ -72,12 +72,12 @@ export default async function StoryLayout({ children, params }: StoryLayoutProps
         />
       </aside>
       <div className="flex min-h-screen flex-col">
-        <div className="border-b border-border bg-surface px-4 py-6 shadow-panel lg:hidden">
+        <div className="border-b border-border bg-surface px-4 py-6 lg:hidden">
           <StorySidebar storyId={storyId} story={sidebarStory} className="flex flex-col gap-6" />
         </div>
         <main className="flex-1 overflow-y-auto px-6 pb-12 pt-8 lg:px-12">
           {loadError && (
-            <p className="mb-6 rounded-xl border border-border bg-surface-elevated px-4 py-3 text-sm text-text-muted">
+            <p className="mb-6 rounded-xl border border-border bg-page px-4 py-3 text-sm text-text-muted">
               {loadError.name === "SupabaseConfigurationError"
                 ? loadError.message
                 : "Unable to load complete story data from Supabase."}

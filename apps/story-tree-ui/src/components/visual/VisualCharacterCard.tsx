@@ -25,10 +25,10 @@ export function VisualCharacterCard({ character }: VisualCharacterCardProps) {
   const description = formatMultiline(character.description);
 
   return (
-    <article className="space-y-4 rounded-3xl border border-border bg-surface-elevated px-6 py-6 shadow-panel">
+    <article className="space-y-4 rounded-3xl border border-border bg-page px-6 py-6">
       <div className="flex flex-col gap-3">
         <div
-          className="relative w-full overflow-hidden rounded-3xl border border-border bg-surface"
+          className="relative w-full overflow-hidden rounded-3xl border border-border bg-page"
           style={{ aspectRatio: "4 / 3" }}
         >
           {character.imagePath ? (

@@ -81,7 +81,7 @@ const markdownComponents: Components = {
     <blockquote
       {...props}
       className={mergeClassNames(
-        "border-l-4 border-highlight/40 bg-surface-elevated px-5 py-3 text-base italic text-text-primary/80",
+        "border-l-4 border-highlight/40 bg-page px-5 py-3 text-base italic text-text-primary/80",
         className
       )}
     />
@@ -104,7 +104,7 @@ const markdownComponents: Components = {
         <code
           {...props}
           className={mergeClassNames(
-            "rounded-md bg-surface-muted/40 px-1.5 py-0.5 text-sm text-text-primary",
+            "rounded-md bg-page px-1.5 py-0.5 text-sm text-text-primary",
             className
           )}
         >
@@ -114,7 +114,7 @@ const markdownComponents: Components = {
     }
 
     return (
-      <pre className="my-4 overflow-x-auto rounded-2xl border border-border bg-surface-elevated p-4 text-sm text-text-muted">
+      <pre className="my-4 overflow-x-auto rounded-2xl border border-border bg-page p-4 text-sm text-text-muted">
         <code {...props} className={className}>
           {children}
         </code>
@@ -158,7 +158,7 @@ const markdownComponents: Components = {
       className={mergeClassNames("px-4 py-3 text-sm", className)}
     />
   ),
-  hr: () => <hr className="my-8 border-border/60" />,
+  hr: () => <hr className="my-8 border-border" />,  
 };
 
 function mergeClassNames(base: string, extra?: string) {

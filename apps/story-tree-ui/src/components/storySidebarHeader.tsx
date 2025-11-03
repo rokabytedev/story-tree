@@ -36,7 +36,7 @@ export function StorySidebarHeader({
       <div className="flex items-center justify-between">
         <Link
           href="/story"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface-elevated text-text-primary transition hover:bg-surface"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page text-text-primary transition hover:bg-surface"
           aria-label="Back to story list"
         >
           <HomeIcon className="h-5 w-5" aria-hidden />
@@ -47,7 +47,7 @@ export function StorySidebarHeader({
       </div>
       <div className="flex flex-col gap-4">
         <div
-          className="relative w-full overflow-hidden rounded-3xl border border-border bg-surface"
+          className="relative w-full overflow-hidden rounded-3xl border border-border bg-page"
           style={{ aspectRatio: "4 / 3" }}
         >
           {thumbnailSrc ? (

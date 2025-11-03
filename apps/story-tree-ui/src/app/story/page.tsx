@@ -53,9 +53,9 @@ export default async function StoryIndexPage() {
                 <Link
                   key={story.id}
                   href={`/story/${story.id}/constitution`}
-                  className="group flex gap-5 rounded-3xl border border-border/40 bg-surface-elevated p-5 shadow-panel transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight hover:shadow-panel-hover"
+                  className="group flex gap-5 rounded-3xl border border-border bg-page p-5 transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight"
                 >
-                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-border bg-surface">
+                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-border bg-page">
                     {story.thumbnailImagePath ? (
                       <Image
                         src={story.thumbnailImagePath}
@@ -66,7 +66,7 @@ export default async function StoryIndexPage() {
                       />
                     ) : (
                       <div
-                        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center text-[11px] font-medium text-text-muted"
+                        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-center text-[11px] font-medium text-text-muted"
                         style={placeholderStyle}
                       >
                         <span className="text-sm font-semibold text-text-primary">

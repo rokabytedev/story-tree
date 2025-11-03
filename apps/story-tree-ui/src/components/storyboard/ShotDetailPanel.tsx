@@ -60,10 +60,10 @@ export function ShotDetailPanel({ shot, onClose }: ShotDetailPanelProps) {
 
       {/* Panel */}
       <div
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-[480px] overflow-y-auto bg-surface shadow-2xl transition-transform duration-300 sm:w-[480px]"
+        className="fixed inset-y-0 right-0 z-50 w-full max-w-[480px] overflow-y-auto bg-page transition-transform duration-300 sm:w-[480px]"
         style={{ transform: "translateX(0)" }}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/20 bg-surface px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-page px-6 py-4">
           <h2 className="text-lg font-semibold text-text">Shot Details</h2>
           <button
             type="button"

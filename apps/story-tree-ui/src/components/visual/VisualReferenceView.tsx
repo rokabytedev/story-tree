@@ -43,7 +43,7 @@ export function VisualReferenceView({ document }: VisualReferenceViewProps) {
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+          <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
             Character design data has not been generated yet.
           </div>
         )}
@@ -68,7 +68,7 @@ export function VisualReferenceView({ document }: VisualReferenceViewProps) {
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl border border-dashed border-border/60 bg-surface-elevated px-6 py-8 text-sm text-text-muted">
+          <div className="rounded-3xl border border-dashed border-border bg-page px-6 py-8 text-sm text-text-muted">
             Environment reference art has not been produced yet.
           </div>
         )}

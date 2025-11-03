@@ -21,7 +21,7 @@ export default async function ConstitutionTab({
     }
 
     return (
-      <section className="rounded-3xl border border-border bg-surface-elevated px-6 py-8 shadow-panel">
+      <section className="rounded-3xl border border-border bg-page px-6 py-8">
         <MarkdownPreview content={story.constitutionMarkdown} />
       </section>
     );
