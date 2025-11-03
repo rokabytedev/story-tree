@@ -23,9 +23,9 @@ When `CREATE_SHOT_AUDIO` runs we already load the story record, audio design doc
 Branch narration always uses a single narrator voice. We will add a `buildBranchAudioScript(scenelet, choices)` helper that returns a plain text script:
 - Start with the trimmed choice prompt followed by an inquisitive cue (e.g., “?” already part of prompt).
 - Introduce each choice on a new sentence: `"First choice label."`, `"Or second choice label."`. For three or more choices we will join with commas and a final "or" per English conventions.
-- Optionally prepend a short stage direction ("In an inviting narrator tone...") via a constant to encourage curiosity per the request.
+- Capture a short delivery cue ("In an inviting narrator tone...") via a constant so we can hint at pacing without polluting spoken lines.
 
-We will add a `assembleBranchAudioPrompt(audioDesign)` helper that formats a JSON payload similar to shot prompts but limited to `{ narrator_voice_profile, branch_prompt_script }`. The Gemini request will always use single-speaker mode with the narrator `voice_name` and omit speaker analysis.
+We will add a `assembleBranchAudioPrompt(audioDesign)` helper that formats a JSON payload similar to shot prompts but limited to two entries: one with `{ narrator_voice_profile }` and another with `{ script: { line, delivery } }`. The Gemini request will always use single-speaker mode with the narrator `voice_name` and omit speaker analysis.
 
 ### Mode semantics
 Branch audio generation will respect the existing mode flags:

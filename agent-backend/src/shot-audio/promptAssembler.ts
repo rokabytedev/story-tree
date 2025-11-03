@@ -140,7 +140,10 @@ export function assembleBranchAudioPrompt(
       narrator_voice_profile: narratorProfile,
     }),
     JSON.stringify({
-      branch_prompt_script: `${BRANCH_DELIVERY_CUE} ${trimmedScript}`.trim(),
+      script: {
+        line: trimmedScript,
+        delivery: BRANCH_DELIVERY_CUE,
+      },
     }),
   ];
 
