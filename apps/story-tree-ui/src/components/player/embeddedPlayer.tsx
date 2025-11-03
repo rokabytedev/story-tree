@@ -666,8 +666,8 @@ function PlayerSurface({
 
         {showChoiceOverlay && choices && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface/75 backdrop-blur">
-            <div className="flex w-full max-w-3xl flex-col gap-6 rounded-3xl border border-border bg-surface p-8 text-left">
-              <div className="rounded-2xl border border-border/70 bg-surface-muted/80 px-6 py-4">
+            <div className="flex w-full max-w-3xl flex-col gap-6 rounded-3xl border border-border bg-surface p-8 text-center">
+              <div className="px-2">
                 <h3 className="text-base font-semibold text-text-primary">
                   {choicePrompt ?? "Choose a path"}
                 </h3>
@@ -680,7 +680,7 @@ function PlayerSurface({
                       key={choice.sceneletId}
                       type="button"
                       onClick={() => onChoiceSelect(choice)}
-                      className="group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface/90 text-left transition hover:border-highlight hover:bg-highlight/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-highlight bg-surface text-center transition hover:bg-page focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
                     >
                       {previewImage ? (
                         <img src={previewImage} alt="" className="w-full object-cover" draggable={false} />
