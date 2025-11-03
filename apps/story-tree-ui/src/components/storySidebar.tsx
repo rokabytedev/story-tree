@@ -20,7 +20,7 @@ type SidebarTab = {
   Icon: ComponentType<{ className?: string }>;
 };
 
-function StoryboardTreeIcon({ className }: { className?: string }) {
+function StoryboardGridIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -30,15 +30,9 @@ function StoryboardTreeIcon({ className }: { className?: string }) {
       stroke="currentColor"
       className={className}
     >
-      <circle cx="12" cy="6" r="2.25" />
-      <circle cx="12" cy="12" r="2.25" />
-      <circle cx="7" cy="18" r="2.25" />
-      <circle cx="17" cy="18" r="2.25" />
-      <path d="M12 8.25v1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m10.41 13.59-2.82 2.82" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m13.59 13.59 2.82 2.82" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 15.75v2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M17 15.75v2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="4.75" y="4.75" width="14.5" height="6.5" rx="1.5" />
+      <rect x="4.75" y="12.75" width="6.75" height="6.5" rx="1.5" />
+      <rect x="12.5" y="12.75" width="6.75" height="6.5" rx="1.5" />
     </svg>
   );
 }
@@ -57,18 +51,6 @@ export const storyTabs: SidebarTab[] = [
     Icon: FilmIcon,
   },
   {
-    slug: "player",
-    label: "Player",
-    description: "Preview interactive playback",
-    Icon: PlayCircleIcon,
-  },
-  {
-    slug: "storyboard",
-    label: "Storyboard",
-    description: "Explore branching flow",
-    Icon: StoryboardTreeIcon,
-  },
-  {
     slug: "visual",
     label: "Visual",
     description: "Character & world art",
@@ -79,6 +61,18 @@ export const storyTabs: SidebarTab[] = [
     label: "Audio",
     description: "Music & sound plan",
     Icon: MusicalNoteIcon,
+  },
+  {
+    slug: "storyboard",
+    label: "Storyboard",
+    description: "Explore branching flow",
+    Icon: StoryboardGridIcon,
+  },
+  {
+    slug: "player",
+    label: "Player",
+    description: "Preview interactive playback",
+    Icon: PlayCircleIcon,
   },
 ];
 

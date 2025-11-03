@@ -542,34 +542,51 @@ type StartScreenProps = {
 
 function StartScreen({ title, imagePath, onStart }: StartScreenProps) {
   return (
-    <div className="relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden rounded-3xl border border-border bg-surface px-6 py-12 text-center shadow-lg">
-      {imagePath ? (
-        <Fragment>
-          <div
-            className="absolute inset-0 -z-10 opacity-80"
-            style={{
-              backgroundImage: `url("${sanitizeUrlForCss(imagePath)}")`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              filter: "blur(24px)",
-            }}
-          />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-surface/40 via-surface/80 to-surface" />
-        </Fragment>
-      ) : null}
-      <div className="flex w-full max-w-lg flex-col items-center gap-6 rounded-3xl border border-border/60 bg-surface/90 px-10 py-12 shadow-2xl backdrop-blur">
-        <h1 className="text-3xl font-semibold text-text-primary sm:text-4xl">{title}</h1>
-        <p className="text-sm text-text-muted">
-          Experience the interactive story with branching choices, music, and full-screen artwork.
-        </p>
-        <button
-          type="button"
-          onClick={onStart}
-          className="rounded-full bg-highlight px-8 py-3 text-sm font-semibold text-highlight-foreground shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
-        >
-          Start Story
-        </button>
-      </div>
+    <div className="relative flex min-h-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-surface">
+      <header className="flex items-center justify-between border-b border-border/60 bg-surface px-6 py-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Interactive Story</p>
+          <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
+          Ready to begin
+        </span>
+      </header>
+      <main className="relative flex flex-1 items-center justify-center bg-page">
+        {imagePath ? (
+          <Fragment>
+            <div className="absolute inset-0 -z-10 overflow-hidden bg-page">
+              <img
+                src={imagePath}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full select-none object-cover opacity-80 blur-3xl pointer-events-none scale-110"
+                draggable={false}
+              />
+            </div>
+            <div
+              className="absolute inset-0 -z-10 bg-gradient-to-b from-surface/40 via-surface/70 to-surface"
+              aria-hidden="true"
+            />
+          </Fragment>
+        ) : (
+          <div className="absolute inset-0 -z-10 bg-surface" aria-hidden="true" />
+        )}
+        <div className="relative flex flex-col items-center gap-4 rounded-2xl bg-surface/90 px-10 py-8 text-center backdrop-blur">
+          <button
+            type="button"
+            onClick={onStart}
+            className="rounded-full border border-highlight bg-highlight px-10 py-3 text-sm font-semibold text-highlight-foreground transition hover:bg-highlight/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+          >
+            Start Story
+          </button>
+        </div>
+      </main>
+      <footer className="flex items-center justify-end border-t border-border/60 bg-surface px-6 py-4">
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
+          Awaiting playback
+        </span>
+      </footer>
     </div>
   );
 }
@@ -604,7 +621,7 @@ function PlayerSurface({
   getChoicePreviewImage,
 }: PlayerSurfaceProps) {
   return (
-    <div className="relative flex min-h-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-xl">
+    <div className="relative flex min-h-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-surface">
       <header className="flex items-center justify-between border-b border-border/60 bg-surface px-6 py-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Interactive Story</p>
@@ -613,7 +630,7 @@ function PlayerSurface({
         <button
           type="button"
           onClick={onTogglePause}
-          className="rounded-full border border-highlight/40 bg-highlight/10 px-6 py-2 text-sm font-semibold text-highlight transition hover:bg-highlight/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+          className="rounded-full border border-border px-6 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary transition hover:bg-surface-muted/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
         >
           {isPaused ? "Play" : "Pause"}
         </button>
@@ -633,9 +650,13 @@ function PlayerSurface({
         )}
 
         {showChoiceOverlay && choices && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface/70 backdrop-blur">
-            <div className="flex w-full max-w-3xl flex-col gap-6 rounded-3xl border border-border bg-surface/95 p-8 text-left shadow-2xl">
-              <h3 className="text-lg font-semibold text-text-primary">{choicePrompt ?? "Choose a path"}</h3>
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/75 backdrop-blur">
+            <div className="flex w-full max-w-3xl flex-col gap-6 rounded-3xl border border-border bg-surface p-8 text-left">
+              <div className="rounded-2xl border border-border/70 bg-surface-muted/80 px-6 py-4">
+                <h3 className="text-base font-semibold text-text-primary">
+                  {choicePrompt ?? "Choose a path"}
+                </h3>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {choices.map((choice) => {
                   const previewImage = getChoicePreviewImage(choice.sceneletId);
@@ -644,21 +665,16 @@ function PlayerSurface({
                       key={choice.sceneletId}
                       type="button"
                       onClick={() => onChoiceSelect(choice)}
-                      className="group flex flex-col gap-3 rounded-2xl border border-border/70 bg-page/60 p-4 text-left transition hover:border-highlight hover:bg-highlight/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface/90 text-left transition hover:border-highlight hover:bg-highlight/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
                     >
-                      <div className="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl bg-page/60">
-                        {previewImage ? (
-                          <img
-                            src={previewImage}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="text-xs text-text-muted">Preview unavailable</div>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium text-text-primary group-hover:text-highlight">
+                      {previewImage ? (
+                        <img src={previewImage} alt="" className="w-full object-cover" draggable={false} />
+                      ) : (
+                        <div className="flex items-center justify-center bg-page/60 px-4 py-12 text-xs text-text-muted">
+                          Preview unavailable
+                        </div>
+                      )}
+                      <span className="px-4 py-3 text-sm font-medium text-text-primary group-hover:text-highlight">
                         {choice.label}
                       </span>
                     </button>
@@ -670,8 +686,8 @@ function PlayerSurface({
         )}
 
         {showTerminalOverlay && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface/70 backdrop-blur">
-            <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl border border-border bg-surface/95 p-8 text-center shadow-2xl">
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/75 backdrop-blur">
+            <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl border border-border bg-surface p-8 text-center">
               <p className="text-sm text-text-primary">
                 You reached an ending. Restart to explore alternate paths.
               </p>
@@ -687,8 +703,8 @@ function PlayerSurface({
         )}
 
         {showIncompleteOverlay && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface/70 backdrop-blur">
-            <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl border border-border bg-surface/95 p-8 text-center shadow-2xl">
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/75 backdrop-blur">
+            <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl border border-border bg-surface p-8 text-center">
               <p className="text-sm text-text-primary">
                 This path is under construction. Check back once new scenelets have been generated.
               </p>
@@ -700,15 +716,11 @@ function PlayerSurface({
         <button
           type="button"
           onClick={onRestart}
-          className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted hover:text-highlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+          className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted transition hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
         >
           Restart Story
         </button>
       </footer>
     </div>
   );
-}
-
-function sanitizeUrlForCss(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\)/g, "\\)").replace(/\(/g, "\\(");
 }

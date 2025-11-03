@@ -31,7 +31,7 @@
       body {
         margin: 0;
         font-family: var(--font-sans-stack, "Inter", "Helvetica Neue", Arial, sans-serif);
-        background: radial-gradient(circle at 25% 25%, var(--color-surface-elevated), var(--color-surface) 65%);
+        background: var(--bg);
         color: var(--text);
         min-height: 100vh;
         display: flex;
@@ -43,11 +43,12 @@
       #player-root {
         width: min(1344px, 100%);
         position: relative;
-        background: rgba(10, 13, 20, 0.78);
-        border-radius: 18px;
-        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(18px);
+        background: var(--panel);
+        border-radius: 24px;
+        border: 1px solid var(--color-border);
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .hidden {
@@ -61,115 +62,61 @@
         font-size: 18px;
       }
 
-      #start-screen {
-        position: relative;
-        padding: 48px 24px;
-        text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 420px;
-        background: var(--panel);
-        overflow: hidden;
-      }
-
-      #start-screen.has-visual {
-        background: transparent;
-      }
-
-      #start-screen h1 {
-        margin: 0;
-        font-size: clamp(28px, 4vw, 36px);
-        font-weight: 600;
-      }
-
-      .start-visual {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-      }
-
-      .start-visual::before {
-        content: "";
-        position: absolute;
-        inset: -6%;
-        background-image: var(--start-image, none);
-        background-size: cover;
-        background-position: center;
-        filter: blur(22px);
-        transform: scale(1.05);
-        opacity: 0.7;
-      }
-
-      .start-visual::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(7, 10, 16, 0.2), rgba(7, 10, 16, 0.82));
-      }
-
-      .start-content {
-        position: relative;
-        z-index: 1;
+      #start-screen,
+      #player-screen {
         display: flex;
         flex-direction: column;
-        gap: 24px;
-        align-items: center;
-        width: min(420px, 100%);
-        background: rgba(12, 15, 23, 0.82);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 22px;
-        padding: 40px 48px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-      }
-
-      button {
-        appearance: none;
-        border: none;
-        border-radius: 999px;
-        background: linear-gradient(135deg, #2563eb, #60a5fa);
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-        padding: 14px 26px;
-        cursor: pointer;
-        transition: transform 120ms ease, box-shadow 120ms ease;
-        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
-      }
-
-      button:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-
-      button:not(:disabled):hover {
-        transform: translateY(-2px);
-        box-shadow: 0 18px 35px rgba(96, 165, 250, 0.4);
-      }
-
-      #player-screen {
-        display: grid;
-        grid-template-rows: auto 1fr auto;
-        min-height: 540px;
+        min-height: 480px;
+        background: var(--panel);
       }
 
       .player-header {
-        padding: 22px 28px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 22px 28px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--panel);
       }
 
-      .player-header .title {
+      .player-header-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .player-label {
+        margin: 0;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: var(--muted);
+      }
+
+      .player-title {
+        margin: 0;
         font-size: 20px;
         font-weight: 600;
+        color: var(--text);
+      }
+
+      .player-status {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--muted);
       }
 
       .player-main {
         position: relative;
-        padding: 18px 28px 8px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-page);
+        padding: 20px 28px;
       }
 
       .image-frame {
@@ -177,38 +124,100 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 16px;
+        width: min(100%, 960px);
+        min-height: 360px;
+        border-radius: 24px;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface-muted);
         overflow: hidden;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       #shot-image {
-        position: relative;
-        display: block;
+        max-width: 100%;
+        max-height: 100%;
         width: auto;
         height: auto;
-        max-width: 100%;
-        background: rgba(9, 11, 18, 0.6);
+        object-fit: contain;
       }
 
       #image-placeholder {
-        position: relative;
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
-        color: var(--muted);
-        letter-spacing: 0.4px;
         padding: 24px;
         text-align: center;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .start-main {
+        padding: 0;
+      }
+
+      .start-visual {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-page);
+      }
+
+      .start-visual img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(32px);
+        transform: scale(1.12);
+        opacity: 0.8;
+      }
+
+      .start-visual::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.7));
+      }
+
+      .start-overlay {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        border-radius: 20px;
+        background: var(--panel);
+        backdrop-filter: blur(14px);
+        padding: 28px 36px;
+        max-width: 420px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .player-footer {
+        padding: 18px 28px;
+        border-top: 1px solid var(--color-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: var(--panel);
+      }
+
+      .player-footer span {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
       }
 
       .overlay {
         position: absolute;
         inset: 0;
-        background: rgba(4, 6, 10, 0.78);
+        background: rgba(255, 255, 255, 0.75);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -218,17 +227,25 @@
 
       .choice-content {
         width: 100%;
-        max-width: 620px;
+        max-width: 720px;
         display: flex;
         flex-direction: column;
-        gap: 18px;
-        text-align: center;
+        gap: 24px;
+      }
+
+      .choice-prompt-card {
+        border-radius: 20px;
+        border: 1px solid var(--color-border);
+        background: var(--panel);
+        padding: 18px 26px;
+        text-align: left;
       }
 
       #choice-prompt {
         margin: 0;
-        font-size: 22px;
+        font-size: 18px;
         font-weight: 600;
+        color: var(--text);
       }
 
       .choice-options {
@@ -238,10 +255,10 @@
       }
 
       .choice-button {
-        border-radius: 16px;
+        border-radius: 18px;
         overflow: hidden;
-        background: rgba(15, 18, 26, 0.92);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--panel);
+        border: 1px solid var(--color-border);
         padding: 0;
         display: flex;
         flex-direction: column;
@@ -250,16 +267,15 @@
       }
 
       .choice-button:hover {
-        transform: translateY(-3px);
-        border-color: rgba(88, 166, 255, 0.65);
+        transform: translateY(-2px);
+        border-color: var(--accent);
       }
 
-      .choice-button img,
-      .choice-button .thumbnail-placeholder {
+      .choice-button img {
+        display: block;
         width: 100%;
-        aspect-ratio: 16 / 9;
-        object-fit: cover;
-        background: rgba(255, 255, 255, 0.04);
+        height: auto;
+        background: var(--color-surface-muted);
       }
 
       .choice-button .thumbnail-placeholder {
@@ -267,21 +283,23 @@
         align-items: center;
         justify-content: center;
         color: var(--muted);
-        font-size: 14px;
-        padding: 12px;
+        font-size: 13px;
+        padding: 20px;
+        background: var(--color-surface-muted);
       }
 
       .choice-button span {
-        padding: 14px;
+        padding: 16px;
         font-size: 15px;
         font-weight: 600;
+        color: var(--text);
       }
 
       .overlay-content {
-        background: rgba(12, 15, 23, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        padding: 32px;
+        background: var(--panel);
+        border: 1px solid var(--color-border);
+        border-radius: 20px;
+        padding: 28px;
         text-align: center;
         display: flex;
         flex-direction: column;
@@ -291,19 +309,81 @@
 
       .overlay-content p {
         margin: 0;
-        color: var(--muted);
+        color: var(--text);
+        font-size: 14px;
         line-height: 1.6;
       }
 
-      .player-footer {
-        padding: 20px 28px 26px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        display: flex;
-        justify-content: flex-end;
+      button {
+        appearance: none;
+        border-radius: 999px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 12px 24px;
+        cursor: pointer;
+        transition: opacity 150ms ease;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      button:not(:disabled):hover {
+        opacity: 0.92;
       }
 
       #play-pause-button {
-        min-width: 130px;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        padding: 10px 22px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        background: transparent;
+        color: var(--text);
+        transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
+      }
+
+      #play-pause-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      #play-pause-button:not(:disabled):hover {
+        background: rgba(0, 0, 0, 0.04);
+        opacity: 1;
+      }
+
+      #play-pause-button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+      }
+
+      .player-footer button {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+        cursor: pointer;
+        transition: color 150ms ease;
+      }
+
+      .player-footer button:hover {
+        color: var(--text);
+      }
+
+      .player-footer button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
       }
 
       @media (max-width: 768px) {
@@ -312,26 +392,22 @@
         }
 
         #player-root {
-          border-radius: 14px;
+          border-radius: 18px;
         }
 
-        #start-screen {
-          padding: 36px 18px;
-          min-height: 340px;
-        }
-
-        .start-content {
-          width: 100%;
-          padding: 32px 24px;
-          gap: 20px;
-        }
-
+        .player-header,
+        .player-main,
         .player-footer {
-          justify-content: center;
+          padding-left: 18px;
+          padding-right: 18px;
         }
 
         .choice-options {
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .start-overlay {
+          padding: 24px;
         }
       }
     </style>
@@ -340,16 +416,33 @@
     <script id="story-data" type="application/json">__STORY_JSON_PLACEHOLDER__</script>
     <div id="player-root">
       <div id="error-panel" class="message hidden"></div>
-      <div id="start-screen" class="panel hidden">
-        <div id="start-visual" class="start-visual hidden"></div>
-        <div class="start-content">
-          <h1 id="start-title"></h1>
-          <button id="start-button">Start Story</button>
-        </div>
+      <div id="start-screen" class="hidden">
+        <header class="player-header">
+          <div class="player-header-copy">
+            <p class="player-label">Interactive Story</p>
+            <h2 id="start-title" class="player-title"></h2>
+          </div>
+          <span class="player-status">Ready to begin</span>
+        </header>
+        <main class="player-main start-main">
+          <div id="start-visual" class="start-visual hidden">
+            <img id="start-image" class="hidden" alt="" />
+          </div>
+          <div class="start-overlay">
+            <button id="start-button" type="button">Start Story</button>
+          </div>
+        </main>
+        <footer class="player-footer">
+          <span class="player-status">Awaiting playback</span>
+        </footer>
       </div>
       <div id="player-screen" class="hidden">
         <header class="player-header">
-          <div class="title" id="story-title"></div>
+          <div class="player-header-copy">
+            <p class="player-label">Interactive Story</p>
+            <h2 id="story-title" class="player-title"></h2>
+          </div>
+          <button id="play-pause-button" type="button" disabled>Pause</button>
         </header>
         <main class="player-main">
           <div class="image-frame">
@@ -357,14 +450,16 @@
             <div id="image-placeholder" class="hidden">Visual not available for this moment.</div>
             <div id="choice-overlay" class="overlay hidden">
               <div class="choice-content">
-                <h2 id="choice-prompt"></h2>
+                <div class="choice-prompt-card">
+                  <h2 id="choice-prompt"></h2>
+                </div>
                 <div id="choice-options" class="choice-options"></div>
               </div>
             </div>
             <div id="terminal-overlay" class="overlay hidden">
               <div class="overlay-content">
                 <p>You reached a story ending. Feel free to experience it again.</p>
-                <button id="restart-button">Start Over</button>
+                <button id="restart-button" type="button">Start Over</button>
               </div>
             </div>
             <div id="incomplete-overlay" class="overlay hidden">
@@ -378,7 +473,7 @@
           </div>
         </main>
         <footer class="player-footer">
-          <button id="play-pause-button" disabled>Pause</button>
+          <button id="restart-footer-button" type="button">Restart Story</button>
         </footer>
         <audio id="shot-audio" preload="auto"></audio>
         <audio id="music-primary" preload="auto" loop></audio>
@@ -400,6 +495,7 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         error: document.getElementById("error-panel"),
         startScreen: document.getElementById("start-screen"),
         startVisual: document.getElementById("start-visual"),
+        startImage: document.getElementById("start-image"),
         startTitle: document.getElementById("start-title"),
         startButton: document.getElementById("start-button"),
         playerScreen: document.getElementById("player-screen"),
@@ -412,6 +508,7 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         choiceOptions: document.getElementById("choice-options"),
         terminalOverlay: document.getElementById("terminal-overlay"),
         restartButton: document.getElementById("restart-button"),
+        restartFooterButton: document.getElementById("restart-footer-button"),
         incompleteOverlay: document.getElementById("incomplete-overlay"),
         audio: document.getElementById("shot-audio"),
         musicPrimary: document.getElementById("music-primary"),
@@ -502,6 +599,15 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         });
 
         elements.restartButton.addEventListener("click", () => {
+          if (!state.controller) {
+            return;
+          }
+          hideAllOverlays();
+          showPlayerScreen();
+          state.controller.restart();
+        });
+
+        elements.restartFooterButton?.addEventListener("click", () => {
           if (!state.controller) {
             return;
           }
@@ -768,15 +874,19 @@ __PLAYER_RUNTIME_PLACEHOLDER__
 
       function updateStartVisual(story) {
         const imagePath = findOpeningShotImage(story);
+        const startVisual = elements.startVisual;
+        const startImage = elements.startImage;
+        if (!startVisual || !startImage) {
+          return;
+        }
         if (imagePath) {
-          const sanitized = sanitizeUrlForCss(imagePath);
-          elements.startVisual.style.setProperty("--start-image", `url("${sanitized}")`);
-          elements.startVisual.classList.remove("hidden");
-          elements.startScreen.classList.add("has-visual");
+          startImage.src = imagePath;
+          startImage.classList.remove("hidden");
+          startVisual.classList.remove("hidden");
         } else {
-          elements.startVisual.classList.add("hidden");
-          elements.startScreen.classList.remove("has-visual");
-          elements.startVisual.style.removeProperty("--start-image");
+          startImage.removeAttribute("src");
+          startImage.classList.add("hidden");
+          startVisual.classList.add("hidden");
         }
       }
 
@@ -809,14 +919,6 @@ __PLAYER_RUNTIME_PLACEHOLDER__
           }
         }
         return null;
-      }
-
-      function sanitizeUrlForCss(value) {
-        return String(value)
-          .replace(/\\/g, "\\\\")
-          .replace(/"/g, "\\\"")
-          .replace(/\(/g, "\\(")
-          .replace(/\)/g, "\\)");
       }
 
       function pauseBackgroundMusic() {
