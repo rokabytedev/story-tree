@@ -56,9 +56,6 @@ export function VisualCharacterCard({ character }: VisualCharacterCardProps) {
           <h3 className="text-xl font-semibold leading-tight text-text-primary">
             {character.name ?? character.id}
           </h3>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
-            {(character.id || "character").toUpperCase()} · Character
-          </p>
         </div>
 
         {description ? (

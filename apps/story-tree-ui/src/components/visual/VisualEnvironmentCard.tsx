@@ -54,9 +54,6 @@ export function VisualEnvironmentCard({ environment }: VisualEnvironmentCardProp
           <h3 className="text-xl font-semibold leading-tight text-text-primary">
             {environment.name ?? environment.id}
           </h3>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-muted">
-            {(environment.id || "environment").toUpperCase()} · Environment
-          </p>
         </div>
 
         {metadata.length > 0 && (
