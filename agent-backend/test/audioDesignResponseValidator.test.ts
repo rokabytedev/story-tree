@@ -183,16 +183,16 @@ describe('parseAudioDesignResponse', () => {
       audio_design_document: {
         ...cloneBaseAudioDocument(),
         character_voice_profiles: [
-      {
-        character_name: 'Rhea',
-        voice_profile: 'Voice profile for Rhea packed with descriptive flourishes and nuances.',
-        voice_name: 'Lyra',
-      },
-      {
-        character_name: 'Testing Agent',
-        voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
-        voice_name: 'Deneb',
-      },
+          {
+            character_name: 'Rhea',
+            voice_profile: 'Too short.',
+            voice_name: 'Lyra',
+          },
+          {
+            character_name: 'Testing Agent',
+            voice_profile: 'Testing Agent voice profile elaborating upbeat efficiency with ample detail.',
+            voice_name: 'Deneb',
+          },
         ],
       },
     });
@@ -202,6 +202,7 @@ describe('parseAudioDesignResponse', () => {
         storyTree: STORY_TREE,
         visualDesignDocument: VISUAL_DESIGN,
       })
+    ).toThrow(/character_voice_profiles\[0]\.voice_profile/i);
   });
 
   it('throws when narrator voice profile is missing', () => {

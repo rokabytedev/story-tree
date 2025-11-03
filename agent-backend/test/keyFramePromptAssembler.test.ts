@@ -19,7 +19,12 @@ const VISUAL_DESIGN_DOCUMENT: VisualDesignDocument = {
     { character_id: 'testing-agent', character_name: 'Testing Agent', key_pose_image_path: '/characters/testing-agent.png' },
   ],
   environment_designs: [
-    { environment_id: 'sandbox-studio', environment_name: 'Sandbox Studio', reference_image_path: '/environments/sandbox.png' },
+    {
+      environment_id: 'sandbox-studio',
+      environment_name: 'Sandbox Studio',
+      reference_image_path: '/environments/sandbox.png',
+      associated_scenelet_ids: ['scenelet-1', 'scenelet-2'],
+    },
     { environment_id: 'challenge-bay', environment_name: 'Challenge Bay', reference_image_path: '/environments/challenge.png' },
   ],
 };
@@ -67,6 +72,7 @@ describe('assembleKeyFramePrompt', () => {
     expect(prompt.character_designs).toHaveLength(2);
     expect(prompt.environment_designs).toHaveLength(1);
     expect(prompt.environment_designs[0]?.environment_id).toBe('sandbox-studio');
+    expect(prompt.environment_designs[0]).not.toHaveProperty('associated_scenelet_ids');
     expect(prompt).not.toHaveProperty('audioAndNarrative');
     expect(prompt.referencedDesigns).toEqual({
       characters: ['rhea', 'testing-agent'],

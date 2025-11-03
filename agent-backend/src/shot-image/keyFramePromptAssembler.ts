@@ -42,13 +42,14 @@ export function assembleKeyFramePrompt(
     visualDesignDocument,
     referencedDesigns.environments ?? []
   );
+  const sanitizedEnvironmentDesigns = redactEnvironmentAssociatedSceneletIds(environmentDesigns);
 
   const { audioAndNarrative, ...visualInstructions } = storyboard;
 
   return {
     global_aesthetic: globalAesthetic,
     character_designs: characterDesigns,
-    environment_designs: environmentDesigns,
+    environment_designs: sanitizedEnvironmentDesigns,
     ...visualInstructions,
   };
 }
@@ -177,6 +178,31 @@ function filterDesigns<T extends Record<string, unknown>>(
   }
 
   return filtered;
+}
+
+function redactEnvironmentAssociatedSceneletIds(
+  environmentDesigns: VisualDesignEnvironmentDesign[]
+): VisualDesignEnvironmentDesign[] {
+  return environmentDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'associated_scenelet_ids')) {
+      delete cloned['associated_scenelet_ids'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'associatedSceneletIds')) {
+      delete cloned['associatedSceneletIds'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignEnvironmentDesign) : design;
+  });
 }
 
 function resolveDesignId(design: Record<string, unknown>, keys: string[]): string | undefined {

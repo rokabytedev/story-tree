@@ -7,6 +7,7 @@ import type { AgentWorkflowStoryRecord, AgentWorkflowStoriesRepository } from '.
 import type { ShotProductionShotsRepository, ShotsMissingImages, ShotRecord } from '../src/shot-production/types.js';
 import { ReferenceImageRecommenderError } from '../src/reference-images/referenceImageRecommender.js';
 import { ReferenceImageLoadError } from '../src/image-generation/referenceImageLoader.js';
+import { loadVisualRendererSystemPrompt } from '../src/prompts/visualRendererPrompt.js';
 
 vi.mock('../src/reference-images/index.js', async () => {
   const actual = await vi.importActual<typeof import('../src/reference-images/index.js')>(
@@ -50,7 +51,11 @@ function createStory(overrides: Partial<AgentWorkflowStoryRecord> = {}): AgentWo
       { character_id: 'rhea', character_model_sheet_image_path: '/generated/story-1/visuals/characters/rhea/model.png' },
     ],
     environment_designs: [
-      { environment_id: 'sandbox-studio', environment_reference_image_path: '/generated/story-1/visuals/environments/sandbox-studio/keyframe.png' },
+      {
+        environment_id: 'sandbox-studio',
+        environment_reference_image_path: '/generated/story-1/visuals/environments/sandbox-studio/keyframe.png',
+        associated_scenelet_ids: ['scenelet-1'],
+      },
     ],
   };
 
@@ -222,7 +227,7 @@ describe('runShotImageTask', () => {
     ]);
 
     expect(generateImage).toHaveBeenCalledTimes(1);
-    const [{ userPrompt, referenceImages }] = generateImage.mock.calls[0] ?? [];
+    const [{ userPrompt, referenceImages, systemInstruction }] = generateImage.mock.calls[0] ?? [];
     expect(referenceImages).toHaveLength(1);
     expect(generateImage).toHaveBeenCalledWith(expect.objectContaining({ retry: retryOptions }));
     const parsedPrompt = JSON.parse(userPrompt as string);
@@ -232,7 +237,10 @@ describe('runShotImageTask', () => {
     });
     expect(parsedPrompt.character_designs).toHaveLength(1);
     expect(parsedPrompt.environment_designs).toHaveLength(1);
+    expect(parsedPrompt.environment_designs[0]).not.toHaveProperty('associated_scenelet_ids');
     expect(parsedPrompt).not.toHaveProperty('audioAndNarrative');
+    const visualRendererPrompt = await loadVisualRendererSystemPrompt();
+    expect(systemInstruction).toBe(visualRendererPrompt);
 
     expect(saveImage).toHaveBeenCalledWith(
       Buffer.from('generated-key-frame'),
