@@ -1,4 +1,4 @@
-import { assembleShotAudioPrompt } from './promptAssembler.js';
+import { assembleBranchAudioPrompt, assembleShotAudioPrompt, buildBranchAudioScript } from './promptAssembler.js';
 import { analyzeSpeakers } from './speakerAnalyzer.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from './constants.js';
 import {
@@ -14,9 +14,11 @@ import type {
   ShotAudioPrompt,
   ShotAudioTaskDependencies,
   ShotAudioTaskResult,
+  ShotAudioTaskLogger,
   SpeakerAnalyzer,
 } from './types.js';
 import type { AudioDesignDocument } from '../audio-design/types.js';
+import type { SceneletPersistence, SceneletRecord } from '../interactive-story/types.js';
 import type { ShotProductionStoryboardEntry, ShotRecord } from '../shot-production/types.js';
 
 const DEFAULT_MODE: ShotAudioMode = 'default';
@@ -34,6 +36,7 @@ export async function runShotAudioTask(
   const {
     storiesRepository,
     shotsRepository,
+    sceneletPersistence,
     promptAssembler: providedPromptAssembler,
     speakerAnalyzer: providedSpeakerAnalyzer,
     geminiClient,
@@ -51,6 +54,10 @@ export async function runShotAudioTask(
 
   if (!shotsRepository) {
     throw new ShotAudioTaskError('shotsRepository dependency is required.');
+  }
+
+  if (!sceneletPersistence) {
+    throw new ShotAudioTaskError('sceneletPersistence dependency is required.');
   }
 
   if (!geminiClient) {
@@ -97,6 +104,7 @@ export async function runShotAudioTask(
   }
 
   const shotQueue = buildShotQueue(shotsByScenelet, trimmedSceneletId, shotIndex);
+  const sceneletDisplayIds = buildSceneletDisplayIdMap(shotsByScenelet);
   if (shotQueue.length === 0) {
     const scopeDescription = shotIndex
       ? `scenelet ${trimmedSceneletId} shot ${shotIndex}`
@@ -122,83 +130,338 @@ export async function runShotAudioTask(
   const skippedShots = totalShots - processQueue.length;
   let skippedShotsWithoutAudio = 0;
 
+  let generatedAudio = 0;
   if (processQueue.length === 0) {
     logger?.debug?.('No shots require audio generation.');
-    return {
-      generatedAudio: 0,
-      skippedShots,
-      totalShots,
-    };
-  }
+  } else {
+    for (const item of processQueue) {
+      try {
+        const storyboard = parseStoryboardPayload(item.shot.storyboardPayload, storyId, item);
+        if (storyboard.audioAndNarrative.length === 0) {
+          logger?.debug?.('Skipping shot audio generation: no audio entries in storyboard.', {
+            storyId,
+            sceneletId: item.sceneletId,
+            shotIndex: item.shot.shotIndex,
+          });
 
-  let generatedAudio = 0;
+          const updatedShot = await shotsRepository.updateShotAudioPath(
+            storyId,
+            item.sceneletId,
+            item.shot.shotIndex,
+            SKIPPED_AUDIO_PLACEHOLDER
+          );
 
-  for (const item of processQueue) {
-    try {
-      const storyboard = parseStoryboardPayload(item.shot.storyboardPayload, storyId, item);
-      if (storyboard.audioAndNarrative.length === 0) {
-        logger?.debug?.('Skipping shot audio generation: no audio entries in storyboard.', {
+          item.shot.audioFilePath = updatedShot.audioFilePath;
+          skippedShotsWithoutAudio += 1;
+          continue;
+        }
+
+        const analysis = speakerAnalyzer(storyboard.audioAndNarrative);
+        const prompt = promptAssembler({
+          shot: item.shot,
+          audioDesign,
+          analysis,
+        });
+
+        const audioBuffer = await synthesizeAudio(geminiClient, prompt, {
+          verbose: verbose ?? false,
+        });
+
+        const storageResult = await audioFileStorage.saveShotAudio({
           storyId,
           sceneletId: item.sceneletId,
           shotIndex: item.shot.shotIndex,
+          audioData: audioBuffer,
         });
 
         const updatedShot = await shotsRepository.updateShotAudioPath(
           storyId,
           item.sceneletId,
           item.shot.shotIndex,
-          SKIPPED_AUDIO_PLACEHOLDER
+          storageResult.relativePath
         );
 
         item.shot.audioFilePath = updatedShot.audioFilePath;
-        skippedShotsWithoutAudio += 1;
-        continue;
+        generatedAudio += 1;
+
+        logger?.debug?.('Generated shot audio', {
+          storyId,
+          sceneletId: item.sceneletId,
+          shotIndex: item.shot.shotIndex,
+          audioPath: storageResult.relativePath,
+        });
+      } catch (error) {
+        throw enrichError(error, item);
       }
-
-      const analysis = speakerAnalyzer(storyboard.audioAndNarrative);
-      const prompt = promptAssembler({
-        shot: item.shot,
-        audioDesign,
-        analysis,
-      });
-
-      const audioBuffer = await synthesizeAudio(geminiClient, prompt, {
-        verbose: verbose ?? false,
-      });
-
-      const storageResult = await audioFileStorage.saveShotAudio({
-        storyId,
-        sceneletId: item.sceneletId,
-        shotIndex: item.shot.shotIndex,
-        audioData: audioBuffer,
-      });
-
-      const updatedShot = await shotsRepository.updateShotAudioPath(
-        storyId,
-        item.sceneletId,
-        item.shot.shotIndex,
-        storageResult.relativePath
-      );
-
-      item.shot.audioFilePath = updatedShot.audioFilePath;
-      generatedAudio += 1;
-
-      logger?.debug?.('Generated shot audio', {
-        storyId,
-        sceneletId: item.sceneletId,
-        shotIndex: item.shot.shotIndex,
-        audioPath: storageResult.relativePath,
-      });
-    } catch (error) {
-      throw enrichError(error, item);
     }
   }
+
+  const branchResult = await processBranchScenelets({
+    storyId,
+    sceneletPersistence,
+    audioDesign,
+    geminiClient,
+    audioFileStorage,
+    logger,
+    mode,
+    verbose: verbose ?? false,
+    targetSceneletId: trimmedSceneletId,
+    sceneletDisplayIds,
+  });
+
+  logger?.debug?.('Shot audio task completed', {
+    storyId,
+    generatedShots: generatedAudio,
+    skippedShots: skippedShots + skippedShotsWithoutAudio,
+    totalShots,
+    generatedBranchAudio: branchResult.generated,
+    skippedBranchAudio: branchResult.skipped,
+    totalBranchScenelets: branchResult.total,
+  });
 
   return {
     generatedAudio,
     skippedShots: skippedShots + skippedShotsWithoutAudio,
     totalShots,
+    generatedBranchAudio: branchResult.generated,
+    skippedBranchAudio: branchResult.skipped,
+    totalBranchScenelets: branchResult.total,
   };
+}
+
+interface BranchSceneletProcessingOptions {
+  storyId: string;
+  sceneletPersistence: SceneletPersistence;
+  audioDesign: AudioDesignDocument;
+  geminiClient: GeminiTtsClient;
+  audioFileStorage: AudioFileStorage;
+  logger?: ShotAudioTaskLogger;
+  mode: ShotAudioMode;
+  verbose: boolean;
+  targetSceneletId?: string;
+  sceneletDisplayIds: Map<string, string>;
+}
+
+interface BranchProcessingResult {
+  generated: number;
+  skipped: number;
+  total: number;
+}
+
+async function processBranchScenelets(options: BranchSceneletProcessingOptions): Promise<BranchProcessingResult> {
+  const {
+    storyId,
+    sceneletPersistence,
+    audioDesign,
+    geminiClient,
+    audioFileStorage,
+    logger,
+    mode,
+    verbose,
+    targetSceneletId,
+    sceneletDisplayIds,
+  } = options;
+
+  const scenelets = await sceneletPersistence.listSceneletsByStory(storyId);
+  if (!Array.isArray(scenelets) || scenelets.length === 0) {
+    return { generated: 0, skipped: 0, total: 0 };
+  }
+
+  const branchScenelets = scenelets.filter((scenelet) => scenelet.isBranchPoint);
+  if (branchScenelets.length === 0) {
+    return { generated: 0, skipped: 0, total: 0 };
+  }
+
+  const scopedScenelets = branchScenelets
+    .filter((scenelet) => isSceneletInScope(scenelet, targetSceneletId, sceneletDisplayIds))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  if (scopedScenelets.length === 0) {
+    return { generated: 0, skipped: 0, total: 0 };
+  }
+
+  const totalBranchScenelets = scopedScenelets.length;
+  const choiceLookup = buildChoiceLookup(scenelets);
+
+  const conflicting = scopedScenelets.find(hasBranchAudio);
+  if (mode === 'default' && conflicting) {
+    const displayId = sceneletDisplayIds.get(conflicting.id) ?? conflicting.id;
+    throw new ShotAudioTaskError(
+      `Branch scenelet ${displayId} already has generated audio. Use --resume or --override to continue.`
+    );
+  }
+
+  const resumeSkips =
+    mode === 'resume'
+      ? scopedScenelets.filter(
+          (scenelet) => hasBranchAudio(scenelet) || isSkippedBranchAudio(scenelet)
+        ).length
+      : 0;
+
+  const branchQueue =
+    mode === 'resume'
+      ? scopedScenelets.filter(
+          (scenelet) => !hasBranchAudio(scenelet) && !isSkippedBranchAudio(scenelet)
+        )
+      : [...scopedScenelets];
+
+  let skippedBranchAudio = resumeSkips;
+  let generatedBranchAudio = 0;
+
+  if (branchQueue.length === 0) {
+    logger?.debug?.('No branch scenelets require audio generation.');
+    return {
+      generated: 0,
+      skipped: skippedBranchAudio,
+      total: totalBranchScenelets,
+    };
+  }
+
+  for (const scenelet of branchQueue) {
+    const displayId = sceneletDisplayIds.get(scenelet.id) ?? scenelet.id;
+    const prompt = scenelet.choicePrompt?.trim();
+    const choiceLabels = collectChoiceLabels(choiceLookup, scenelet.id);
+
+    if (!prompt || choiceLabels.length < 2) {
+      await sceneletPersistence.updateBranchAudioPath(
+        storyId,
+        scenelet.id,
+        SKIPPED_AUDIO_PLACEHOLDER
+      );
+      scenelet.branchAudioFilePath = SKIPPED_AUDIO_PLACEHOLDER;
+      skippedBranchAudio += 1;
+      logger?.debug?.('Skipping branch audio generation: missing prompt or choice labels.', {
+        storyId,
+        sceneletId: displayId,
+        branchSceneletId: scenelet.id,
+      });
+      continue;
+    }
+
+    try {
+      const script = buildBranchAudioScript(prompt, choiceLabels);
+      const promptPayload = assembleBranchAudioPrompt(audioDesign, script);
+      const audioBuffer = await synthesizeAudio(geminiClient, promptPayload, { verbose });
+      const storageResult = await audioFileStorage.saveBranchAudio({
+        storyId,
+        sceneletId: displayId,
+        audioData: audioBuffer,
+      });
+      const updatedScenelet = await sceneletPersistence.updateBranchAudioPath(
+        storyId,
+        scenelet.id,
+        storageResult.relativePath
+      );
+      scenelet.branchAudioFilePath = updatedScenelet.branchAudioFilePath;
+      generatedBranchAudio += 1;
+      logger?.debug?.('Generated branch audio', {
+        storyId,
+        sceneletId: displayId,
+        branchSceneletId: scenelet.id,
+        audioPath: storageResult.relativePath,
+      });
+    } catch (error) {
+      throw enrichBranchError(error, scenelet, sceneletDisplayIds.get(scenelet.id) ?? scenelet.id);
+    }
+  }
+
+  return {
+    generated: generatedBranchAudio,
+    skipped: skippedBranchAudio,
+    total: totalBranchScenelets,
+  };
+}
+
+function buildSceneletDisplayIdMap(
+  shotsByScenelet: Record<string, ShotRecord[]>
+): Map<string, string> {
+  const map = new Map<string, string>();
+
+  for (const [sceneletRef, shots] of Object.entries(shotsByScenelet)) {
+    for (const shot of shots ?? []) {
+      const ref = sceneletRef?.trim();
+      const sceneletId = shot.sceneletId?.trim();
+      if (ref && sceneletId && !map.has(ref)) {
+        map.set(ref, sceneletId);
+      }
+    }
+  }
+
+  return map;
+}
+
+function buildChoiceLookup(scenelets: SceneletRecord[]): Map<string, SceneletRecord[]> {
+  const lookup = new Map<string, SceneletRecord[]>();
+  for (const scenelet of scenelets) {
+    const parentId = scenelet.parentId?.trim();
+    if (!parentId) {
+      continue;
+    }
+    const list = lookup.get(parentId) ?? [];
+    list.push(scenelet);
+    lookup.set(parentId, list);
+  }
+
+  for (const children of lookup.values()) {
+    children.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  return lookup;
+}
+
+function collectChoiceLabels(
+  lookup: Map<string, SceneletRecord[]>,
+  parentId: string
+): string[] {
+  const children = lookup.get(parentId) ?? [];
+  return children
+    .map((child) => child.choiceLabelFromParent?.trim())
+    .filter((label): label is string => Boolean(label));
+}
+
+function isSceneletInScope(
+  scenelet: SceneletRecord,
+  targetSceneletId: string | undefined,
+  displayIds: Map<string, string>
+): boolean {
+  if (!targetSceneletId) {
+    return true;
+  }
+
+  const displayId = displayIds.get(scenelet.id) ?? scenelet.id;
+  return displayId === targetSceneletId || scenelet.id === targetSceneletId;
+}
+
+function hasBranchAudio(scenelet: SceneletRecord): boolean {
+  const path = scenelet.branchAudioFilePath?.trim();
+  if (!path) {
+    return false;
+  }
+  return path.toUpperCase() !== SKIPPED_AUDIO_PLACEHOLDER;
+}
+
+function isSkippedBranchAudio(scenelet: SceneletRecord): boolean {
+  const path = scenelet.branchAudioFilePath?.trim();
+  if (!path) {
+    return false;
+  }
+  return path.toUpperCase() === SKIPPED_AUDIO_PLACEHOLDER;
+}
+
+function enrichBranchError(
+  error: unknown,
+  scenelet: SceneletRecord,
+  displayId: string
+): Error {
+  if (error instanceof ShotAudioValidationError) {
+    return new ShotAudioValidationError(`Branch ${displayId}: ${error.message}`);
+  }
+
+  return error instanceof Error
+    ? new ShotAudioTaskError(
+        `Failed to generate audio for branch ${displayId}: ${error.message}`
+      )
+    : new ShotAudioTaskError(`Failed to generate audio for branch ${displayId}.`);
 }
 
 function normalizeMode(mode?: ShotAudioMode): ShotAudioMode {

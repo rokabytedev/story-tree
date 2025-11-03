@@ -21,8 +21,11 @@ export async function loadEmbeddedStoryBundle(
     throw new BundleAssemblyError('Story id must be provided to load embedded story bundle data.');
   }
 
-  const shotsByScenelet = await dependencies.shotsRepository.getShotsByStory(normalizedId);
-  const assetManifest = buildEmbeddedManifest(shotsByScenelet, options.logger);
+  const [shotsByScenelet, scenelets] = await Promise.all([
+    dependencies.shotsRepository.getShotsByStory(normalizedId),
+    dependencies.sceneletPersistence.listSceneletsByStory(normalizedId),
+  ]);
+  const assetManifest = buildEmbeddedManifest(shotsByScenelet, scenelets, options.logger);
 
   const { bundle } = await assembleBundleJson(normalizedId, dependencies, {
     assetManifest,

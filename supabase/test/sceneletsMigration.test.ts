@@ -1,11 +1,16 @@
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
 
 describe('scenelets migration', () => {
   it('defines scenelets table with required columns and indexes', async () => {
     const migration = await readFile(
-      new URL('../migrations/000002_create_scenelets_table.sql', import.meta.url)
-    , 'utf8');
+      resolve(currentDir, '../migrations/000002_create_scenelets_table.sql'),
+      'utf8'
+    );
 
     expect(migration).toContain('create table if not exists public.scenelets');
     expect(migration).toContain('story_id uuid not null references public.stories');

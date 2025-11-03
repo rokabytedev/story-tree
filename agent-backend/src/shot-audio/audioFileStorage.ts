@@ -2,7 +2,12 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 import { ShotAudioTaskError } from './errors.js';
-import type { AudioFileStorage, AudioFileStorageResult, SaveShotAudioOptions } from './types.js';
+import type {
+  AudioFileStorage,
+  AudioFileStorageResult,
+  SaveBranchAudioOptions,
+  SaveShotAudioOptions,
+} from './types.js';
 
 export interface FileSystemAudioStorageOptions {
   publicDir?: string;
@@ -35,6 +40,34 @@ export function createFileSystemAudioStorage(
         'shots',
         sceneletId,
         `${shotIndex}_audio.wav`
+      );
+
+      const absolutePath = path.join(publicDir, relativePath);
+      const directory = path.dirname(absolutePath);
+
+      await fs.mkdir(directory, { recursive: true });
+      await fs.writeFile(absolutePath, request.audioData);
+
+      return {
+        relativePath,
+        absolutePath,
+      };
+    },
+
+    async saveBranchAudio(request: SaveBranchAudioOptions): Promise<AudioFileStorageResult> {
+      const storyId = normalizeSegment('storyId', request.storyId);
+      const sceneletId = normalizeSegment('sceneletId', request.sceneletId);
+
+      if (!Buffer.isBuffer(request.audioData) || request.audioData.length === 0) {
+        throw new ShotAudioTaskError('audioData must be a non-empty Buffer.');
+      }
+
+      const relativePath = path.posix.join(
+        'generated',
+        storyId,
+        'branches',
+        sceneletId,
+        'branch_audio.wav'
       );
 
       const absolutePath = path.join(publicDir, relativePath);

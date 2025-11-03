@@ -70,6 +70,10 @@ export async function runPlayerBundleTask(
     );
   }
 
+  const scenelets = await assemblerDependencies.sceneletPersistence.listSceneletsByStory(
+    trimmedStoryId
+  );
+
   const outputRoot = options.outputPath
     ? path.resolve(options.outputPath)
     : DEFAULT_OUTPUT_ROOT;
@@ -93,6 +97,7 @@ export async function runPlayerBundleTask(
   const assetManifest = await copyAssetsImpl(trimmedStoryId, shotsByScenelet, outputRoot, {
     generatedAssetsRoot: options.generatedAssetsRoot,
     audioDesignDocument: story.audioDesignDocument,
+    scenelets,
     logger,
   });
 
@@ -190,7 +195,10 @@ async function pathExists(
 async function validateAssetReferences(
   fsAdapter: Pick<typeof fsPromises, 'access'>,
   storyOutputDir: string,
-  scenelets: ReadonlyArray<{ shots: ReadonlyArray<{ imagePath: string | null; audioPath: string | null }> }>
+  scenelets: ReadonlyArray<{
+    shots: ReadonlyArray<{ imagePath: string | null; audioPath: string | null }>;
+    branchAudioPath: string | null;
+  }>
 ): Promise<void> {
   for (const scenelet of scenelets) {
     for (const shot of scenelet.shots) {
@@ -200,6 +208,9 @@ async function validateAssetReferences(
       if (shot.audioPath) {
         await ensureFileExists(fsAdapter, path.join(storyOutputDir, shot.audioPath));
       }
+    }
+    if (scenelet.branchAudioPath) {
+      await ensureFileExists(fsAdapter, path.join(storyOutputDir, scenelet.branchAudioPath));
     }
   }
 }

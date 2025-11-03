@@ -217,6 +217,7 @@ interface SceneletRecordSummary {
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
+  branchAudioFilePath?: string | null;
   isBranchPoint: boolean;
   isTerminalNode: boolean;
   content: ScriptwriterScenelet;
@@ -242,6 +243,7 @@ class InMemorySceneletPersistence implements SceneletPersistence {
       parentId: input.parentId ?? null,
       choiceLabelFromParent: input.choiceLabelFromParent ?? null,
       choicePrompt: null,
+      branchAudioFilePath: null,
       isBranchPoint: false,
       isTerminalNode: false,
       content: input.content,
@@ -257,6 +259,7 @@ class InMemorySceneletPersistence implements SceneletPersistence {
       choiceLabelFromParent: record.choiceLabelFromParent,
       choicePrompt: record.choicePrompt,
       content: record.content,
+      branchAudioFilePath: record.branchAudioFilePath ?? undefined,
       isBranchPoint: record.isBranchPoint,
       isTerminalNode: record.isTerminalNode,
       createdAt: record.createdAt,
@@ -293,11 +296,38 @@ class InMemorySceneletPersistence implements SceneletPersistence {
         parentId: record.parentId,
         choiceLabelFromParent: record.choiceLabelFromParent,
         choicePrompt: record.choicePrompt,
-        content: record.content,
-        isBranchPoint: record.isBranchPoint,
-        isTerminalNode: record.isTerminalNode,
-        createdAt: record.createdAt,
-      }));
+      content: record.content,
+      branchAudioFilePath: record.branchAudioFilePath ?? undefined,
+      isBranchPoint: record.isBranchPoint,
+      isTerminalNode: record.isTerminalNode,
+      createdAt: record.createdAt,
+    }));
+  }
+
+  async updateBranchAudioPath(
+    storyId: string,
+    sceneletId: string,
+    branchAudioFilePath: string | null
+  ) {
+    const record = this.scenelets.get(sceneletId);
+    if (!record || record.storyId !== storyId) {
+      throw new CliParseError(
+        `Scenelet ${sceneletId} missing in memory for story ${storyId}.`
+      );
+    }
+    record.branchAudioFilePath = branchAudioFilePath;
+    return {
+      id: record.id,
+      storyId: record.storyId,
+      parentId: record.parentId,
+      choiceLabelFromParent: record.choiceLabelFromParent,
+      choicePrompt: record.choicePrompt,
+      branchAudioFilePath: record.branchAudioFilePath ?? undefined,
+      content: record.content,
+      isBranchPoint: record.isBranchPoint,
+      isTerminalNode: record.isTerminalNode,
+      createdAt: record.createdAt,
+    };
   }
 
   getScenelets(): SceneletRecordSummary[] {

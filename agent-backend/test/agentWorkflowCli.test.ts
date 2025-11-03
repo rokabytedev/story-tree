@@ -118,6 +118,7 @@ type SceneletStubRecord = {
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
+  branchAudioFilePath?: string | null;
   content: unknown;
   isBranchPoint: boolean;
   isTerminalNode: boolean;
@@ -129,6 +130,7 @@ function createSceneletsRepositoryStub(): {
     createScenelet: ReturnType<typeof vi.fn>;
     markSceneletAsBranchPoint: ReturnType<typeof vi.fn>;
     markSceneletAsTerminal: ReturnType<typeof vi.fn>;
+    updateBranchAudioPath: ReturnType<typeof vi.fn>;
     hasSceneletsForStory: ReturnType<typeof vi.fn>;
     listSceneletsByStory: ReturnType<typeof vi.fn>;
   };
@@ -174,6 +176,16 @@ function createSceneletsRepositoryStub(): {
         target.isTerminalNode = true;
       }
     }),
+    updateBranchAudioPath: vi.fn(async (storyId: string, sceneletId: string, filePath: string | null) => {
+      const target = scenelets.find((row) => row.id === sceneletId && row.storyId === storyId);
+      if (!target) {
+        throw new Error(`Scenelet ${sceneletId} not found for story ${storyId}.`);
+      }
+      target.branchAudioFilePath = filePath;
+      return {
+        ...target,
+      };
+    }),
     hasSceneletsForStory: vi.fn(async (storyId: string) => scenelets.some((row) => row.storyId === storyId)),
     listSceneletsByStory: vi.fn(async (storyId: string) =>
       scenelets
@@ -184,6 +196,7 @@ function createSceneletsRepositoryStub(): {
           parentId: row.parentId,
           choiceLabelFromParent: row.choiceLabelFromParent,
           choicePrompt: row.choicePrompt,
+          branchAudioFilePath: row.branchAudioFilePath ?? undefined,
           content: row.content,
           isBranchPoint: row.isBranchPoint,
           isTerminalNode: row.isTerminalNode,

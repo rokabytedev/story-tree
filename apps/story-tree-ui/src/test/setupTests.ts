@@ -1,6 +1,13 @@
 import React from "react";
 import { vi } from "vitest";
 
+Object.defineProperty(window.HTMLMediaElement.prototype, "load", {
+  configurable: true,
+  value() {
+    // jsdom does not implement load(); provide a no-op for audio elements in tests.
+  },
+});
+
 vi.mock("next/image", () => {
   const MockImage = ({
     alt,

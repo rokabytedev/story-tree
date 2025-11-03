@@ -3,6 +3,7 @@ import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import type { SceneletRecord } from '../src/interactive-story/types.js';
 import type { ShotRecord } from '../../shot-production/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
 import { copyAssets } from '../src/bundle/assetCopier.js';
@@ -18,6 +19,27 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
     audioFilePath: overrides.audioFilePath,
     createdAt: overrides.createdAt ?? new Date().toISOString(),
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+function createSceneletRecord(overrides: Partial<SceneletRecord> = {}): SceneletRecord {
+  const id = overrides.id ?? 'scenelet-1';
+  return {
+    id,
+    storyId: overrides.storyId ?? 'story-123',
+    parentId: overrides.parentId ?? null,
+    choiceLabelFromParent: overrides.choiceLabelFromParent ?? null,
+    choicePrompt: overrides.choicePrompt ?? null,
+    branchAudioFilePath: overrides.branchAudioFilePath,
+    content:
+      overrides.content ?? {
+        description: `Scenelet ${id}`,
+        dialogue: [],
+        shot_suggestions: [],
+      },
+    isBranchPoint: overrides.isBranchPoint ?? false,
+    isTerminalNode: overrides.isTerminalNode ?? false,
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
   };
 }
 
@@ -70,10 +92,11 @@ describe('copyAssets', () => {
 
     expect(manifest.size).toBe(1);
     const sceneletManifest = manifest.get(sceneletId);
-    expect(sceneletManifest?.get(1)).toEqual({
+    expect(sceneletManifest?.shots.get(1)).toEqual({
       imagePath: `assets/shots/${sceneletId}/1_key_frame.png`,
       audioPath: `assets/shots/${sceneletId}/1_audio.wav`,
     });
+    expect(sceneletManifest?.branchAudioPath).toBeNull();
 
     const targetImage = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_key_frame.png');
     const targetAudio = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_audio.wav');
@@ -115,10 +138,11 @@ describe('copyAssets', () => {
 
     expect(warn).toHaveBeenCalledWith('Missing shot image for bundle', expect.any(Object));
     const sceneletManifest = manifest.get(sceneletId);
-    expect(sceneletManifest?.get(2)).toEqual({
+    expect(sceneletManifest?.shots.get(2)).toEqual({
       imagePath: null,
       audioPath: `assets/shots/${sceneletId}/2_audio.wav`,
     });
+    expect(sceneletManifest?.branchAudioPath).toBeNull();
 
     const targetAudio = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '2_audio.wav');
     await expect(fs.stat(targetAudio)).resolves.toBeDefined();
@@ -179,10 +203,11 @@ describe('copyAssets', () => {
     });
 
     const sceneletManifest = manifest.get(sceneletId);
-    expect(sceneletManifest?.get(1)).toEqual({
+    expect(sceneletManifest?.shots.get(1)).toEqual({
       imagePath: `assets/shots/${sceneletId}/1_key_frame.png`,
       audioPath: null,
     });
+    expect(sceneletManifest?.branchAudioPath).toBeNull();
 
     const targetImage = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_key_frame.png');
     await expect(fs.stat(targetImage)).resolves.toBeDefined();
@@ -190,6 +215,104 @@ describe('copyAssets', () => {
     const targetAudio = path.join(outputRoot, storyId, 'assets', 'shots', sceneletId, '1_audio.wav');
     await expect(fs.stat(targetAudio)).rejects.toThrow();
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('copies branch audio assets when branch paths are provided', async () => {
+    const root = await createTempRoot();
+    tempRoots.push(root);
+
+    const generatedRoot = path.join(root, 'generated');
+    const storyId = 'story-branch';
+    const sceneletId = 'branch-scenelet';
+
+    const shotsDir = path.join(generatedRoot, storyId, 'shots', sceneletId);
+    await fs.mkdir(shotsDir, { recursive: true });
+    await fs.writeFile(path.join(shotsDir, 'shot-1_key_frame.png'), Buffer.from('image-data'));
+
+    const branchDir = path.join(generatedRoot, storyId, 'branches', sceneletId);
+    await fs.mkdir(branchDir, { recursive: true });
+    await fs.writeFile(path.join(branchDir, 'branch_audio.wav'), Buffer.from('branch-audio'));
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      [sceneletId]: [
+        createShotRecord({
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/${sceneletId}/shot-1_key_frame.png`,
+        }),
+      ],
+    };
+
+    const scenelets = [
+      createSceneletRecord({
+        id: sceneletId,
+        storyId,
+        branchAudioFilePath: `generated/${storyId}/branches/${sceneletId}/branch_audio.wav`,
+      }),
+    ];
+
+    const outputRoot = path.join(root, 'output');
+
+    const manifest = await copyAssets(storyId, shotsByScenelet, outputRoot, {
+      generatedAssetsRoot: generatedRoot,
+      scenelets,
+    });
+
+    const entry = manifest.get(sceneletId);
+    expect(entry?.branchAudioPath).toBe(`assets/branches/${sceneletId}/branch_audio.wav`);
+    expect(entry?.shots.get(1)?.imagePath).toBe(`assets/shots/${sceneletId}/1_key_frame.png`);
+
+    const branchTarget = path.join(
+      outputRoot,
+      storyId,
+      'assets',
+      'branches',
+      sceneletId,
+      'branch_audio.wav'
+    );
+    await expect(fs.stat(branchTarget)).resolves.toBeDefined();
+  });
+
+  it('logs a warning when branch audio source is missing and omits the path', async () => {
+    const root = await createTempRoot();
+    tempRoots.push(root);
+
+    const generatedRoot = path.join(root, 'generated');
+    const storyId = 'story-missing-branch';
+    const sceneletId = 'scenelet-missing-branch';
+
+    const shotsDir = path.join(generatedRoot, storyId, 'shots', sceneletId);
+    await fs.mkdir(shotsDir, { recursive: true });
+    await fs.writeFile(path.join(shotsDir, 'shot-1_key_frame.png'), Buffer.from('image-data'));
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      [sceneletId]: [
+        createShotRecord({
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/${sceneletId}/shot-1_key_frame.png`,
+        }),
+      ],
+    };
+
+    const scenelets = [
+      createSceneletRecord({
+        id: sceneletId,
+        storyId,
+        branchAudioFilePath: `generated/${storyId}/branches/${sceneletId}/branch_audio.wav`,
+      }),
+    ];
+
+    const outputRoot = path.join(root, 'output');
+    const warn = vi.fn();
+
+    const manifest = await copyAssets(storyId, shotsByScenelet, outputRoot, {
+      generatedAssetsRoot: generatedRoot,
+      scenelets,
+      logger: { warn },
+    });
+
+    const entry = manifest.get(sceneletId);
+    expect(entry?.branchAudioPath).toBeNull();
+    expect(warn).toHaveBeenCalledWith('Missing branch audio for bundle', expect.any(Object));
   });
 
   it('copies music cue assets referenced in the audio design document', async () => {

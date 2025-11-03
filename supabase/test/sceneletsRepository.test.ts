@@ -14,6 +14,7 @@ type SceneletRow = {
   parent_id: string | null;
   choice_label_from_parent: string | null;
   choice_prompt: string | null;
+  branch_audio_file_path: string | null;
   content: unknown;
   is_branch_point: boolean;
   is_terminal_node: boolean;
@@ -29,6 +30,7 @@ interface FakeResponses {
   insert?: FakeResponse<SceneletRow>;
   markBranch?: FakeResponse<SceneletRow>;
   markTerminal?: FakeResponse<SceneletRow>;
+  updateBranchAudio?: FakeResponse<SceneletRow>;
   hasScenelets?: FakeResponse<SceneletRow[]>;
   listScenelets?: FakeResponse<SceneletRow[]>;
 }
@@ -57,17 +59,21 @@ class FakeSceneletsTable {
   update(values: UpdateArgs) {
     this.updated.push(values);
 
-    return {
+    const builder = {
       eq: (column: string, value: string) => {
         this.filters.push({ column, value });
+        return builder;
+      },
+      select: () => {
         const response = resolveUpdateResponse(values, this.responses);
         return {
-          select: () => ({
-            maybeSingle: async (): Promise<FakeResponse<SceneletRow>> => response,
-          }),
+          maybeSingle: async (): Promise<FakeResponse<SceneletRow>> => response,
+          single: async (): Promise<FakeResponse<SceneletRow>> => response,
         };
       },
     };
+
+    return builder;
   }
 
   select() {
@@ -93,6 +99,10 @@ function resolveUpdateResponse(
   values: UpdateArgs,
   responses: FakeResponses
 ): FakeResponse<SceneletRow> {
+  if ('branch_audio_file_path' in values) {
+    return responses.updateBranchAudio ?? { data: null, error: null };
+  }
+
   if (values.is_branch_point === true) {
     return responses.markBranch ?? { data: null, error: null };
   }
@@ -117,9 +127,10 @@ function makeSceneletRow(overrides: Partial<SceneletRow> = {}): SceneletRow {
     id: overrides.id ?? 'scenelet-id',
     story_id: overrides.story_id ?? 'story-id',
     parent_id: overrides.parent_id ?? null,
-    choice_label_from_parent: overrides.choice_label_from_parent ?? null,
-    choice_prompt: overrides.choice_prompt ?? null,
-    content: overrides.content ?? { description: 'Stub' },
+  choice_label_from_parent: overrides.choice_label_from_parent ?? null,
+  choice_prompt: overrides.choice_prompt ?? null,
+  branch_audio_file_path: overrides.branch_audio_file_path ?? null,
+  content: overrides.content ?? { description: 'Stub' },
     is_branch_point: overrides.is_branch_point ?? false,
     is_terminal_node: overrides.is_terminal_node ?? false,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00.000Z',
@@ -160,6 +171,7 @@ describe('sceneletsRepository.createScenelet', () => {
     });
     expect(record.id).toBe(row.id);
     expect(record.choiceLabelFromParent).toBe('Explore');
+    expect(record.branchAudioFilePath).toBeUndefined();
   });
 
   it('throws when story id is empty', async () => {
@@ -306,11 +318,116 @@ describe('sceneletsRepository.markSceneletAsTerminal', () => {
   });
 });
 
+describe('sceneletsRepository.updateBranchAudioPath', () => {
+  it('updates the branch audio path for a scenelet', async () => {
+    const row = makeSceneletRow({
+      id: 'scenelet-1',
+      story_id: 'story-id',
+      branch_audio_file_path: 'generated/story-id/branches/scenelet-1/branch_audio.wav',
+    });
+    const { repo, table } = makeRepository({
+      updateBranchAudio: { data: row, error: null },
+    });
+
+    const result = await repo.updateBranchAudioPath(
+      ' story-id ',
+      ' scenelet-1 ',
+      '  generated/story-id/branches/scenelet-1/branch_audio.wav  '
+    );
+
+    expect(table.updated).toHaveLength(1);
+    expect(table.updated[0]).toMatchObject({
+      branch_audio_file_path: 'generated/story-id/branches/scenelet-1/branch_audio.wav',
+    });
+    expect(table.filters).toContainEqual({ column: 'story_id', value: 'story-id' });
+    expect(table.filters).toContainEqual({ column: 'id', value: 'scenelet-1' });
+    expect(result.branchAudioFilePath).toBe(
+      'generated/story-id/branches/scenelet-1/branch_audio.wav'
+    );
+  });
+
+  it('clears the branch audio path when provided null or blank input', async () => {
+    const row = makeSceneletRow({
+      id: 'scenelet-1',
+      story_id: 'story-id',
+      branch_audio_file_path: null,
+    });
+    const { repo, table } = makeRepository({
+      updateBranchAudio: { data: row, error: null },
+    });
+
+    const result = await repo.updateBranchAudioPath('story-id', 'scenelet-1', '   ');
+
+    expect(table.updated[0]).toMatchObject({ branch_audio_file_path: null });
+    expect(result.branchAudioFilePath).toBeUndefined();
+  });
+
+  it('persists the skipped audio placeholder when provided', async () => {
+    const row = makeSceneletRow({
+      id: 'scenelet-1',
+      story_id: 'story-id',
+      branch_audio_file_path: 'N/A',
+    });
+    const { repo, table } = makeRepository({
+      updateBranchAudio: { data: row, error: null },
+    });
+
+    const result = await repo.updateBranchAudioPath('story-id', 'scenelet-1', 'N/A');
+
+    expect(table.updated[0]).toMatchObject({ branch_audio_file_path: 'N/A' });
+    expect(result.branchAudioFilePath).toBe('N/A');
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateBranchAudioPath('  ', 'scenelet-1', null)).rejects.toBeInstanceOf(
+      SceneletsRepositoryError
+    );
+  });
+
+  it('throws when scenelet id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateBranchAudioPath('story-id', '   ', null)).rejects.toBeInstanceOf(
+      SceneletsRepositoryError
+    );
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      updateBranchAudio: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(
+      repo.updateBranchAudioPath('story-id', 'scenelet-1', 'generated/story/branches/path.wav')
+    ).rejects.toBeInstanceOf(SceneletsRepositoryError);
+  });
+
+  it('throws when the scenelet is missing', async () => {
+    const { repo } = makeRepository({
+      updateBranchAudio: { data: null, error: null },
+    });
+
+    await expect(
+      repo.updateBranchAudioPath('story-id', 'scenelet-1', 'generated/story/branches/path.wav')
+    ).rejects.toBeInstanceOf(SceneletNotFoundError);
+  });
+});
+
 describe('sceneletsRepository.listSceneletsByStory', () => {
   it('returns mapped scenelets ordered by created_at', async () => {
     const rows = [
-      makeSceneletRow({ id: 'scenelet-1', created_at: '2025-01-01T00:00:00.000Z' }),
-      makeSceneletRow({ id: 'scenelet-2', created_at: '2025-01-02T00:00:00.000Z' }),
+      makeSceneletRow({
+        id: 'scenelet-1',
+        created_at: '2025-01-01T00:00:00.000Z',
+        branch_audio_file_path: 'generated/story/branches/scenelet-1/branch_audio.wav',
+      }),
+      makeSceneletRow({
+        id: 'scenelet-2',
+        created_at: '2025-01-02T00:00:00.000Z',
+        branch_audio_file_path: null,
+      }),
     ];
     const { repo, table } = makeRepository({
       listScenelets: { data: rows, error: null },
@@ -319,6 +436,10 @@ describe('sceneletsRepository.listSceneletsByStory', () => {
     const results = await repo.listSceneletsByStory('story-id');
 
     expect(results.map((row) => row.id)).toEqual(['scenelet-1', 'scenelet-2']);
+    expect(results[0].branchAudioFilePath).toBe(
+      'generated/story/branches/scenelet-1/branch_audio.wav'
+    );
+    expect(results[1].branchAudioFilePath).toBeUndefined();
     expect(table.filters).toContainEqual({ column: 'story_id', value: 'story-id' });
   });
 

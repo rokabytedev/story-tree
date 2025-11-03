@@ -21,6 +21,7 @@ export default defineConfig({
       'apps/story-tree-ui/src/**/*.test.tsx',
     ],
     exclude: ['node_modules/**', 'dist/**'],
+    environment: 'jsdom',
     setupFiles: ['apps/story-tree-ui/src/test/setupTests.ts'],
   },
 });

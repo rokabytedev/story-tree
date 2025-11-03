@@ -26,6 +26,7 @@ function createScenelet(overrides: Partial<SceneletRecord> = {}): SceneletRecord
         dialogue: [],
         shot_suggestions: [],
       },
+    branchAudioFilePath: overrides.branchAudioFilePath,
     isBranchPoint: overrides.isBranchPoint ?? false,
     isTerminalNode: overrides.isTerminalNode ?? false,
     createdAt: overrides.createdAt ?? ISO_NOW,
@@ -92,8 +93,15 @@ __PLAYER_RUNTIME_PLACEHOLDER__
     const dependencies = createDependencies({
       storyId,
       scenelets: [
-        createScenelet({ id: 'root', storyId }),
-        createScenelet({ id: 'leaf', storyId, parentId: 'root', isTerminalNode: true }),
+        createScenelet({
+          id: 'root',
+          storyId,
+          isBranchPoint: true,
+          choicePrompt: 'Choose a path',
+          branchAudioFilePath: `generated/${storyId}/branches/${sceneletId}/branch_audio.wav`,
+        }),
+        createScenelet({ id: 'leaf', storyId, parentId: 'root', choiceLabelFromParent: 'Go left', isTerminalNode: true }),
+        createScenelet({ id: 'leaf-right', storyId, parentId: 'root', choiceLabelFromParent: 'Go right', isTerminalNode: true }),
       ],
       shotsByScenelet: {
         root: [
@@ -113,6 +121,14 @@ __PLAYER_RUNTIME_PLACEHOLDER__
             keyFrameImagePath: `${storyId}/shots/leaf/shot-1_key_frame.png`,
           }),
         ],
+        'leaf-right': [
+          createShotRecord({
+            sceneletRef: 'leaf-right',
+            sceneletId: 'leaf-right',
+            shotIndex: 1,
+            keyFrameImagePath: `${storyId}/shots/leaf-right/shot-1_key_frame.png`,
+          }),
+        ],
       },
     });
 
@@ -120,6 +136,14 @@ __PLAYER_RUNTIME_PLACEHOLDER__
     const leafDir = path.join(generatedRoot, storyId, 'shots', 'leaf');
     await fs.mkdir(leafDir, { recursive: true });
     await fs.writeFile(path.join(leafDir, 'shot-1_key_frame.png'), Buffer.from('leaf-image'));
+
+    const leafRightDir = path.join(generatedRoot, storyId, 'shots', 'leaf-right');
+    await fs.mkdir(leafRightDir, { recursive: true });
+    await fs.writeFile(path.join(leafRightDir, 'shot-1_key_frame.png'), Buffer.from('leaf-right-image'));
+
+    const branchDir = path.join(generatedRoot, storyId, 'branches', sceneletId);
+    await fs.mkdir(branchDir, { recursive: true });
+    await fs.writeFile(path.join(branchDir, 'branch_audio.wav'), Buffer.from('branch-audio'));
 
     const result = await runPlayerBundleTask(storyId, dependencies, {
       generatedAssetsRoot: generatedRoot,
@@ -134,11 +158,15 @@ __PLAYER_RUNTIME_PLACEHOLDER__
 
     const storyJson = JSON.parse(await fs.readFile(storyJsonPath, 'utf-8')) as {
       metadata: { exportedAt: string };
-      scenelets: Array<{ id: string; shots: Array<{ imagePath: string | null; audioPath: string | null }> }>;
+      scenelets: Array<{
+        id: string;
+        shots: Array<{ imagePath: string | null; audioPath: string | null }>;
+        branchAudioPath: string | null;
+      }>;
     };
 
     expect(storyJson.metadata.exportedAt).toBe(ISO_NOW);
-    expect(storyJson.scenelets).toHaveLength(2);
+    expect(storyJson.scenelets).toHaveLength(3);
     const playerHtml = await fs.readFile(playerHtmlPath, 'utf-8');
     expect(playerHtml).toContain('Player Template');
     expect(playerHtml).not.toContain('__STORY_JSON_PLACEHOLDER__');
@@ -147,8 +175,23 @@ __PLAYER_RUNTIME_PLACEHOLDER__
 
     const imageTarget = path.join(result.outputPath, 'assets', 'shots', 'root', '1_key_frame.png');
     const audioTarget = path.join(result.outputPath, 'assets', 'shots', 'root', '1_audio.wav');
+    const branchAudioTarget = path.join(
+      result.outputPath,
+      'assets',
+      'branches',
+      sceneletId,
+      'branch_audio.wav'
+    );
     await expect(fs.stat(imageTarget)).resolves.toBeDefined();
     await expect(fs.stat(audioTarget)).resolves.toBeDefined();
+    await expect(fs.stat(branchAudioTarget)).resolves.toBeDefined();
+
+    const rootScenelet = storyJson.scenelets.find((node) => node.id === 'root');
+    expect(rootScenelet?.branchAudioPath).toBe(`assets/branches/${sceneletId}/branch_audio.wav`);
+    const leafScenelet = storyJson.scenelets.find((node) => node.id === 'leaf');
+    expect(leafScenelet?.branchAudioPath).toBeNull();
+    const rightScenelet = storyJson.scenelets.find((node) => node.id === 'leaf-right');
+    expect(rightScenelet?.branchAudioPath).toBeNull();
   });
 
   it('throws when bundle directory exists and overwrite is false', async () => {
@@ -261,6 +304,7 @@ function createDependencies(input: DependencyInput): PlayerBundleTaskDependencie
       },
       hasSceneletsForStory: async () => true,
       listSceneletsByStory: async (id: string) => (id === storyId ? scenelets : []),
+      updateBranchAudioPath: async () => scenelets[0]!,
     },
     shotsRepository: {
       createSceneletShots: async () => {

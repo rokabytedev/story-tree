@@ -730,6 +730,7 @@ class StoryWorkflowImpl implements StoryWorkflow {
     const dependencies: ShotAudioTaskDependencies = {
       storiesRepository: this.storiesRepository,
       shotsRepository: this.shotsRepository,
+      sceneletPersistence: this.sceneletPersistence,
     };
 
     if (overrides?.promptAssembler) {

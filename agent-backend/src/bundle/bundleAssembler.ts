@@ -9,6 +9,7 @@ import {
   type BundleAssemblerOptions,
   type BundleAssemblyResult,
   type BundleLogger,
+  type SceneletAssetManifestEntry,
   type NextNode,
   type SceneletShotAssetMap,
   type SceneletNode,
@@ -78,7 +79,12 @@ export async function assembleBundleJson(
     throw new BundleAssemblyError(`Story ${normalizedId} does not have any playable shots.`);
   }
 
-  const availableSceneletIds = new Set(manifest.keys());
+  const availableSceneletIds = new Set<string>();
+  for (const [sceneletId, entry] of manifest.entries()) {
+    if (entry.shots.size > 0) {
+      availableSceneletIds.add(sceneletId);
+    }
+  }
   if (!availableSceneletIds.has(rootScenelet.id)) {
     throw new BundleAssemblyError(
       `Root scenelet ${rootScenelet.id} does not have playable assets. Cannot assemble bundle.`
@@ -95,8 +101,9 @@ export async function assembleBundleJson(
 
   const nodes: SceneletNode[] = [];
   for (const scenelet of orderedScenelets) {
-    const assetsForScenelet = manifest.get(scenelet.id);
-    if (!assetsForScenelet || assetsForScenelet.size === 0) {
+    const assetEntry = manifest.get(scenelet.id);
+    const assetsForScenelet = assetEntry?.shots;
+    if (!assetEntry || !assetsForScenelet || assetsForScenelet.size === 0) {
       continue;
     }
 
@@ -108,12 +115,14 @@ export async function assembleBundleJson(
     const description = extractSceneletDescription(scenelet);
     const childScenelets = childrenByParent.get(scenelet.id) ?? [];
     const next = determineNextState(scenelet, childScenelets, availableSceneletIds);
+    const branchAudioPath = assetEntry.branchAudioPath ?? null;
 
     nodes.push({
       id: scenelet.id,
       description,
       shots,
       next,
+      branchAudioPath,
     });
   }
 
@@ -150,7 +159,10 @@ export async function assembleBundleJson(
   for (const sceneletId of reachableSceneletIds) {
     const entry = manifest.get(sceneletId);
     if (entry) {
-      filteredManifest.set(sceneletId, entry);
+      filteredManifest.set(sceneletId, {
+        shots: new Map(entry.shots),
+        branchAudioPath: entry.branchAudioPath ?? null,
+      });
     }
   }
 
@@ -273,7 +285,10 @@ export function buildManifestFromShotMap(
     }
 
     if (shotMap.size > 0) {
-      manifest.set(sceneletId, shotMap);
+      manifest.set(sceneletId, {
+        shots: shotMap,
+        branchAudioPath: null,
+      });
     } else {
       logger?.warn?.('Scenelet skipped due to missing assets', { sceneletId });
     }
@@ -284,9 +299,18 @@ export function buildManifestFromShotMap(
 
 export function buildEmbeddedManifest(
   shotsByScenelet: Record<string, ShotRecord[]>,
+  scenelets: SceneletRecord[],
   logger?: BundleLogger
 ): AssetManifest {
   const manifest: AssetManifest = new Map();
+
+  const branchAudioMap = new Map<string, string | null>();
+  for (const scenelet of scenelets) {
+    const branchPath = hasPlayableAudioPath(scenelet.branchAudioFilePath)
+      ? normalizeGeneratedAssetPath(scenelet.branchAudioFilePath)
+      : null;
+    branchAudioMap.set(scenelet.id, branchPath);
+  }
 
   for (const [sceneletId, shots] of Object.entries(shotsByScenelet)) {
     if (!Array.isArray(shots) || shots.length === 0) {
@@ -309,7 +333,10 @@ export function buildEmbeddedManifest(
     }
 
     if (shotMap.size > 0) {
-      manifest.set(sceneletId, shotMap);
+      manifest.set(sceneletId, {
+        shots: shotMap,
+        branchAudioPath: branchAudioMap.get(sceneletId) ?? null,
+      });
     } else {
       logger?.warn?.('Scenelet skipped due to missing embedded assets', { sceneletId });
     }
@@ -435,6 +462,10 @@ export function buildImageRelativePath(sceneletId: string, shotIndex: number): s
 /** Returns the normalized bundle-relative path for a shot audio asset. */
 export function buildAudioRelativePath(sceneletId: string, shotIndex: number): string {
   return `assets/shots/${sceneletId}/${shotIndex}_audio.wav`;
+}
+
+export function buildBranchAudioRelativePath(sceneletId: string): string {
+  return `assets/branches/${sceneletId}/branch_audio.wav`;
 }
 
 export function buildMusicRelativePath(cueName: string): string {

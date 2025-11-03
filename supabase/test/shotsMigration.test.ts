@@ -1,10 +1,14 @@
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
 
 describe('shots migration', () => {
   it('creates the shots table and drops storyboard-era columns', async () => {
     const migration = await readFile(
-      new URL('../migrations/000004_create_shots_table.sql', import.meta.url),
+      resolve(currentDir, '../migrations/000004_create_shots_table.sql'),
       'utf8'
     );
 
@@ -29,7 +33,7 @@ describe('shots migration', () => {
 
   it('drops deprecated prompt columns while preserving storyboard payload', async () => {
     const migration = await readFile(
-      new URL('../migrations/000006_deprecate_shot_prompts.sql', import.meta.url),
+      resolve(currentDir, '../migrations/000006_deprecate_shot_prompts.sql'),
       'utf8'
     );
 

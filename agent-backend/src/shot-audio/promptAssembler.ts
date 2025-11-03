@@ -1,6 +1,10 @@
 import { ShotAudioValidationError } from './errors.js';
 import type { PromptAssemblerDependencies, ShotAudioPrompt } from './types.js';
-import type { AudioVoiceProfile, NarratorVoiceProfile } from '../audio-design/types.js';
+import type {
+  AudioDesignDocument,
+  AudioVoiceProfile,
+  NarratorVoiceProfile,
+} from '../audio-design/types.js';
 import type { ShotProductionStoryboardEntry } from '../shot-production/types.js';
 
 export function assembleShotAudioPrompt({
@@ -69,6 +73,86 @@ export function assembleShotAudioPrompt({
     prompt: promptSegments.join('\n'),
     speakers,
     mode: analysis.mode,
+  };
+}
+
+const BRANCH_DELIVERY_CUE =
+  'In a curious, welcoming narrator tone, invite the listener to explore their options.';
+
+export function buildBranchAudioScript(choicePrompt: string, choiceLabels: string[]): string {
+  const prompt = choicePrompt?.trim();
+  if (!prompt) {
+    throw new ShotAudioValidationError('Branch prompt must be provided to build narration script.');
+  }
+
+  const normalizedChoices = choiceLabels
+    .map((label) => label?.trim())
+    .filter((label): label is string => Boolean(label));
+
+  if (normalizedChoices.length < 2) {
+    throw new ShotAudioValidationError('At least two branch choice labels are required.');
+  }
+
+  const sentences: string[] = [];
+  sentences.push(ensureSentenceEnding(prompt));
+
+  if (normalizedChoices.length === 2) {
+    sentences.push(`${normalizedChoices[0]}.`);
+    sentences.push(`Or ${normalizedChoices[1]}.`);
+  } else {
+    const finalLabel = normalizedChoices[normalizedChoices.length - 1]!;
+    const preceding = normalizedChoices.slice(0, -1).join(', ');
+    sentences.push(`${preceding}, or ${finalLabel}.`);
+  }
+
+  return sentences.join(' ');
+}
+
+export function assembleBranchAudioPrompt(
+  audioDesign: AudioDesignDocument,
+  script: string
+): ShotAudioPrompt {
+  if (!audioDesign) {
+    throw new ShotAudioValidationError('Audio design document is required for branch narration.');
+  }
+
+  const narratorProfile = audioDesign.narrator_voice_profile as NarratorVoiceProfile | undefined;
+  if (!narratorProfile) {
+    throw new ShotAudioValidationError(
+      'Branch narration requires narrator_voice_profile in the audio design.'
+    );
+  }
+
+  const voiceName = narratorProfile.voice_name?.trim();
+  if (!voiceName) {
+    throw new ShotAudioValidationError(
+      'narrator_voice_profile.voice_name must be provided for branch narration.'
+    );
+  }
+
+  const trimmedScript = script?.trim();
+  if (!trimmedScript) {
+    throw new ShotAudioValidationError('Branch narration script must be provided.');
+  }
+
+  const promptSegments = [
+    JSON.stringify({
+      narrator_voice_profile: narratorProfile,
+    }),
+    JSON.stringify({
+      branch_prompt_script: `${BRANCH_DELIVERY_CUE} ${trimmedScript}`.trim(),
+    }),
+  ];
+
+  return {
+    prompt: promptSegments.join('\n'),
+    speakers: [
+      {
+        speaker: 'narrator',
+        voiceName,
+      },
+    ],
+    mode: 'single',
   };
 }
 
@@ -165,4 +249,17 @@ function buildSpeakerConfigs(
       voiceName: profile.voice_name,
     } as const;
   });
+}
+
+function ensureSentenceEnding(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (/[.!?"]$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `${trimmed}.`;
 }

@@ -91,9 +91,11 @@ describe('assembleBundleJson', () => {
     const root = bundle.scenelets.find((node) => node.id === 'root');
     expect(root?.shots).toHaveLength(1);
     expect(root?.next).toEqual({ type: 'linear', sceneletId: 'child' });
+    expect(root?.branchAudioPath).toBeNull();
 
     const child = bundle.scenelets.find((node) => node.id === 'child');
     expect(child?.next).toEqual({ type: 'terminal' });
+    expect(child?.branchAudioPath).toBeNull();
   });
 
   it('converts branch to linear when only one child has playable assets', async () => {
@@ -139,11 +141,17 @@ describe('assembleBundleJson', () => {
     const manifest: AssetManifest = new Map([
       [
         'root',
-        new Map([[1, { imagePath: 'assets/shots/root/1_key_frame.png', audioPath: null }]]),
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/root/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: null,
+        },
       ],
       [
         'left',
-        new Map([[1, { imagePath: 'assets/shots/left/1_key_frame.png', audioPath: null }]]),
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/left/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: null,
+        },
       ],
     ]);
 
@@ -158,6 +166,7 @@ describe('assembleBundleJson', () => {
     expect(bundle.scenelets).toHaveLength(2);
     const root = bundle.scenelets.find((node) => node.id === 'root');
     expect(root?.next).toEqual({ type: 'linear', sceneletId: 'left' });
+    expect(root?.branchAudioPath).toBeNull();
   });
 
   it('marks scenelet as incomplete when no playable children remain', async () => {
@@ -180,7 +189,10 @@ describe('assembleBundleJson', () => {
     const manifest: AssetManifest = new Map([
       [
         'root',
-        new Map([[1, { imagePath: 'assets/shots/root/1_key_frame.png', audioPath: null }]]),
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/root/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: null,
+        },
       ],
     ]);
 
@@ -193,6 +205,96 @@ describe('assembleBundleJson', () => {
 
     expect(bundle.scenelets).toHaveLength(1);
     expect(bundle.scenelets[0]?.next).toEqual({ type: 'incomplete' });
+    expect(bundle.scenelets[0]?.branchAudioPath).toBeNull();
+  });
+
+  it('includes branch audio path from asset manifest when available', async () => {
+    const storyId = 'branch-audio-story';
+    const scenelets = [
+      createScenelet({
+        id: 'root',
+        storyId,
+        isBranchPoint: true,
+        choicePrompt: 'Choose!',
+      }),
+      createScenelet({
+        id: 'leaf',
+        storyId,
+        parentId: 'root',
+        choiceLabelFromParent: 'Go left',
+        isTerminalNode: true,
+      }),
+      createScenelet({
+        id: 'right',
+        storyId,
+        parentId: 'root',
+        choiceLabelFromParent: 'Go right',
+        isTerminalNode: true,
+      }),
+    ];
+
+    const shotsByScenelet: Record<string, ShotRecord[]> = {
+      root: [
+        createShotRecord({
+          sceneletRef: 'root',
+          sceneletId: 'root',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/root/shot-1_key_frame.png`,
+        }),
+      ],
+      leaf: [
+        createShotRecord({
+          sceneletRef: 'leaf',
+          sceneletId: 'leaf',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/leaf/shot-1_key_frame.png`,
+        }),
+      ],
+      right: [
+        createShotRecord({
+          sceneletRef: 'right',
+          sceneletId: 'right',
+          shotIndex: 1,
+          keyFrameImagePath: `${storyId}/shots/right/shot-1_key_frame.png`,
+        }),
+      ],
+    };
+
+    const manifest: AssetManifest = new Map([
+      [
+        'root',
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/root/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: 'assets/branches/root/branch_audio.wav',
+        },
+      ],
+      [
+        'leaf',
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/leaf/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: null,
+        },
+      ],
+      [
+        'right',
+        {
+          shots: new Map([[1, { imagePath: 'assets/shots/right/1_key_frame.png', audioPath: null }]]),
+          branchAudioPath: null,
+        },
+      ],
+    ]);
+
+    const dependencies = makeDependencies({ storyId, scenelets, shotsByScenelet });
+
+    const { bundle } = await assembleBundleJson(storyId, dependencies, {
+      assetManifest: manifest,
+      preloadedShots: shotsByScenelet,
+    });
+
+    const root = bundle.scenelets.find((node) => node.id === 'root');
+    expect(root?.branchAudioPath).toBe('assets/branches/root/branch_audio.wav');
+    const leaf = bundle.scenelets.find((node) => node.id === 'leaf');
+    expect(leaf?.branchAudioPath).toBeNull();
   });
 
   it('throws when root scenelet is missing playable assets', async () => {
@@ -224,11 +326,12 @@ describe('buildManifestFromShotMap', () => {
       ],
     });
 
-    const entry = manifest.get(sceneletId)?.get(1);
-    expect(entry).toEqual({
+    const entry = manifest.get(sceneletId);
+    expect(entry?.shots.get(1)).toEqual({
       imagePath: 'assets/shots/scenelet-1/1_key_frame.png',
       audioPath: null,
     });
+    expect(entry?.branchAudioPath).toBeNull();
   });
 
   it('includes music manifest and logs warnings for invalid cue mappings', async () => {
@@ -385,6 +488,7 @@ function makeDependencies(input: DependencyInput): BundleAssemblerDependencies {
       },
       hasSceneletsForStory: async () => true,
       listSceneletsByStory: async () => scenelets,
+      updateBranchAudioPath: async () => scenelets[0]!,
     },
     shotsRepository: {
       createSceneletShots: async () => {

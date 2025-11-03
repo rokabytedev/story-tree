@@ -2,10 +2,12 @@ import path from 'node:path';
 import * as fsPromises from 'node:fs/promises';
 
 import type { ShotRecord } from '../shot-production/types.js';
+import type { SceneletRecord } from '../interactive-story/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../shot-audio/constants.js';
 import type { AudioMusicCue } from '../audio-design/types.js';
 import {
   buildAudioRelativePath,
+  buildBranchAudioRelativePath,
   buildImageRelativePath,
   buildMusicRelativePath,
   BundleAssemblyError,
@@ -16,6 +18,7 @@ import type {
   AssetManifest,
   BundleLogger,
   FileSystemAdapter,
+  SceneletAssetManifestEntry,
   SceneletShotAssetMap,
   ShotAssetPaths,
 } from './types.js';
@@ -55,6 +58,10 @@ export async function copyAssets(
   await ensureDirectory(fsAdapter, assetsRoot);
 
   const manifest: AssetManifest = new Map();
+  const sceneletById = new Map<string, SceneletRecord>();
+  for (const scenelet of options.scenelets ?? []) {
+    sceneletById.set(scenelet.id, scenelet);
+  }
 
   for (const [sceneletId, shots] of Object.entries(shotsByScenelet)) {
     if (!Array.isArray(shots) || shots.length === 0) {
@@ -138,7 +145,33 @@ export async function copyAssets(
     }
 
     if (shotAssets.size > 0) {
-      manifest.set(sceneletId, shotAssets);
+      let branchAudioPath: string | null = null;
+      const sceneletRecord = sceneletById.get(sceneletId);
+      const branchSource = resolveSourcePath(generatedRoot, sceneletRecord?.branchAudioFilePath ?? null);
+
+      if (branchSource) {
+        const exists = await fileExists(fsAdapter, branchSource);
+        if (!exists) {
+          logger?.warn?.('Missing branch audio for bundle', {
+            storyId: normalizedStoryId,
+            sceneletId,
+            sourcePath: sceneletRecord?.branchAudioFilePath ?? null,
+          });
+        } else {
+          const branchRelativePath = buildBranchAudioRelativePath(sceneletId);
+          const targetBranch = path.join(normalizedOutputDir, branchRelativePath);
+          await ensureDirectory(fsAdapter, path.dirname(targetBranch));
+          await fsAdapter.copyFile(branchSource, targetBranch);
+          branchAudioPath = branchRelativePath;
+        }
+      }
+
+      const entry: SceneletAssetManifestEntry = {
+        shots: shotAssets,
+        branchAudioPath,
+      };
+
+      manifest.set(sceneletId, entry);
     }
   }
 

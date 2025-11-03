@@ -135,6 +135,7 @@ class SceneletPersistenceAdapter implements SceneletPersistence {
       parentId: record.parentId,
       choiceLabelFromParent: record.choiceLabelFromParent,
       choicePrompt: record.choicePrompt,
+      branchAudioFilePath: record.branchAudioFilePath,
       content: record.content,
       isBranchPoint: record.isBranchPoint,
       isTerminalNode: record.isTerminalNode,
@@ -150,6 +151,30 @@ class SceneletPersistenceAdapter implements SceneletPersistence {
     await this.repository.markSceneletAsTerminal(sceneletId);
   }
 
+  async updateBranchAudioPath(
+    storyId: string,
+    sceneletId: string,
+    branchAudioFilePath: string | null
+  ) {
+    const record = await this.repository.updateBranchAudioPath(
+      storyId,
+      sceneletId,
+      branchAudioFilePath
+    );
+    return {
+      id: record.id,
+      storyId: record.storyId,
+      parentId: record.parentId,
+      choiceLabelFromParent: record.choiceLabelFromParent,
+      choicePrompt: record.choicePrompt,
+      branchAudioFilePath: record.branchAudioFilePath,
+      content: record.content,
+      isBranchPoint: record.isBranchPoint,
+      isTerminalNode: record.isTerminalNode,
+      createdAt: record.createdAt,
+    };
+  }
+
   async hasSceneletsForStory(storyId: string): Promise<boolean> {
     return this.repository.hasSceneletsForStory(storyId);
   }
@@ -162,6 +187,7 @@ class SceneletPersistenceAdapter implements SceneletPersistence {
       parentId: record.parentId,
       choiceLabelFromParent: record.choiceLabelFromParent,
       choicePrompt: record.choicePrompt,
+      branchAudioFilePath: record.branchAudioFilePath,
       content: record.content,
       isBranchPoint: record.isBranchPoint,
       isTerminalNode: record.isTerminalNode,
@@ -564,6 +590,15 @@ async function buildWorkflowDependencies(
       audioFileStorage: {
         async saveShotAudio({ storyId, sceneletId, shotIndex, audioData }) {
           const relativePath = `generated/${storyId}/shots/${sceneletId}/${shotIndex}_audio.wav`;
+          const data = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData ?? []);
+          const absolutePath = await persistStubAudio(relativePath, data);
+          return {
+            relativePath,
+            absolutePath,
+          };
+        },
+        async saveBranchAudio({ storyId, sceneletId, audioData }) {
+          const relativePath = `generated/${storyId}/branches/${sceneletId}/branch_audio.wav`;
           const data = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData ?? []);
           const absolutePath = await persistStubAudio(relativePath, data);
           return {

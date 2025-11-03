@@ -8,6 +8,7 @@ type SceneletRow = {
   parent_id: string | null;
   choice_label_from_parent: string | null;
   choice_prompt: string | null;
+  branch_audio_file_path: string | null;
   content: unknown;
   is_branch_point: boolean;
   is_terminal_node: boolean;
@@ -20,6 +21,7 @@ export interface SceneletRecord {
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
+  branchAudioFilePath?: string;
   content: unknown;
   isBranchPoint: boolean;
   isTerminalNode: boolean;
@@ -37,6 +39,11 @@ export interface SceneletsRepository {
   createScenelet(input: CreateSceneletInput): Promise<SceneletRecord>;
   markSceneletAsBranchPoint(sceneletId: string, choicePrompt: string): Promise<SceneletRecord>;
   markSceneletAsTerminal(sceneletId: string): Promise<SceneletRecord>;
+  updateBranchAudioPath(
+    storyId: string,
+    sceneletId: string,
+    branchAudioFilePath: string | null
+  ): Promise<SceneletRecord>;
   hasSceneletsForStory(storyId: string): Promise<boolean>;
   listSceneletsByStory(storyId: string): Promise<SceneletRecord[]>;
 }
@@ -152,6 +159,56 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
       return mapRowToRecord(data);
     },
 
+    async updateBranchAudioPath(
+      storyId: string,
+      sceneletId: string,
+      branchAudioFilePath: string | null
+    ): Promise<SceneletRecord> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new SceneletsRepositoryError(
+          'Story id must be provided to update branch audio path.'
+        );
+      }
+
+      const trimmedSceneletId = sceneletId?.trim();
+      if (!trimmedSceneletId) {
+        throw new SceneletsRepositoryError(
+          'Scenelet id must be provided to update branch audio path.'
+        );
+      }
+
+      let normalizedPath: string | null = null;
+      if (branchAudioFilePath !== null && branchAudioFilePath !== undefined) {
+        const trimmedPath = branchAudioFilePath.trim();
+        if (trimmedPath) {
+          normalizedPath = trimmedPath;
+        }
+      }
+
+      const { data, error } = await client
+        .from(SCENELETS_TABLE)
+        .update({
+          branch_audio_file_path: normalizedPath,
+        })
+        .eq('story_id', trimmedStoryId)
+        .eq('id', trimmedSceneletId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw new SceneletsRepositoryError('Failed to update branch audio path.', error);
+      }
+
+      if (!data) {
+        throw new SceneletNotFoundError(
+          `Scenelet ${trimmedSceneletId} does not exist for story ${trimmedStoryId}.`
+        );
+      }
+
+      return mapRowToRecord(data);
+    },
+
     async hasSceneletsForStory(storyId: string): Promise<boolean> {
       const trimmedStoryId = storyId?.trim();
       if (!trimmedStoryId) {
@@ -197,12 +254,16 @@ export function createSceneletsRepository(client: SupabaseClient): SceneletsRepo
 }
 
 function mapRowToRecord(row: SceneletRow): SceneletRecord {
+  const branchAudioFilePath =
+    typeof row.branch_audio_file_path === 'string' ? row.branch_audio_file_path.trim() : '';
+
   return {
     id: row.id,
     storyId: row.story_id,
     parentId: row.parent_id,
     choiceLabelFromParent: row.choice_label_from_parent,
     choicePrompt: row.choice_prompt,
+    branchAudioFilePath: branchAudioFilePath ? branchAudioFilePath : undefined,
     content: row.content,
     isBranchPoint: row.is_branch_point,
     isTerminalNode: row.is_terminal_node,

@@ -72,6 +72,7 @@ class StubSceneletPersistence implements SceneletPersistence {
       parentId: input.parentId ?? null,
       choiceLabelFromParent: input.choiceLabelFromParent ?? null,
       choicePrompt: null,
+      branchAudioFilePath: undefined,
       content: input.content,
       isBranchPoint: false,
       isTerminalNode: false,
@@ -104,6 +105,21 @@ class StubSceneletPersistence implements SceneletPersistence {
 
   async listSceneletsByStory(storyId: string): Promise<SceneletRecord[]> {
     return this.records.filter((record) => record.storyId === storyId);
+  }
+
+  async updateBranchAudioPath(
+    storyId: string,
+    sceneletId: string,
+    branchAudioFilePath: string | null
+  ): Promise<SceneletRecord> {
+    const record = this.records.find(
+      (entry) => entry.id === sceneletId && entry.storyId === storyId
+    );
+    if (!record) {
+      throw new Error(`Scenelet ${sceneletId} not found for story ${storyId}.`);
+    }
+    record.branchAudioFilePath = branchAudioFilePath ?? undefined;
+    return record;
   }
 }
 

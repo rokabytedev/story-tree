@@ -48,6 +48,7 @@ export interface SceneletRecord {
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
+  branchAudioFilePath?: string;
   content: unknown;
   isBranchPoint: boolean;
   isTerminalNode: boolean;
@@ -67,6 +68,11 @@ export interface SceneletPersistence {
   markSceneletAsTerminal(sceneletId: string): Promise<void>;
   hasSceneletsForStory(storyId: string): Promise<boolean>;
   listSceneletsByStory(storyId: string): Promise<SceneletRecord[]>;
+  updateBranchAudioPath(
+    storyId: string,
+    sceneletId: string,
+    branchAudioFilePath: string | null
+  ): Promise<SceneletRecord>;
 }
 
 export interface GenerationTask {

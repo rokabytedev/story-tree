@@ -1,6 +1,6 @@
 import type * as fsPromises from 'node:fs/promises';
 
-import type { SceneletPersistence } from '../interactive-story/types.js';
+import type { SceneletPersistence, SceneletRecord } from '../interactive-story/types.js';
 import type { ShotProductionShotsRepository, ShotRecord } from '../shot-production/types.js';
 import type { AgentWorkflowStoriesRepository } from '../workflow/types.js';
 
@@ -43,6 +43,7 @@ export interface SceneletNode {
   description: string;
   shots: ShotNode[];
   next: NextNode;
+  branchAudioPath: string | null;
 }
 
 export interface StoryBundle {
@@ -59,7 +60,12 @@ export interface ShotAssetPaths {
 
 export type SceneletShotAssetMap = Map<number, ShotAssetPaths>;
 
-export type AssetManifest = Map<string, SceneletShotAssetMap>;
+export interface SceneletAssetManifestEntry {
+  shots: SceneletShotAssetMap;
+  branchAudioPath: string | null;
+}
+
+export type AssetManifest = Map<string, SceneletAssetManifestEntry>;
 
 export interface BundleAssemblyResult {
   bundle: StoryBundle;
@@ -103,6 +109,7 @@ export interface AssetCopierOptions {
   logger?: BundleLogger;
   fileSystem?: FileSystemAdapter;
   audioDesignDocument?: unknown;
+  scenelets?: SceneletRecord[];
 }
 
 export interface PlayerBundleTaskOptions {

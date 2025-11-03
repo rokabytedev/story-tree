@@ -1,5 +1,10 @@
 import type { AudioDesignDocument } from '../audio-design/types.js';
-import type { AudioNarrativeEntry, ShotProductionShotsRepository, ShotRecord } from '../shot-production/types.js';
+import type { SceneletPersistence } from '../interactive-story/types.js';
+import type {
+  AudioNarrativeEntry,
+  ShotProductionShotsRepository,
+  ShotRecord,
+} from '../shot-production/types.js';
 import type { AgentWorkflowStoriesRepository } from '../workflow/types.js';
 
 export type ShotAudioMode = 'default' | 'resume' | 'override';
@@ -62,6 +67,12 @@ export interface SaveShotAudioOptions {
   audioData: Buffer;
 }
 
+export interface SaveBranchAudioOptions {
+  storyId: string;
+  sceneletId: string;
+  audioData: Buffer;
+}
+
 export interface AudioFileStorageResult {
   relativePath: string;
   absolutePath: string;
@@ -69,11 +80,13 @@ export interface AudioFileStorageResult {
 
 export interface AudioFileStorage {
   saveShotAudio(options: SaveShotAudioOptions): Promise<AudioFileStorageResult>;
+  saveBranchAudio(options: SaveBranchAudioOptions): Promise<AudioFileStorageResult>;
 }
 
 export interface ShotAudioTaskDependencies {
   storiesRepository: AgentWorkflowStoriesRepository;
   shotsRepository: ShotProductionShotsRepository;
+  sceneletPersistence: SceneletPersistence;
   promptAssembler?: PromptAssembler;
   speakerAnalyzer?: SpeakerAnalyzer;
   geminiClient?: GeminiTtsClient;
@@ -89,6 +102,9 @@ export interface ShotAudioTaskResult {
   generatedAudio: number;
   skippedShots: number;
   totalShots: number;
+  generatedBranchAudio: number;
+  skippedBranchAudio: number;
+  totalBranchScenelets: number;
 }
 
 export type ShotAudioTaskRunner = (

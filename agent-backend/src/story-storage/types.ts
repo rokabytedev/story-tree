@@ -43,6 +43,7 @@ export interface StoryTreeSceneletSource {
   parentId: string | null;
   choiceLabelFromParent: string | null;
   choicePrompt: string | null;
+  branchAudioFilePath?: string;
   content: unknown;
   isBranchPoint: boolean;
   isTerminalNode: boolean;

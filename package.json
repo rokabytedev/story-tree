@@ -18,7 +18,9 @@
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.0.1",
     "@types/node": "^24.9.1",
+    "jsdom": "^24.1.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.3"

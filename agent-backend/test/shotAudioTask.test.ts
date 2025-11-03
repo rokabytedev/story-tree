@@ -7,6 +7,7 @@ import { ShotAudioTaskError } from '../src/shot-audio/errors.js';
 import type { AgentWorkflowStoryRecord } from '../src/workflow/types.js';
 import type { ShotRecord } from '../src/shot-production/types.js';
 import { SKIPPED_AUDIO_PLACEHOLDER } from '../src/shot-audio/constants.js';
+import type { SceneletRecord } from '../src/interactive-story/types.js';
 
 function createStory(): AgentWorkflowStoryRecord {
   return {
@@ -61,12 +62,38 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
     audioFilePath: overrides.audioFilePath,
     createdAt: overrides.createdAt ?? '2025-01-01T00:00:00.000Z',
     updatedAt: overrides.updatedAt ?? '2025-01-01T00:00:00.000Z',
-  } as ShotRecord;
+} as ShotRecord;
 }
 
-function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDependencies> = {}) {
+function createSceneletRecordStub(overrides: Partial<SceneletRecord> = {}): SceneletRecord {
+  return {
+    id: overrides.id ?? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    storyId: overrides.storyId ?? 'story-123',
+    parentId: overrides.parentId ?? null,
+    choiceLabelFromParent: overrides.choiceLabelFromParent ?? null,
+    choicePrompt: overrides.choicePrompt ?? null,
+    branchAudioFilePath: overrides.branchAudioFilePath,
+    content:
+      overrides.content ??
+      {
+        description: 'Scenelet description',
+        dialogue: [],
+        shot_suggestions: [],
+      },
+    isBranchPoint: overrides.isBranchPoint ?? false,
+    isTerminalNode: overrides.isTerminalNode ?? false,
+    createdAt: overrides.createdAt ?? '2025-01-01T00:00:00.000Z',
+  };
+}
+
+type DependencyOverrides = Partial<ShotAudioTaskDependencies> & {
+  scenelets?: SceneletRecord[];
+};
+
+function createDependencies(shot: ShotRecord, overrides: DependencyOverrides = {}) {
   const story = createStory();
   const savedPaths: string[] = [];
+  const savedBranchPaths: string[] = [];
   const synthesize = vi.fn<[], Promise<Buffer>>().mockResolvedValue(Buffer.from('fake-wav'));
   const saveShotAudio = vi.fn().mockImplementation(async () => {
     const path = `generated/story-123/shots/${shot.sceneletId}/1_audio.wav`;
@@ -80,6 +107,53 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
   const updateShotAudioPath = vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number, audioPath: string | null) => {
     shot.audioFilePath = audioPath ?? null;
     return shot;
+  });
+
+  const scenelets: SceneletRecord[] = overrides.scenelets
+    ? overrides.scenelets.map((scenelet) => ({ ...scenelet }))
+    : [];
+
+  const updateBranchAudioPath = vi.fn(
+    async (_storyId: string, sceneletId: string, audioPath: string | null) => {
+      const target = scenelets.find((entry) => entry.id === sceneletId);
+      if (target) {
+        target.branchAudioFilePath = audioPath ?? undefined;
+      }
+      return (
+        target ?? {
+          id: sceneletId,
+          storyId: _storyId,
+          parentId: null,
+          choiceLabelFromParent: null,
+          choicePrompt: null,
+          branchAudioFilePath: audioPath ?? undefined,
+          content: {},
+          isBranchPoint: false,
+          isTerminalNode: false,
+          createdAt: new Date().toISOString(),
+        }
+      );
+    }
+  );
+
+  const sceneletPersistence =
+    overrides.sceneletPersistence ??
+    ({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => scenelets.length > 0),
+      listSceneletsByStory: vi.fn(async () => scenelets),
+      updateBranchAudioPath,
+    } as any);
+
+  const saveBranchAudio = vi.fn().mockImplementation(async ({ sceneletId }) => {
+    const path = `generated/story-123/branches/${sceneletId}/branch_audio.wav`;
+    savedBranchPaths.push(path);
+    return {
+      relativePath: path,
+      absolutePath: `/abs/${path}`,
+    };
   });
 
   const dependencies: ShotAudioTaskDependencies = {
@@ -99,6 +173,7 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
       updateShotImagePaths: vi.fn(),
       updateShotAudioPath,
     } as any),
+    sceneletPersistence,
     promptAssembler: overrides.promptAssembler ?? (() => ({
       prompt: '{}',
       speakers: [{ speaker: 'narrator', voiceName: 'Kore' }],
@@ -113,6 +188,7 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
     }) as any,
     audioFileStorage: overrides.audioFileStorage ?? ({
       saveShotAudio,
+      saveBranchAudio,
     }) as any,
     mode: overrides.mode,
     targetSceneletId: overrides.targetSceneletId,
@@ -125,8 +201,12 @@ function createDependencies(shot: ShotRecord, overrides: Partial<ShotAudioTaskDe
     dependencies,
     synthesize,
     saveShotAudio,
+    saveBranchAudio,
     updateShotAudioPath,
+    updateBranchAudioPath,
     savedPaths,
+    savedBranchPaths,
+    scenelets,
   };
 }
 
@@ -137,7 +217,14 @@ describe('runShotAudioTask', () => {
 
     const result = await runShotAudioTask('story-123', dependencies);
 
-    expect(result).toEqual({ generatedAudio: 1, skippedShots: 0, totalShots: 1 });
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 0,
+      skippedBranchAudio: 0,
+      totalBranchScenelets: 0,
+    });
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(saveShotAudio).toHaveBeenCalledTimes(1);
     expect(updateShotAudioPath).toHaveBeenCalledWith(
@@ -169,7 +256,12 @@ describe('runShotAudioTask', () => {
 
     const result = await runShotAudioTask('story-123', dependencies);
 
-    expect(result).toEqual({ generatedAudio: 0, skippedShots: 1, totalShots: 1 });
+    expect(result.generatedAudio).toBe(0);
+    expect(result.skippedShots).toBe(1);
+    expect(result.totalShots).toBe(1);
+    expect(result.generatedBranchAudio).toBe(0);
+    expect(result.skippedBranchAudio).toBe(0);
+    expect(result.totalBranchScenelets).toBe(0);
     expect(speakerAnalyzer).not.toHaveBeenCalled();
     expect(promptAssembler).not.toHaveBeenCalled();
     expect(synthesize).not.toHaveBeenCalled();
@@ -198,7 +290,12 @@ describe('runShotAudioTask', () => {
 
     const result = await runShotAudioTask('story-123', dependencies);
 
-    expect(result).toEqual({ generatedAudio: 0, skippedShots: 1, totalShots: 1 });
+    expect(result.generatedAudio).toBe(0);
+    expect(result.skippedShots).toBe(1);
+    expect(result.totalShots).toBe(1);
+    expect(result.generatedBranchAudio).toBe(0);
+    expect(result.skippedBranchAudio).toBe(0);
+    expect(result.totalBranchScenelets).toBe(0);
     expect(synthesize).not.toHaveBeenCalled();
     expect(saveShotAudio).not.toHaveBeenCalled();
     expect(updateShotAudioPath).not.toHaveBeenCalled();
@@ -212,7 +309,14 @@ describe('runShotAudioTask', () => {
 
     const result = await runShotAudioTask('story-123', dependencies);
 
-    expect(result).toEqual({ generatedAudio: 1, skippedShots: 0, totalShots: 1 });
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 0,
+      skippedBranchAudio: 0,
+      totalBranchScenelets: 0,
+    });
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(saveShotAudio).toHaveBeenCalledTimes(1);
     expect(updateShotAudioPath).toHaveBeenCalledTimes(1);
@@ -237,7 +341,14 @@ describe('runShotAudioTask', () => {
 
     const result = await runShotAudioTask('story-123', dependencies);
 
-    expect(result).toEqual({ generatedAudio: 1, skippedShots: 0, totalShots: 1 });
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 0,
+      skippedBranchAudio: 0,
+      totalBranchScenelets: 0,
+    });
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(saveShotAudio).toHaveBeenCalledTimes(1);
     expect(updateShotAudioPath).toHaveBeenCalledWith(
@@ -247,5 +358,175 @@ describe('runShotAudioTask', () => {
       savedPaths[0]
     );
     expect(shot.audioFilePath).toBe(savedPaths[0]);
+  });
+
+  it('generates branch audio for branching scenelets', async () => {
+    const shot = createShotRecord({ audioFilePath: undefined });
+    const branchSceneletId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const branchScenelet = createSceneletRecordStub({
+      id: branchSceneletId,
+      isBranchPoint: true,
+      choicePrompt: 'Where should we explore next?',
+      createdAt: '2025-01-01T00:00:00.000Z',
+    });
+    const choiceA = createSceneletRecordStub({
+      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      parentId: branchSceneletId,
+      choiceLabelFromParent: 'Enter the cave',
+      createdAt: '2025-01-02T00:00:00.000Z',
+    });
+    const choiceB = createSceneletRecordStub({
+      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      parentId: branchSceneletId,
+      choiceLabelFromParent: 'Follow the river',
+      createdAt: '2025-01-03T00:00:00.000Z',
+    });
+
+    const { dependencies, synthesize, saveBranchAudio, updateBranchAudioPath, scenelets, savedBranchPaths } =
+      createDependencies(shot, {
+        scenelets: [branchScenelet, choiceA, choiceB],
+      });
+
+    const result = await runShotAudioTask('story-123', dependencies);
+
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 1,
+      skippedBranchAudio: 0,
+      totalBranchScenelets: 1,
+    });
+    expect(synthesize).toHaveBeenCalledTimes(2);
+    expect(saveBranchAudio).toHaveBeenCalledTimes(1);
+    expect(saveBranchAudio.mock.calls[0]?.[0]).toMatchObject({
+      storyId: 'story-123',
+      sceneletId: 'scenelet-1',
+    });
+    expect(updateBranchAudioPath).toHaveBeenCalledWith(
+      'story-123',
+      branchSceneletId,
+      'generated/story-123/branches/scenelet-1/branch_audio.wav'
+    );
+    expect(scenelets[0]?.branchAudioFilePath).toBe(
+      'generated/story-123/branches/scenelet-1/branch_audio.wav'
+    );
+    expect(savedBranchPaths).toContain(
+      'generated/story-123/branches/scenelet-1/branch_audio.wav'
+    );
+  });
+
+  it('skips branch audio generation when prompt or choices are incomplete', async () => {
+    const shot = createShotRecord({ audioFilePath: undefined });
+    const branchSceneletId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const branchScenelet = createSceneletRecordStub({
+      id: branchSceneletId,
+      isBranchPoint: true,
+      choicePrompt: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+    });
+    const incompleteChoice = createSceneletRecordStub({
+      id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+      parentId: branchSceneletId,
+      choiceLabelFromParent: null,
+      createdAt: '2025-01-02T00:00:00.000Z',
+    });
+
+    const logger = { debug: vi.fn() };
+
+    const { dependencies, saveBranchAudio, updateBranchAudioPath, scenelets } = createDependencies(shot, {
+      scenelets: [branchScenelet, incompleteChoice],
+      logger,
+    });
+
+    const result = await runShotAudioTask('story-123', dependencies);
+
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 0,
+      skippedBranchAudio: 1,
+      totalBranchScenelets: 1,
+    });
+    expect(saveBranchAudio).not.toHaveBeenCalled();
+    expect(updateBranchAudioPath).toHaveBeenCalledWith(
+      'story-123',
+      branchSceneletId,
+      SKIPPED_AUDIO_PLACEHOLDER
+    );
+    expect(scenelets[0]?.branchAudioFilePath).toBe(SKIPPED_AUDIO_PLACEHOLDER);
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Skipping branch audio generation: missing prompt or choice labels.',
+      expect.objectContaining({
+        storyId: 'story-123',
+        sceneletId: 'scenelet-1',
+        branchSceneletId,
+      })
+    );
+  });
+
+  it('throws in default mode when branch audio already exists', async () => {
+    const shot = createShotRecord({ audioFilePath: undefined });
+    const branchSceneletId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const branchScenelet = createSceneletRecordStub({
+      id: branchSceneletId,
+      isBranchPoint: true,
+      choicePrompt: 'Choose wisely',
+      branchAudioFilePath: 'generated/story-123/branches/scenelet-1/branch_audio.wav',
+    });
+    const choiceA = createSceneletRecordStub({
+      id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+      parentId: branchSceneletId,
+      choiceLabelFromParent: 'Option A',
+    });
+    const choiceB = createSceneletRecordStub({
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+      parentId: branchSceneletId,
+      choiceLabelFromParent: 'Option B',
+    });
+
+    const { dependencies } = createDependencies(shot, {
+      scenelets: [branchScenelet, choiceA, choiceB],
+    });
+
+    await expect(runShotAudioTask('story-123', dependencies)).rejects.toBeInstanceOf(
+      ShotAudioTaskError
+    );
+  });
+
+  it('skips branch audio in resume mode when audio already exists or was previously skipped', async () => {
+    const shot = createShotRecord({ audioFilePath: undefined });
+    const branchSceneletId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const branchScenelet = createSceneletRecordStub({
+      id: branchSceneletId,
+      isBranchPoint: true,
+      choicePrompt: 'What now?',
+      branchAudioFilePath: 'generated/story-123/branches/scenelet-1/branch_audio.wav',
+    });
+    const placeholderScenelet = createSceneletRecordStub({
+      id: 'gggggggg-gggg-gggg-gggg-gggggggggggg',
+      isBranchPoint: true,
+      choicePrompt: 'Pick a path',
+      branchAudioFilePath: SKIPPED_AUDIO_PLACEHOLDER,
+    });
+
+    const { dependencies, saveBranchAudio, updateBranchAudioPath } = createDependencies(shot, {
+      scenelets: [branchScenelet, placeholderScenelet],
+      mode: 'resume',
+    });
+
+    const result = await runShotAudioTask('story-123', dependencies);
+
+    expect(result).toEqual({
+      generatedAudio: 1,
+      skippedShots: 0,
+      totalShots: 1,
+      generatedBranchAudio: 0,
+      skippedBranchAudio: 2,
+      totalBranchScenelets: 2,
+    });
+    expect(saveBranchAudio).not.toHaveBeenCalled();
+    expect(updateBranchAudioPath).not.toHaveBeenCalled();
   });
 });

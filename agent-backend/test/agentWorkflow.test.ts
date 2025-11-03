@@ -313,6 +313,9 @@ describe('runAgentWorkflow', () => {
         generatedAudio: 0,
         skippedShots: 0,
         totalShots: 0,
+        generatedBranchAudio: 0,
+        skippedBranchAudio: 0,
+        totalBranchScenelets: 0,
       }),
     });
 
@@ -461,6 +464,9 @@ describe('runAgentWorkflow', () => {
         generatedAudio: 0,
         skippedShots: 0,
         totalShots: 0,
+        generatedBranchAudio: 0,
+        skippedBranchAudio: 0,
+        totalBranchScenelets: 0,
       }),
     });
 
@@ -670,6 +676,9 @@ describe('runAgentWorkflow', () => {
         generatedAudio: 0,
         skippedShots: 0,
         totalShots: 0,
+        generatedBranchAudio: 0,
+        skippedBranchAudio: 0,
+        totalBranchScenelets: 0,
       }),
     });
 

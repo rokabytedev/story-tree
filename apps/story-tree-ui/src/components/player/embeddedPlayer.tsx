@@ -68,6 +68,7 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     currentCue: null,
   });
   const audioShouldResumeRef = useRef(false);
+  const branchAudioActiveRef = useRef(false);
   const failedMusicCuesRef = useRef<Set<string>>(new Set());
 
   const sceneletLookup = useMemo(() => {
@@ -129,8 +130,23 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     if (!audio || !controller) {
       return;
     }
-    const handleEnded = () => controller.notifyShotAudioComplete();
-    const handleError = () => controller.notifyShotAudioError();
+    const handleEnded = () => {
+      if (branchAudioActiveRef.current) {
+        branchAudioActiveRef.current = false;
+        stopShotAudio();
+        return;
+      }
+      controller.notifyShotAudioComplete();
+    };
+    const handleError = (event: Event) => {
+      if (branchAudioActiveRef.current) {
+        branchAudioActiveRef.current = false;
+        console.warn("Branch audio failed due to an element error.", event);
+        stopShotAudio();
+        return;
+      }
+      controller.notifyShotAudioError();
+    };
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("error", handleError);
     return () => {
@@ -183,6 +199,7 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
           return;
         }
 
+        branchAudioActiveRef.current = false;
         audio.pause();
         audio.src = audioPath;
         audio.currentTime = 0;
@@ -198,6 +215,7 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
 
     unsubscriptions.push(
       controller.subscribe("audio-missing", () => {
+        branchAudioActiveRef.current = false;
         stopShotAudio();
       })
     );
@@ -209,6 +227,33 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
           choices,
           choicePrompt: prompt,
         }));
+      })
+    );
+
+    unsubscriptions.push(
+      controller.subscribe("branch-audio", ({ audioPath }) => {
+        const audio = shotAudioRef.current;
+        if (!audio) {
+          return;
+        }
+        stopShotAudio();
+        branchAudioActiveRef.current = true;
+        audio.src = audioPath;
+        audio.currentTime = 0;
+        audioShouldResumeRef.current = false;
+        audio.play().catch((error) => {
+          stopShotAudio();
+          branchAudioActiveRef.current = false;
+          console.warn("Branch audio failed to play.", error);
+        });
+      })
+    );
+
+    unsubscriptions.push(
+      controller.subscribe("branch-audio-stop", () => {
+        if (branchAudioActiveRef.current) {
+          stopShotAudio();
+        }
       })
     );
 
@@ -233,6 +278,8 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     unsubscriptions.push(
       controller.subscribe("pause-change", ({ isPaused }) => {
         const audio = shotAudioRef.current;
+        const currentStage = controllerRef.current?.getState().stage ?? undefined;
+        const shouldControlMusic = currentStage !== "choice";
         if (isPaused) {
           if (audio && !audio.paused && !audio.ended && audio.currentTime > 0) {
             audioShouldResumeRef.current = true;
@@ -240,13 +287,17 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
           } else {
             audioShouldResumeRef.current = false;
           }
-          pauseBackgroundMusic();
+          if (shouldControlMusic) {
+            pauseBackgroundMusic();
+          }
         } else {
           if (audioShouldResumeRef.current && audio) {
             audioShouldResumeRef.current = false;
             audio.play().catch(() => controller.notifyShotAudioError());
           }
-          resumeBackgroundMusic();
+          if (shouldControlMusic) {
+            resumeBackgroundMusic();
+          }
         }
 
         setViewState((prev) => ({
@@ -285,6 +336,7 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
       audio.load();
     }
     audioShouldResumeRef.current = false;
+    branchAudioActiveRef.current = false;
   }
 
   function handleRestartPlayback() {
@@ -535,7 +587,7 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
         startImage={startVisualImage}
         stage={viewState.stage}
       />
-      <audio ref={shotAudioRef} preload="auto" />
+      <audio ref={shotAudioRef} preload="auto" data-testid="shot-audio" />
       <audio ref={musicPrimaryRef} preload="auto" loop />
       <audio ref={musicSecondaryRef} preload="auto" loop />
     </div>

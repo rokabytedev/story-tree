@@ -52,7 +52,9 @@ export type PlayerEvent =
       type: 'music-change';
       cueName: string | null;
       audioPath: string | null;
-    };
+    }
+  | { type: 'branch-audio'; sceneletId: string; audioPath: string }
+  | { type: 'branch-audio-stop'; sceneletId: string };
 
 export interface PlayerState {
   stage: PlayerStage;
@@ -90,6 +92,8 @@ interface InternalState {
   pendingChoices: BranchChoice[] | null;
   initialAudioUnlockPending: boolean;
   currentCue: string | null;
+  branchAudioTimer: ReturnType<typeof setTimeout> | null;
+  activeBranchAudioSceneletId: string | null;
 }
 
 type ListenerMap = {
@@ -135,6 +139,8 @@ export function createPlayerController(
     pendingChoices: null,
     initialAudioUnlockPending: true,
     currentCue: null,
+    branchAudioTimer: null,
+    activeBranchAudioSceneletId: null,
   };
 
   emit({ type: 'story-ready', metadata: bundle.metadata });
@@ -216,6 +222,7 @@ export function createPlayerController(
     if (!state.scenelets.has(targetId)) {
       throw new Error(`Branch selection references unknown scenelet ${targetId}.`);
     }
+    stopBranchAudio();
     state.pendingChoices = null;
     state.isPaused = false;
     playScenelet(targetId);
@@ -252,6 +259,7 @@ export function createPlayerController(
   }
 
   function playScenelet(sceneletId: string): void {
+    stopBranchAudio();
     const scenelet = state.scenelets.get(sceneletId);
     if (!scenelet) {
       throw new Error(`Scenelet ${sceneletId} is missing from story data.`);
@@ -337,6 +345,7 @@ export function createPlayerController(
           choices: next.choices,
         });
         emit({ type: 'stage-change', stage: 'choice' });
+        scheduleBranchAudioPlayback(scenelet);
         return;
       }
       case 'terminal': {
@@ -377,8 +386,44 @@ export function createPlayerController(
     });
   }
 
+  function scheduleBranchAudioPlayback(scenelet: SceneletNode): void {
+    clearBranchAudioTimer();
+    if (!scenelet.branchAudioPath) {
+      state.activeBranchAudioSceneletId = null;
+      return;
+    }
+
+    state.branchAudioTimer = schedule(() => {
+      state.activeBranchAudioSceneletId = scenelet.id;
+      emit({
+        type: 'branch-audio',
+        sceneletId: scenelet.id,
+        audioPath: scenelet.branchAudioPath!,
+      });
+    }, RAMP_UP_MS);
+  }
+
+  function clearBranchAudioTimer(): void {
+    if (state.branchAudioTimer) {
+      clearTimer(state.branchAudioTimer);
+      state.branchAudioTimer = null;
+    }
+  }
+
+  function stopBranchAudio(): void {
+    clearBranchAudioTimer();
+    if (state.activeBranchAudioSceneletId) {
+      emit({
+        type: 'branch-audio-stop',
+        sceneletId: state.activeBranchAudioSceneletId,
+      });
+      state.activeBranchAudioSceneletId = null;
+    }
+  }
+
   function resetPlaybackState(): void {
     clearCurrentTimer();
+    stopBranchAudio();
     state.pendingAction = null;
     state.currentSceneletId = null;
     state.currentShotIndex = 0;
