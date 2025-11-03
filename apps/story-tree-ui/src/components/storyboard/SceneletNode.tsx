@@ -7,7 +7,7 @@ function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
   const { scenelet, onShotClick } = data;
 
   return (
-    <div className="w-[640px] overflow-hidden rounded-3xl border border-border bg-page text-text">
+    <div className="w-[640px] overflow-hidden rounded-3xl border border-border bg-surface text-text">
       <Handle
         type="target"
         position={Position.Top}

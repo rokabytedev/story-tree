@@ -21,9 +21,9 @@ export function StoryboardView({ data }: StoryboardViewProps) {
   };
 
   return (
-    <>
+    <div className="relative flex h-[calc(100vh-80px)] w-full flex-1 flex-col">
       <StoryboardCanvas data={data} onShotClick={handleShotClick} />
       <ShotDetailPanel shot={selectedShot} onClose={handleClosePanel} />
-    </>
+    </div>
   );
 }

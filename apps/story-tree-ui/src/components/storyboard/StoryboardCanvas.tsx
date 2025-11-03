@@ -30,7 +30,7 @@ export function StoryboardCanvas({ data, onShotClick }: StoryboardCanvasProps) {
   }
 
   return (
-    <div className="relative h-[calc(100vh-220px)] min-h-[640px] overflow-hidden rounded-3xl border border-border bg-page">
+    <div className="relative h-full w-full min-h-[640px]">
       <ReactFlow<SceneletNodeData | BranchingPointNodeData>
         nodes={graph.nodes}
         edges={graph.edges}
@@ -45,7 +45,7 @@ export function StoryboardCanvas({ data, onShotClick }: StoryboardCanvasProps) {
         nodeOrigin={[0.5, 0]}
       >
         <Background
-          className="!bg-surface"
+          className="!bg-page"
           color="rgba(148, 163, 184, 0.25)"
           gap={32}
           size={2}

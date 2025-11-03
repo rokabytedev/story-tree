@@ -6,7 +6,7 @@ function BranchingPointNodeBase({ data }: NodeProps<BranchingPointNodeData>) {
   const { branchingPoint } = data;
 
   return (
-    <div className="w-[640px] rounded-3xl border border-highlight bg-page p-4 text-text">
+    <div className="w-[640px] rounded-3xl border border-highlight bg-surface p-4 text-text">
       <Handle
         type="target"
         position={Position.Top}

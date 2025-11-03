@@ -53,40 +53,38 @@ export default async function StoryIndexPage() {
                 <Link
                   key={story.id}
                   href={`/story/${story.id}/constitution`}
-                  className="group flex gap-5 rounded-3xl border border-border bg-page p-5 transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-page transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-highlight"
                 >
-                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-border bg-page">
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-3xl bg-page">
                     {story.thumbnailImagePath ? (
                       <Image
                         src={story.thumbnailImagePath}
                         alt={`${story.title} thumbnail`}
                         fill
                         className="object-cover"
-                        sizes="96px"
+                        sizes="(min-width: 768px) 420px, 100vw"
                       />
                     ) : (
                       <div
-                        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-center text-[11px] font-medium text-text-muted"
+                        className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-[11px] font-medium text-text-muted"
                         style={placeholderStyle}
                       >
                         <span className="text-sm font-semibold text-text-primary">
                           Artwork coming soon
                         </span>
-                        <span className="max-w-[9rem] leading-snug text-text-muted">
+                        <span className="max-w-[14rem] leading-snug text-text-muted">
                           Generate storyboard shots to preview this story.
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-1 flex-col justify-between gap-4 py-1">
-                    <div className="space-y-2">
-                      <h2 className="text-xl font-semibold leading-tight text-text-primary">
-                        {story.title}
-                      </h2>
-                      <p className="max-h-32 overflow-hidden text-sm leading-relaxed text-text-muted">
-                        {story.logline ?? "Logline coming soon."}
-                      </p>
-                    </div>
+                  <div className="flex flex-1 flex-col gap-3 px-5 py-4">
+                    <h2 className="text-xl font-semibold leading-tight text-text-primary">
+                      {story.title}
+                    </h2>
+                    <p className="text-sm leading-relaxed text-text-muted">
+                      {story.logline ?? "Logline coming soon."}
+                    </p>
                   </div>
                 </Link>
               );
