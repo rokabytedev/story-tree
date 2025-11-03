@@ -29,7 +29,7 @@ The workflow MUST expose a `CREATE_SHOT_AUDIO` task that generates speech audio 
 - **AND** in resume mode it MUST skip branches with existing audio paths
 - **AND** in override mode it MUST regenerate and overwrite branch audio regardless of existing paths
 
-### Requirement: Bundle JSON transforms scenelets to flat array
+### Requirement: Assemble Story Bundle JSON Metadata
 Branching scenelets MUST surface their narrator audio path in the exported bundle.
 
 #### Scenario: Bundle JSON exposes branch audio path

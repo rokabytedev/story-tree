@@ -311,25 +311,13 @@ The standalone player MUST play bundled music cues with smooth transitions align
 - **AND** it MUST continue shot playback normally.
 
 ### Requirement: Provide Shared Player Runtime Module
-The player MUST expose a reusable runtime controller so multiple surfaces can provide the same playback behavior.
+The shared runtime MUST emit events that let both the standalone and embedded players present identical branching behaviour.
 
-#### Scenario: Runtime preserves playback timing and branching rules
-- **GIVEN** the runtime controller is initialised with a story bundle produced by `assembleBundleJson`
-- **WHEN** the consumer calls `start()`, `pause()`, `resume()`, selects branches, or restarts the story
-- **THEN** the controller MUST emit state updates that honour the existing grace period timings, pause-on-branch behavior, and terminal restart flow defined in this specification
-- **AND** the controller MUST reject bundles that fail validation with descriptive errors identical to the standalone HTML experience
-
-#### Scenario: Standalone player template consumes the runtime module
-- **GIVEN** `CREATE_PLAYER_BUNDLE` copies the standalone HTML template
-- **WHEN** the resulting `player.html` executes
-- **THEN** it MUST load the shared runtime module (via an ES module build) to drive playback instead of duplicating logic inline
-- **AND** the template MUST continue to function offline with the same keyboard/mouse interactions already described in this specification
-
-#### Scenario: Embedded React player consumes the runtime module
-- **GIVEN** the Next.js Player tab renders on the client
-- **WHEN** the React components mount
-- **THEN** they MUST instantiate the shared runtime controller with the server-provided bundle
-- **AND** they MUST subscribe to its state updates to control images, audio, and branching overlays so behaviour stays identical to the standalone player
+#### Scenario: Runtime emits branch audio events
+- **GIVEN** a branching scenelet whose bundle entry includes `branchAudioPath`
+- **WHEN** the runtime transitions from the last shot into the branch stage
+- **THEN** after the 500 ms ramp-up it MUST emit `branch-audio` with `{ sceneletId, audioPath: branchAudioPath }`
+- **AND** it MUST emit `branch-audio-stop` when the user selects a branch, the controller restarts, or playback advances away from the branching scenelet
 
 ### Requirement: Align Player Visual Theme
 The embedded and standalone players MUST share Story Tree UI theming primitives.
@@ -340,4 +328,25 @@ The embedded and standalone players MUST share Story Tree UI theming primitives.
 - **THEN** it MUST read from a shared token map derived from the Story Tree design system variables (light/dark)
 - **AND** both the standalone template and embedded React view MUST apply those tokens to containers, buttons, overlays, and typography so visual appearance matches the Story Tree UI
 - **AND** updating the design tokens in the Next.js theme MUST propagate to the standalone player without manual restyling
+
+### Requirement: Play Branch Audio During Choice Stage
+Branching overlays MUST automatically play narrated branch prompts while keeping background music running.
+
+#### Scenario: Branch overlay auto-plays narration after grace period
+- **GIVEN** the branch choice UI displays and `branchAudioPath` is not null
+- **WHEN** 500 ms have elapsed since the overlay appeared
+- **THEN** the player MUST load the referenced audio file and play it once using the existing shot audio element
+- **AND** it MUST NOT advance to another scenelet when the audio ends
+- **AND** if no branch audio path exists it MUST remain silent without error
+
+#### Scenario: Branch narration stops on choice selection
+- **GIVEN** branch narration is playing
+- **WHEN** the user selects a branch or the player restarts
+- **THEN** the player MUST stop playback immediately and clear the audio source so selection feedback is not overlapped
+
+#### Scenario: Background music continues during branch wait
+- **GIVEN** background music is active when a branch overlay appears
+- **WHEN** the player enters the choice stage
+- **THEN** it MUST keep background music playing and looping at the configured volume while awaiting user input
+- **AND** pausing/resuming the story via the toolbar MUST pause/resume both branch narration and background music together
 

@@ -252,87 +252,34 @@ The shot image generation task MUST assemble key frame prompts directly from sto
 - **AND** it MUST load reference images based on the `referenced_designs` character and environment IDs.
 
 ### Requirement: Generate Shot Audio with Multi-Speaker TTS
-The workflow MUST expose a `CREATE_SHOT_AUDIO` task that generates speech audio for shots using Gemini's multi-speaker TTS API based on shot narratives and voice profiles.
+The workflow MUST expose a `CREATE_SHOT_AUDIO` task that generates speech audio for shots and branching prompts using Gemini's TTS API based on stored narratives and voice profiles.
 
-#### Scenario: Audio generation task validates prerequisites
-- **GIVEN** a workflow handle
-- **WHEN** `runTask('CREATE_SHOT_AUDIO')` executes
-- **THEN** it MUST throw a descriptive error if the story lacks an audio design document
-- **AND** it MUST throw a descriptive error if the story has no generated shots
-- **AND** when prerequisites pass it MUST load the audio design document, fetch shots, and proceed with audio generation
+#### Scenario: Audio generation task builds branch narration queue
+- **GIVEN** `runTask('CREATE_SHOT_AUDIO')` executes for a story with branching scenelets
+- **WHEN** prerequisites pass
+- **THEN** after processing targeted shots it MUST iterate each branching scenelet in scope
+- **AND** it MUST skip branch points lacking a choicePrompt or fewer than two choice labels by setting the scenelet's branch audio path to `SKIPPED_AUDIO_PLACEHOLDER` and logging a warning
 
-#### Scenario: Audio generation uses single-speaker mode for one source
-- **GIVEN** a shot with audioAndNarrative entries having only one unique source value (narrator or one character)
-- **WHEN** the audio generation task processes the shot
-- **THEN** it MUST use Gemini TTS single-speaker mode with model `"gemini-2.5-flash-preview-tts"`
-- **AND** it MUST configure the speaker name as the character_id from audio design document
-- **AND** it MUST configure the voice name from the matching voice profile's voice_name field
-- **AND** it MUST assemble the prompt including only the relevant voice profile and the shot's audioAndNarrative array
-- **AND** when `--verbose` flag is enabled it MUST log the full request details (model, prompt, speaker config) without logging binary audio response data
+#### Scenario: Branch narration uses narrator voice profile
+- **GIVEN** a branching scenelet with a choice prompt and labels
+- **WHEN** the task assembles the Gemini request
+- **THEN** it MUST build a narrator-only script that reads the prompt followed by each choice separated by "or"
+- **AND** it MUST call Gemini TTS in single-speaker mode using `narrator_voice_profile.voice_name`
+- **AND** it MUST include an inviting delivery cue (e.g. "curious, welcoming narrator") in the prompt payload
 
-#### Scenario: Audio generation uses multi-speaker mode for two sources
-- **GIVEN** a shot with audioAndNarrative entries having exactly two unique source values
-- **WHEN** the audio generation task processes the shot
-- **THEN** it MUST use Gemini TTS multi-speaker mode with model `"gemini-2.5-flash-preview-tts"`
-- **AND** it MUST configure two speaker voice configs with speaker names matching character_id values
-- **AND** it MUST use voice_name values from the matching character_voice_profiles in audio design document
-- **AND** it MUST include narrator_voice_profile if "narrator" is one of the sources
-- **AND** when `--verbose` flag is enabled it MUST log request details with both speaker configurations without logging binary audio response data
+#### Scenario: Branch narration stores WAV files in branches directory
+- **GIVEN** Gemini TTS returns audio data for a branching scenelet
+- **WHEN** the task saves the file
+- **THEN** it MUST write the WAV to `apps/story-tree-ui/public/generated/<story-id>/branches/<scenelet-id>/branch_audio.wav`
+- **AND** it MUST update the scenelet's `branch_audio_file_path` to `generated/<story-id>/branches/<scenelet-id>/branch_audio.wav`
+- **AND** it MUST create parent directories when they are missing
 
-#### Scenario: Audio generation rejects shots with three or more speakers
-- **GIVEN** a shot with audioAndNarrative entries having three or more unique source values
-- **WHEN** the audio generation task processes the shot
-- **THEN** it MUST throw a validation error indicating unsupported speaker count
-- **AND** it MUST include the shot identifier (scenelet_id and shot_index) in the error message
-- **AND** it MUST NOT generate audio for that shot
-
-#### Scenario: Audio generation stores WAV files in public directory
-- **GIVEN** Gemini TTS returns audio data for a shot
-- **WHEN** the audio generation task saves the file
-- **THEN** it MUST save the WAV file to `apps/story-tree-ui/public/generated/<story-id>/shots/<scenelet-id>/<shot-index>_audio.wav`
-- **AND** it MUST update the shot's audio_file_path in the database with the relative path `generated/<story-id>/shots/<scenelet-id>/<shot-index>_audio.wav`
-- **AND** it MUST create parent directories if they do not exist
-
-#### Scenario: Default mode stops on existing audio
-- **GIVEN** the audio generation task runs in default mode (no flags)
-- **WHEN** ANY shot in the target scope already has audio_file_path set in the database
-- **THEN** the task MUST stop immediately without generating any audio
-- **AND** it MUST throw a descriptive error indicating existing audio was found
-
-#### Scenario: Resume mode skips shots with existing audio
-- **GIVEN** the audio generation task runs in resume mode (--resume flag)
-- **WHEN** the task processes shots
-- **THEN** it MUST skip shots that already have audio_file_path set
-- **AND** it MUST generate audio only for shots without audio_file_path
-- **AND** it MUST log skipped shots for visibility
-
-#### Scenario: Override mode regenerates all shot audio
-- **GIVEN** the audio generation task runs in override mode (--override flag)
-- **WHEN** the task processes shots
-- **THEN** it MUST regenerate audio for ALL shots in the target scope
-- **AND** it MUST replace existing audio files and database paths
-- **AND** it MUST NOT skip shots with existing audio_file_path
-
-#### Scenario: Batch mode generates audio for entire story
-- **GIVEN** the audio generation task is invoked without scenelet-id or shot-index targeting
-- **WHEN** the task executes
-- **THEN** it MUST fetch all shots for the story grouped by scenelet
-- **AND** it MUST process shots sequentially in scenelet_sequence and shot_index order
-- **AND** it MUST apply the configured mode (default/resume/override) to all shots
-
-#### Scenario: Single-shot mode generates audio for specific shot
-- **GIVEN** the audio generation task is invoked with both --scenelet-id and --shot-index flags
-- **WHEN** the task executes
-- **THEN** it MUST generate audio only for the shot matching the provided scenelet_id and shot_index
-- **AND** it MUST apply the configured mode to that single shot
-- **AND** it MUST throw an error if the shot does not exist
-
-#### Scenario: Scenelet batch mode generates audio for one scenelet
-- **GIVEN** the audio generation task is invoked with --scenelet-id flag but no --shot-index
-- **WHEN** the task executes
-- **THEN** it MUST fetch all shots for the specified scenelet
-- **AND** it MUST process those shots sequentially by shot_index
-- **AND** it MUST apply the configured mode to all shots in that scenelet
+#### Scenario: Branch narration respects mode flags
+- **GIVEN** the task targets branching scenelets
+- **WHEN** running in default mode
+- **THEN** it MUST throw if ANY targeted branch already has a non-placeholder audio path
+- **AND** in resume mode it MUST skip branches with existing audio paths
+- **AND** in override mode it MUST regenerate and overwrite branch audio regardless of existing paths
 
 ### Requirement: Workflow CLI Exposes Shot Audio Task
 The workflow CLI MUST allow operators to run the shot audio generation task with mode flags and targeting options in both stub and real Gemini modes.
@@ -430,103 +377,31 @@ The story workflow MUST support a CREATE_PLAYER_BUNDLE task that assembles story
 ---
 
 ### Requirement: Assemble Story Bundle JSON Metadata
+Branching scenelets MUST surface their narrator audio path in the exported bundle.
 
-The bundle task MUST transform database story records into a structured JSON format suitable for player consumption.
-
-#### Scenario: Bundle JSON includes metadata section
-- **GIVEN** a story with display_name and story_id
-- **WHEN** the bundle assembler runs
-- **THEN** the output JSON MUST include a metadata object with storyId, title, and exportedAt (ISO timestamp)
-- **AND** the title MUST be taken from the story's display_name field
-- **AND** the storyId MUST match the story's id
-
-#### Scenario: Bundle JSON identifies root scenelet
-- **GIVEN** a story with scenelets where one has parentId === null
-- **WHEN** the bundle assembler runs
-- **THEN** the output JSON MUST include a rootSceneletId field
-- **AND** the rootSceneletId MUST reference the scenelet with no parent
-- **AND** if multiple root scenelets exist it MUST throw a validation error
-
-#### Scenario: Bundle JSON transforms scenelets to flat array
-- **GIVEN** a story with N scenelets in the database
-- **WHEN** the bundle assembler runs
-- **THEN** the output JSON MUST include a scenelets array with N elements
-- **AND** each element MUST have id, description, shots, and next fields
-- **AND** the description MUST be extracted from scenelet.content.description
-
-#### Scenario: Bundle JSON includes shot metadata with asset paths
-- **GIVEN** a scenelet with M shots in the database
-- **WHEN** the bundle assembler processes that scenelet
-- **THEN** the scenelet's shots array MUST contain M shot objects
-- **AND** each shot MUST have shotIndex, imagePath, and audioPath fields
-- **AND** imagePath MUST be a relative path: `assets/shots/<scenelet-id>/<shot-index>_key_frame.png`
-- **AND** audioPath MUST be a relative path: `assets/shots/<scenelet-id>/<shot-index>_audio.wav` or null if no audio exists
-
-#### Scenario: Bundle JSON determines next state for linear scenelets
-- **GIVEN** a scenelet that is not a branch point and not terminal (isBranchPoint: false, isTerminalNode: false)
-- **WHEN** the bundle assembler processes the scenelet's next field
-- **THEN** next.type MUST be "linear"
-- **AND** next.sceneletId MUST reference the child scenelet (found via parentId lookup)
-- **AND** if no child exists it MUST throw a validation error
-
-#### Scenario: Bundle JSON determines next state for branching scenelets
-- **GIVEN** a scenelet with isBranchPoint: true and a non-null choicePrompt
-- **WHEN** the bundle assembler processes the scenelet's next field
-- **THEN** next.type MUST be "branch"
-- **AND** next.choicePrompt MUST be set to the scenelet's choicePrompt value
-- **AND** next.choices MUST be an array of objects with label and sceneletId
-- **AND** each choice.label MUST be taken from the child scenelet's choiceLabelFromParent
-- **AND** each choice.sceneletId MUST reference the corresponding child scenelet id
-- **AND** if fewer than 2 child scenelets exist it MUST throw a validation error
-
-#### Scenario: Bundle JSON determines next state for terminal scenelets
-- **GIVEN** a scenelet with isTerminalNode: true
-- **WHEN** the bundle assembler processes the scenelet's next field
-- **THEN** next.type MUST be "terminal"
-- **AND** next.sceneletId, next.choicePrompt, and next.choices MUST not be present
-
----
+#### Scenario: Bundle JSON exposes branch audio path
+- **GIVEN** the bundle assembler processes a branching scenelet with `branch_audio_file_path`
+- **WHEN** it builds the `SceneletNode`
+- **THEN** it MUST include `branchAudioPath: "assets/branches/<scenelet-id>/branch_audio.wav"`
+- **AND** it MUST set `branchAudioPath` to null when the scenelet path is NULL or `SKIPPED_AUDIO_PLACEHOLDER`
+- **AND** non-branching scenelets MUST always have `branchAudioPath` null
 
 ### Requirement: Copy Generated Assets to Output Folder
+The bundle task MUST copy branch narration files alongside shot assets.
 
-The bundle task MUST copy all shot images and audio files from the public/generated directory to the bundle output folder with organized structure.
-
-#### Scenario: Task creates output directory structure
-- **GIVEN** a story with story_id "my-story"
-- **WHEN** the bundle task runs with default output path
-- **THEN** it MUST create the directory `/output/stories/my-story/`
-- **AND** it MUST create subdirectory `/output/stories/my-story/assets/shots/`
-- **AND** it MUST create parent directories if they do not exist
-
-#### Scenario: Task copies shot images to output folder
-- **GIVEN** a story with shots that have keyFrameImagePath set
+#### Scenario: Task copies branch audio to output folder
+- **GIVEN** a story with branching scenelets whose `branch_audio_file_path` points to an existing file
 - **WHEN** the asset copier runs
-- **THEN** it MUST copy each image file from `public/generated/<story-id>/shots/<scenelet-id>/<shot-index>_key_frame.png`
-- **AND** it MUST copy to `/output/stories/<story-id>/assets/shots/<scenelet-id>/<shot-index>_key_frame.png`
-- **AND** it MUST create scenelet subdirectories as needed
+- **THEN** it MUST copy each file from `public/generated/<story-id>/branches/<scenelet-id>/branch_audio.wav`
+- **AND** it MUST copy to `/output/stories/<story-id>/assets/branches/<scenelet-id>/branch_audio.wav`
+- **AND** it MUST create the `assets/branches/<scenelet-id>/` directory when missing
 
-#### Scenario: Task handles missing image files for incomplete stories
-- **GIVEN** a shot has keyFrameImagePath set but the file does not exist
+#### Scenario: Task handles missing branch audio gracefully
+- **GIVEN** a branching scenelet has `branch_audio_file_path` set but the source file is missing
 - **WHEN** the asset copier runs
-- **THEN** it MUST log a warning indicating the missing image file
-- **AND** it MUST continue copying other assets
-- **AND** it MUST set the shot's imagePath to null in the JSON output
-
-#### Scenario: Task copies shot audio to output folder
-- **GIVEN** a story with shots that have audioFilePath set
-- **WHEN** the asset copier runs
-- **THEN** it MUST copy each audio file from `public/generated/<story-id>/shots/<scenelet-id>/<shot-index>_audio.wav`
-- **AND** it MUST copy to `/output/stories/<story-id>/assets/shots/<scenelet-id>/<shot-index>_audio.wav`
-- **AND** it MUST skip shots with null audioFilePath without throwing an error
-
-#### Scenario: Task handles missing audio files gracefully
-- **GIVEN** a shot has audioFilePath set but the file does not exist in public/generated
-- **WHEN** the asset copier runs
-- **THEN** it MUST log a warning indicating the missing audio file
-- **AND** it MUST continue copying other assets
-- **AND** it MUST set the shot's audioPath to null in the JSON output
-
----
+- **THEN** it MUST log a warning that identifies the scenelet id and missing path
+- **AND** it MUST skip copying without throwing
+- **AND** it MUST set the scenelet's `branchAudioPath` to null in the resulting bundle JSON
 
 ### Requirement: Copy Player HTML Template to Output Folder
 
