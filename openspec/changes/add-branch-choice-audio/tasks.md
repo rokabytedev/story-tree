@@ -1,0 +1,5 @@
+1. Extend Supabase scenelet storage (migration, repository, types) to add `branch_audio_file_path`, expose it in loaders, and cover repository tests.
+2. Update audio file storage and `CREATE_SHOT_AUDIO` to synthesize narrator clips for each branching scenelet (prompt builder, mode handling, path persistence, unit tests, CLI logging).
+3. Teach bundle assembly and asset copying to surface/copy branch audio assets and expose `branchAudioPath` in both export and embedded manifests (with test coverage).
+4. Update the shared player runtime plus embedded player UI to emit/play branch audio with the 500 ms grace period, stop narration on selection, and keep background music looping (add runtime + React tests).
+5. Refresh developer docs or runbooks to mention branch audio generation steps and ensure automation (e.g. `openspec validate`, pipeline scripts) succeeds with the new assets.
