@@ -62,7 +62,6 @@
         font-size: 18px;
       }
 
-      #start-screen,
       #player-screen {
         display: flex;
         flex-direction: column;
@@ -132,6 +131,24 @@
         overflow: hidden;
       }
 
+      .image-frame::before {
+        content: "";
+        position: absolute;
+        inset: -8%;
+        background-image: var(--frame-start-image, none);
+        background-size: cover;
+        background-position: center;
+        filter: blur(32px);
+        transform: scale(1.1);
+        opacity: 0;
+        transition: opacity 200ms ease;
+        pointer-events: none;
+      }
+
+      .image-frame.has-start-image::before {
+        opacity: 0.8;
+      }
+
       #shot-image {
         max-width: 100%;
         max-height: 100%;
@@ -149,52 +166,6 @@
         text-align: center;
         font-size: 14px;
         color: var(--muted);
-      }
-
-      .start-main {
-        padding: 0;
-      }
-
-      .start-visual {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--color-page);
-      }
-
-      .start-visual img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        filter: blur(32px);
-        transform: scale(1.12);
-        opacity: 0.8;
-      }
-
-      .start-visual::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.7));
-      }
-
-      .start-overlay {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        border-radius: 20px;
-        background: var(--panel);
-        backdrop-filter: blur(14px);
-        padding: 28px 36px;
-        max-width: 420px;
-        width: 100%;
-        text-align: center;
       }
 
       .player-footer {
@@ -347,6 +318,9 @@
         background: transparent;
         color: var(--text);
         transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
       }
 
       #play-pause-button:disabled {
@@ -355,13 +329,22 @@
       }
 
       #play-pause-button:not(:disabled):hover {
-        background: rgba(0, 0, 0, 0.04);
+        background: var(--color-page);
         opacity: 1;
       }
 
       #play-pause-button:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 4px;
+      }
+
+      #play-pause-button .icon {
+        display: inline-flex;
+      }
+
+      #play-pause-button .icon svg {
+        width: 16px;
+        height: 16px;
       }
 
       .player-footer button {
@@ -416,33 +399,16 @@
     <script id="story-data" type="application/json">__STORY_JSON_PLACEHOLDER__</script>
     <div id="player-root">
       <div id="error-panel" class="message hidden"></div>
-      <div id="start-screen" class="hidden">
-        <header class="player-header">
-          <div class="player-header-copy">
-            <p class="player-label">Interactive Story</p>
-            <h2 id="start-title" class="player-title"></h2>
-          </div>
-          <span class="player-status">Ready to begin</span>
-        </header>
-        <main class="player-main start-main">
-          <div id="start-visual" class="start-visual hidden">
-            <img id="start-image" class="hidden" alt="" />
-          </div>
-          <div class="start-overlay">
-            <button id="start-button" type="button">Start Story</button>
-          </div>
-        </main>
-        <footer class="player-footer">
-          <span class="player-status">Awaiting playback</span>
-        </footer>
-      </div>
-      <div id="player-screen" class="hidden">
+      <div id="player-screen">
         <header class="player-header">
           <div class="player-header-copy">
             <p class="player-label">Interactive Story</p>
             <h2 id="story-title" class="player-title"></h2>
           </div>
-          <button id="play-pause-button" type="button" disabled>Pause</button>
+          <button id="play-pause-button" type="button" disabled>
+            <span class="icon" aria-hidden="true"></span>
+            <span class="label">Pause</span>
+          </button>
         </header>
         <main class="player-main">
           <div class="image-frame">
@@ -493,16 +459,14 @@ __PLAYER_RUNTIME_PLACEHOLDER__
       const elements = {
         root: document.getElementById("player-root"),
         error: document.getElementById("error-panel"),
-        startScreen: document.getElementById("start-screen"),
-        startVisual: document.getElementById("start-visual"),
-        startImage: document.getElementById("start-image"),
-        startTitle: document.getElementById("start-title"),
-        startButton: document.getElementById("start-button"),
         playerScreen: document.getElementById("player-screen"),
         storyTitle: document.getElementById("story-title"),
         shotImage: document.getElementById("shot-image"),
         imagePlaceholder: document.getElementById("image-placeholder"),
+        imageFrame: document.querySelector(".image-frame"),
         playPauseButton: document.getElementById("play-pause-button"),
+        playPauseButtonIcon: document.querySelector("#play-pause-button .icon"),
+        playPauseButtonLabel: document.querySelector("#play-pause-button .label"),
         choiceOverlay: document.getElementById("choice-overlay"),
         choicePrompt: document.getElementById("choice-prompt"),
         choiceOptions: document.getElementById("choice-options"),
@@ -514,6 +478,11 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         musicPrimary: document.getElementById("music-primary"),
         musicSecondary: document.getElementById("music-secondary"),
       };
+
+      const PLAY_ICON =
+        '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10-6.5-10-6.5z"/></svg>';
+      const PAUSE_ICON =
+        '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.25c-.414 0-.75.336-.75.75v11c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75v-11a.75.75 0 0 0-.75-.75H7zm8 0c-.414 0-.75.336-.75.75v11c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75v-11a.75.75 0 0 0-.75-.75H15z"/></svg>';
 
       const state = {
         controller: null,
@@ -532,6 +501,8 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         pausedElements: [],
         currentCue: null,
       };
+
+      let shouldAutoPause = true;
 
       initialize();
 
@@ -566,24 +537,21 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         state.controller = controller;
         wireControllerEvents(controller);
         setupStaticUi(story);
-        showStartScreen();
-
-        elements.startButton.addEventListener("click", () => {
-          if (!state.controller) {
-            return;
-          }
-          clearError();
-          hideAllOverlays();
-          showPlayerScreen();
-          state.controller.start();
-        });
+        clearError();
+        hideAllOverlays();
+        updatePlayPauseButton();
+        shouldAutoPause = true;
 
         elements.playPauseButton.addEventListener("click", () => {
           if (!state.controller) {
             return;
           }
+          if (state.currentStage === "idle") {
+            shouldAutoPause = false;
+            state.controller.start();
+            return;
+          }
           if (
-            state.currentStage === "idle" ||
             state.currentStage === "choice" ||
             state.currentStage === "terminal" ||
             state.currentStage === "incomplete"
@@ -603,7 +571,7 @@ __PLAYER_RUNTIME_PLACEHOLDER__
             return;
           }
           hideAllOverlays();
-          showPlayerScreen();
+          shouldAutoPause = false;
           state.controller.restart();
         });
 
@@ -612,7 +580,7 @@ __PLAYER_RUNTIME_PLACEHOLDER__
             return;
           }
           hideAllOverlays();
-          showPlayerScreen();
+          shouldAutoPause = false;
           state.controller.restart();
         });
 
@@ -643,7 +611,6 @@ __PLAYER_RUNTIME_PLACEHOLDER__
       function wireControllerEvents(controller) {
         controller.subscribe("story-ready", (event) => {
           const title = event.metadata?.title?.trim?.() || "Untitled Story";
-          elements.startTitle.textContent = title;
           elements.storyTitle.textContent = title;
         });
 
@@ -668,6 +635,7 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         controller.subscribe("shot-enter", ({ shot }) => {
           hideAllOverlays();
           updateShotImage(shot);
+          shouldAutoPause = false;
         });
 
         controller.subscribe("audio-start", ({ audioPath, requiresUserInteraction }) => {
@@ -727,7 +695,6 @@ __PLAYER_RUNTIME_PLACEHOLDER__
 
       function setupStaticUi(story) {
         const title = story?.metadata?.title?.trim?.() || "Untitled Story";
-        elements.startTitle.textContent = title;
         elements.storyTitle.textContent = title;
         updateStartVisual(story);
       }
@@ -745,31 +712,17 @@ __PLAYER_RUNTIME_PLACEHOLDER__
         return map;
       }
 
-      function showStartScreen() {
-        stopShotAudio();
-        fadeOutMusic(true);
-        hideAllOverlays();
-        elements.playerScreen.classList.add("hidden");
-        elements.startScreen.classList.remove("hidden");
-        state.currentStage = "idle";
-        updatePlayPauseButton();
-      }
-
-      function showPlayerScreen() {
-        elements.startScreen.classList.add("hidden");
-        elements.playerScreen.classList.remove("hidden");
-      }
-
       function clearError() {
         elements.error.textContent = "";
         elements.error.classList.add("hidden");
+        elements.playerScreen.classList.remove("hidden");
       }
 
       function showError(message) {
         stopShotAudio();
         fadeOutMusic(true);
+        hideAllOverlays();
         elements.playerScreen.classList.add("hidden");
-        elements.startScreen.classList.add("hidden");
         elements.error.textContent = message;
         elements.error.classList.remove("hidden");
       }
@@ -781,10 +734,16 @@ __PLAYER_RUNTIME_PLACEHOLDER__
       }
 
       function updateShotImage(shot) {
+        const frame = elements.imageFrame;
         if (shot?.imagePath) {
           elements.shotImage.src = shot.imagePath;
           elements.shotImage.classList.remove("hidden");
           elements.imagePlaceholder.classList.add("hidden");
+          if (frame) {
+            const sanitized = sanitizeUrlForCss(shot.imagePath);
+            frame.style.setProperty("--frame-start-image", `url("${sanitized}")`);
+            frame.classList.add("has-start-image");
+          }
         } else {
           elements.shotImage.src = "";
           elements.shotImage.classList.add("hidden");
@@ -859,34 +818,46 @@ __PLAYER_RUNTIME_PLACEHOLDER__
       function updatePlayPauseButton() {
         if (!state.controller) {
           elements.playPauseButton.disabled = true;
-          elements.playPauseButton.textContent = "Pause";
+          if (elements.playPauseButtonIcon && elements.playPauseButtonLabel) {
+            elements.playPauseButtonIcon.innerHTML = PLAY_ICON;
+            elements.playPauseButtonLabel.textContent = "Play";
+          }
+          elements.playPauseButton.setAttribute("aria-label", "Play story");
           return;
         }
         const { isPaused } = state.controller.getState();
         const shouldDisable =
-          state.currentStage === "idle" ||
           state.currentStage === "choice" ||
           state.currentStage === "terminal" ||
           state.currentStage === "incomplete";
         elements.playPauseButton.disabled = shouldDisable;
-        elements.playPauseButton.textContent = isPaused ? "Play" : "Pause";
+        const label = state.currentStage === "idle" || isPaused ? "Play" : "Pause";
+        if (elements.playPauseButtonIcon && elements.playPauseButtonLabel) {
+          const iconSvg = label === "Play" ? PLAY_ICON : PAUSE_ICON;
+          elements.playPauseButtonIcon.innerHTML = iconSvg;
+          elements.playPauseButtonLabel.textContent = label;
+        }
+        elements.playPauseButton.setAttribute("aria-label", `${label} story`);
       }
 
       function updateStartVisual(story) {
         const imagePath = findOpeningShotImage(story);
-        const startVisual = elements.startVisual;
-        const startImage = elements.startImage;
-        if (!startVisual || !startImage) {
+        const frame = elements.imageFrame;
+        if (!frame) {
           return;
         }
         if (imagePath) {
-          startImage.src = imagePath;
-          startImage.classList.remove("hidden");
-          startVisual.classList.remove("hidden");
+          const sanitized = sanitizeUrlForCss(imagePath);
+          frame.style.setProperty("--frame-start-image", `url("${sanitized}")`);
+          frame.classList.add("has-start-image");
+          if (!elements.shotImage.src) {
+            elements.shotImage.src = imagePath;
+            elements.shotImage.classList.remove("hidden");
+            elements.imagePlaceholder.classList.add("hidden");
+          }
         } else {
-          startImage.removeAttribute("src");
-          startImage.classList.add("hidden");
-          startVisual.classList.add("hidden");
+          frame.style.removeProperty("--frame-start-image");
+          frame.classList.remove("has-start-image");
         }
       }
 
@@ -919,6 +890,14 @@ __PLAYER_RUNTIME_PLACEHOLDER__
           }
         }
         return null;
+      }
+
+      function sanitizeUrlForCss(value) {
+        return String(value)
+          .replace(/\\/g, "\\\\")
+          .replace(/"/g, '\\"')
+          .replace(/\(/g, "\\(")
+          .replace(/\)/g, "\\)");
       }
 
       function pauseBackgroundMusic() {

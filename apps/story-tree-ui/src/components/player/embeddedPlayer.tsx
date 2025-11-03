@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
 import type { BranchChoice, ShotNode, StoryBundle } from "../../../../../agent-backend/src/bundle/types.js";
 import {
   createPlayerController,
@@ -10,7 +11,6 @@ import {
 
 type PlayerViewState = {
   stage: PlayerStage;
-  showStartScreen: boolean;
   currentSceneletId: string | null;
   currentShot: ShotNode | null;
   isPaused: boolean;
@@ -26,10 +26,9 @@ type EmbeddedPlayerProps = {
 
 const INITIAL_VIEW_STATE: PlayerViewState = {
   stage: "idle",
-  showStartScreen: true,
   currentSceneletId: null,
   currentShot: null,
-  isPaused: false,
+  isPaused: true,
   choices: null,
   choicePrompt: null,
   reachedTerminal: false,
@@ -88,6 +87,15 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     return shot?.imagePath ?? null;
   }, [bundle.rootSceneletId, sceneletLookup]);
 
+  const initialShot = useMemo(() => {
+    const root = sceneletLookup.get(bundle.rootSceneletId);
+    if (!root) {
+      return null;
+    }
+    const shotWithImage = root.shots.find((entry) => entry.imagePath);
+    return (shotWithImage as ShotNode | undefined) ?? root.shots[0] ?? null;
+  }, [bundle.rootSceneletId, sceneletLookup]);
+
   const getChoicePreviewImage = useCallback(
     (sceneletId: string) => {
       const target = sceneletLookup.get(sceneletId);
@@ -104,12 +112,16 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     const controller = createPlayerController(bundle);
     controllerRef.current = controller;
     const subscriptions = createRuntimeSubscriptions(controller);
-
+    setViewState({
+      ...INITIAL_VIEW_STATE,
+      currentSceneletId: bundle.rootSceneletId ?? null,
+      currentShot: initialShot,
+    });
     return () => {
       subscriptions.forEach((unsubscribe) => unsubscribe());
       controllerRef.current = null;
     };
-  }, [bundle]);
+  }, [bundle, initialShot]);
 
   useEffect(() => {
     const audio = shotAudioRef.current;
@@ -275,24 +287,14 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
     audioShouldResumeRef.current = false;
   }
 
-  function handleStartPlayback() {
-    setViewState((prev) => ({
-      ...prev,
-      showStartScreen: false,
-      reachedTerminal: false,
-      reachedIncomplete: false,
-    }));
-    controllerRef.current?.start();
-  }
-
   function handleRestartPlayback() {
     setViewState((prev) => ({
       ...prev,
-      showStartScreen: false,
       reachedTerminal: false,
       reachedIncomplete: false,
       choices: null,
       choicePrompt: null,
+      isPaused: false,
     }));
     stopShotAudio();
     controllerRef.current?.restart();
@@ -304,7 +306,15 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
       return;
     }
     const { stage, isPaused } = controller.getState();
-    if (stage === "choice" || stage === "terminal" || stage === "incomplete" || stage === "idle") {
+    if (stage === "idle") {
+      controller.start();
+      setViewState((prev) => ({
+        ...prev,
+        isPaused: false,
+      }));
+      return;
+    }
+    if (stage === "choice" || stage === "terminal" || stage === "incomplete") {
       return;
     }
     if (isPaused) {
@@ -509,84 +519,25 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
 
   return (
     <div className="relative flex w-full flex-col gap-6">
-      {viewState.showStartScreen ? (
-        <StartScreen title={title} imagePath={startVisualImage} onStart={handleStartPlayback} />
-      ) : (
-        <PlayerSurface
-          title={title}
-          shot={viewState.currentShot}
-          isPaused={viewState.isPaused}
-          onTogglePause={handleTogglePause}
-          onRestart={handleRestartPlayback}
-          showChoiceOverlay={showChoiceOverlay}
-          choicePrompt={viewState.choicePrompt}
-          choices={viewState.choices}
-          onChoiceSelect={handleChoiceSelect}
-          showTerminalOverlay={showTerminalOverlay}
-          showIncompleteOverlay={showIncompleteOverlay}
-          getChoicePreviewImage={getChoicePreviewImage}
-        />
-      )}
+      <PlayerSurface
+        title={title}
+        shot={viewState.currentShot}
+        isPaused={viewState.isPaused}
+        onTogglePause={handleTogglePause}
+        onRestart={handleRestartPlayback}
+        showChoiceOverlay={showChoiceOverlay}
+        choicePrompt={viewState.choicePrompt}
+        choices={viewState.choices}
+        onChoiceSelect={handleChoiceSelect}
+        showTerminalOverlay={showTerminalOverlay}
+        showIncompleteOverlay={showIncompleteOverlay}
+        getChoicePreviewImage={getChoicePreviewImage}
+        startImage={startVisualImage}
+        stage={viewState.stage}
+      />
       <audio ref={shotAudioRef} preload="auto" />
       <audio ref={musicPrimaryRef} preload="auto" loop />
       <audio ref={musicSecondaryRef} preload="auto" loop />
-    </div>
-  );
-}
-
-type StartScreenProps = {
-  title: string;
-  imagePath: string | null;
-  onStart: () => void;
-};
-
-function StartScreen({ title, imagePath, onStart }: StartScreenProps) {
-  return (
-    <div className="relative flex min-h-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-surface">
-      <header className="flex items-center justify-between border-b border-border/60 bg-surface px-6 py-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Interactive Story</p>
-          <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
-        </div>
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
-          Ready to begin
-        </span>
-      </header>
-      <main className="relative flex flex-1 items-center justify-center bg-page">
-        {imagePath ? (
-          <Fragment>
-            <div className="absolute inset-0 -z-10 overflow-hidden bg-page">
-              <img
-                src={imagePath}
-                alt=""
-                aria-hidden="true"
-                className="h-full w-full select-none object-cover opacity-80 blur-3xl pointer-events-none scale-110"
-                draggable={false}
-              />
-            </div>
-            <div
-              className="absolute inset-0 -z-10 bg-gradient-to-b from-surface/40 via-surface/70 to-surface"
-              aria-hidden="true"
-            />
-          </Fragment>
-        ) : (
-          <div className="absolute inset-0 -z-10 bg-surface" aria-hidden="true" />
-        )}
-        <div className="relative flex flex-col items-center gap-4 rounded-2xl bg-surface/90 px-10 py-8 text-center backdrop-blur">
-          <button
-            type="button"
-            onClick={onStart}
-            className="rounded-full border border-highlight bg-highlight px-10 py-3 text-sm font-semibold text-highlight-foreground transition hover:bg-highlight/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
-          >
-            Start Story
-          </button>
-        </div>
-      </main>
-      <footer className="flex items-center justify-end border-t border-border/60 bg-surface px-6 py-4">
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
-          Awaiting playback
-        </span>
-      </footer>
     </div>
   );
 }
@@ -604,6 +555,8 @@ type PlayerSurfaceProps = {
   showTerminalOverlay: boolean;
   showIncompleteOverlay: boolean;
   getChoicePreviewImage: (sceneletId: string) => string | null;
+  startImage: string | null;
+  stage: PlayerStage;
 };
 
 function PlayerSurface({
@@ -619,7 +572,14 @@ function PlayerSurface({
   showTerminalOverlay,
   showIncompleteOverlay,
   getChoicePreviewImage,
+  startImage,
+  stage,
 }: PlayerSurfaceProps) {
+  const VisualIcon = isPaused ? PlayIcon : PauseIcon;
+  const displayImage = shot?.imagePath ?? startImage ?? null;
+  const disablePlayToggle =
+    showChoiceOverlay || showTerminalOverlay || showIncompleteOverlay || !displayImage;
+
   return (
     <div className="relative flex min-h-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-surface">
       <header className="flex items-center justify-between border-b border-border/60 bg-surface px-6 py-4">
@@ -630,15 +590,18 @@ function PlayerSurface({
         <button
           type="button"
           onClick={onTogglePause}
-          className="rounded-full border border-border px-6 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary transition hover:bg-surface-muted/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary transition hover:bg-page focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label={isPaused ? "Play story" : "Pause story"}
+          disabled={disablePlayToggle}
         >
-          {isPaused ? "Play" : "Pause"}
+          <VisualIcon className="h-4 w-4" aria-hidden="true" />
+          <span>{isPaused ? "Play" : "Pause"}</span>
         </button>
       </header>
       <main className="relative flex flex-1 justify-center bg-page">
-        {shot?.imagePath ? (
+        {displayImage ? (
           <img
-            src={shot.imagePath}
+            src={displayImage}
             alt="Current story shot"
             className="h-full w-full object-contain"
             draggable={false}
