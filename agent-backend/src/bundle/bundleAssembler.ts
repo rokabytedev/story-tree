@@ -282,12 +282,70 @@ export function buildManifestFromShotMap(
   return manifest;
 }
 
+export function buildEmbeddedManifest(
+  shotsByScenelet: Record<string, ShotRecord[]>,
+  logger?: BundleLogger
+): AssetManifest {
+  const manifest: AssetManifest = new Map();
+
+  for (const [sceneletId, shots] of Object.entries(shotsByScenelet)) {
+    if (!Array.isArray(shots) || shots.length === 0) {
+      continue;
+    }
+
+    const shotMap: SceneletShotAssetMap = new Map();
+
+    for (const shot of shots) {
+      const imagePath = normalizeGeneratedAssetPath(shot.keyFrameImagePath);
+      const audioPath = hasPlayableAudioPath(shot.audioFilePath)
+        ? normalizeGeneratedAssetPath(shot.audioFilePath)
+        : null;
+
+      if (!imagePath && !audioPath) {
+        continue;
+      }
+
+      shotMap.set(shot.shotIndex, { imagePath, audioPath });
+    }
+
+    if (shotMap.size > 0) {
+      manifest.set(sceneletId, shotMap);
+    } else {
+      logger?.warn?.('Scenelet skipped due to missing embedded assets', { sceneletId });
+    }
+  }
+
+  return manifest;
+}
+
 function hasPlayableAudioPath(path?: string | null): boolean {
   const trimmed = path?.trim?.();
   if (!trimmed) {
     return false;
   }
   return trimmed.toUpperCase() !== SKIPPED_AUDIO_PLACEHOLDER;
+}
+
+function normalizeGeneratedAssetPath(raw?: string | null): string | null {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (!value) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const withoutRelativePrefix = value.replace(/^\.\//, '').replace(/^\//, '');
+  if (withoutRelativePrefix.startsWith('generated/')) {
+    return `/${withoutRelativePrefix}`;
+  }
+
+  if (value.startsWith('/generated/')) {
+    return value;
+  }
+
+  return `/generated/${withoutRelativePrefix}`;
 }
 
 function buildChildrenMap(scenelets: SceneletRecord[]): Map<string, SceneletRecord[]> {

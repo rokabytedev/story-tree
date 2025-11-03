@@ -9,6 +9,8 @@ import type {
   PlayerBundleTaskOptions,
   PlayerBundleTaskResult,
 } from './types.js';
+import { writePlayerRuntimeModule } from '../player/runtime/compiler.js';
+import { writePlayerThemeStyles } from '../player/theme.js';
 
 const DEFAULT_OUTPUT_ROOT = path.resolve(process.cwd(), 'output/stories');
 const DEFAULT_TEMPLATE_PATH = path.resolve(
@@ -127,6 +129,8 @@ export async function runPlayerBundleTask(
 
   const storyJsonPath = path.join(storyOutputDir, 'story.json');
   await fsAdapter.writeFile(storyJsonPath, JSON.stringify(bundle, null, 2), 'utf-8');
+  await writePlayerRuntimeModule(storyOutputDir);
+  await writePlayerThemeStyles(storyOutputDir);
 
   logger?.debug?.('Player bundle generated', {
     storyId: trimmedStoryId,

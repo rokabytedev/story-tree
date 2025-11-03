@@ -12,14 +12,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Story Tree Player</title>
+    <link rel="stylesheet" href="./player-theme.css" />
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #0f1117;
-        --panel: rgba(18, 21, 28, 0.92);
-        --accent: #58a6ff;
-        --text: #f5f6fb;
-        --muted: #9aa0b5;
+        color-scheme: light;
+        --bg: var(--color-page);
+        --panel: var(--color-surface);
+        --accent: var(--color-highlight);
+        --text: var(--color-text-primary);
+        --muted: var(--color-text-muted);
         --danger: #ff6b6b;
       }
 
@@ -29,8 +30,8 @@
 
       body {
         margin: 0;
-        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background: radial-gradient(circle at 25% 25%, #1b2334, #090b12 65%);
+        font-family: var(--font-sans-stack, "Inter", "Helvetica Neue", Arial, sans-serif);
+        background: radial-gradient(circle at 25% 25%, var(--color-surface-elevated), var(--color-surface) 65%);
         color: var(--text);
         min-height: 100vh;
         display: flex;
@@ -384,997 +385,610 @@
         <audio id="music-secondary" preload="auto" loop></audio>
       </div>
     </div>
-    <script>
-      (() => {
-        const RAMP_UP_MS = 500;
-        const RAMP_DOWN_MS = 500;
-        const NO_AUDIO_HOLD_MS = 3000;
-        const MUSIC_VOLUME = 0.25;
-        const MUSIC_CROSSFADE_MS = 500;
-        const MUSIC_FADE_INTERVAL_MS = 50;
+        <script type="module">
+      import { createPlayerController } from "./player-runtime.js";
 
-        const elements = {
-          error: document.getElementById('error-panel'),
-          startScreen: document.getElementById('start-screen'),
-          startVisual: document.getElementById('start-visual'),
-          startTitle: document.getElementById('start-title'),
-          startButton: document.getElementById('start-button'),
-          playerScreen: document.getElementById('player-screen'),
-          storyTitle: document.getElementById('story-title'),
-          shotImage: document.getElementById('shot-image'),
-          imagePlaceholder: document.getElementById('image-placeholder'),
-          playPauseButton: document.getElementById('play-pause-button'),
-          audio: document.getElementById('shot-audio'),
-          musicPrimary: document.getElementById('music-primary'),
-          musicSecondary: document.getElementById('music-secondary'),
-          choiceOverlay: document.getElementById('choice-overlay'),
-          choicePrompt: document.getElementById('choice-prompt'),
-          choiceOptions: document.getElementById('choice-options'),
-          terminalOverlay: document.getElementById('terminal-overlay'),
-          restartButton: document.getElementById('restart-button'),
-          incompleteOverlay: document.getElementById('incomplete-overlay'),
-        };
+      const MUSIC_VOLUME = 0.25;
+      const MUSIC_CROSSFADE_MS = 500;
+      const MUSIC_FADE_INTERVAL_MS = 50;
 
-        const state = {
-          story: null,
-          scenelets: new Map(),
-          currentSceneletId: null,
-          currentShotIndex: 0,
-          isPaused: false,
-          stage: 'idle',
-          currentTimer: null,
-          pendingAction: null,
-          audioWasPlaying: false,
-          initialAudioUnlockPending: false,
-          music: createMusicState(),
-        };
+      const elements = {
+        root: document.getElementById("player-root"),
+        error: document.getElementById("error-panel"),
+        startScreen: document.getElementById("start-screen"),
+        startVisual: document.getElementById("start-visual"),
+        startTitle: document.getElementById("start-title"),
+        startButton: document.getElementById("start-button"),
+        playerScreen: document.getElementById("player-screen"),
+        storyTitle: document.getElementById("story-title"),
+        shotImage: document.getElementById("shot-image"),
+        imagePlaceholder: document.getElementById("image-placeholder"),
+        playPauseButton: document.getElementById("play-pause-button"),
+        choiceOverlay: document.getElementById("choice-overlay"),
+        choicePrompt: document.getElementById("choice-prompt"),
+        choiceOptions: document.getElementById("choice-options"),
+        terminalOverlay: document.getElementById("terminal-overlay"),
+        restartButton: document.getElementById("restart-button"),
+        incompleteOverlay: document.getElementById("incomplete-overlay"),
+        audio: document.getElementById("shot-audio"),
+        musicPrimary: document.getElementById("music-primary"),
+        musicSecondary: document.getElementById("music-secondary"),
+      };
 
-        document.addEventListener('DOMContentLoaded', initialize);
+      const state = {
+        controller: null,
+        audioShouldResume: false,
+        currentStage: "idle",
+      };
 
-        function createMusicState() {
-          return {
-            cuesByName: new Map(),
-            sceneletCueMap: new Map(),
-            activeElement: null,
-            currentCue: null,
-            pendingCue: null,
-            pendingElement: null,
-            fadeTimer: null,
-            failedCues: new Set(),
-            pausedElements: [],
-          };
+      let sceneletLookup = new Map();
+      const failedCues = new Set();
+
+      const musicState = {
+        activeElement: null,
+        pendingElement: null,
+        fadeTimer: null,
+        pendingCue: null,
+        pausedElements: [],
+        currentCue: null,
+      };
+
+      initialize();
+
+      function initialize() {
+        const storyDataElement = document.getElementById("story-data");
+        const rawStoryData = storyDataElement?.textContent ?? "";
+        if (!rawStoryData.trim()) {
+          showError("Embedded story data is missing. Rebuild the bundle and try again.");
+          return;
         }
 
-        async function initialize() {
-          elements.startScreen.classList.add('hidden');
-          elements.playerScreen.classList.add('hidden');
-          elements.playPauseButton.disabled = true;
+        let story;
+        try {
+          story = JSON.parse(rawStoryData);
+        } catch {
+          showError("Story JSON is not valid.");
+          return;
+        }
 
-          elements.startButton.addEventListener('click', () => {
-            elements.error.classList.add('hidden');
-            hideAllOverlays();
-            beginPlayback();
+        storyDataElement?.remove();
+        sceneletLookup = buildSceneletLookup(story);
+
+        let controller;
+        try {
+          controller = createPlayerController(story);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          showError(`Failed to load embedded story data.\n${message}`);
+          return;
+        }
+
+        state.controller = controller;
+        wireControllerEvents(controller);
+        setupStaticUi(story);
+        showStartScreen();
+
+        elements.startButton.addEventListener("click", () => {
+          if (!state.controller) {
+            return;
+          }
+          clearError();
+          hideAllOverlays();
+          showPlayerScreen();
+          state.controller.start();
+        });
+
+        elements.playPauseButton.addEventListener("click", () => {
+          if (!state.controller) {
+            return;
+          }
+          if (
+            state.currentStage === "idle" ||
+            state.currentStage === "choice" ||
+            state.currentStage === "terminal" ||
+            state.currentStage === "incomplete"
+          ) {
+            return;
+          }
+          const { isPaused } = state.controller.getState();
+          if (isPaused) {
+            state.controller.resume();
+          } else {
+            state.controller.pause();
+          }
+        });
+
+        elements.restartButton.addEventListener("click", () => {
+          if (!state.controller) {
+            return;
+          }
+          hideAllOverlays();
+          showPlayerScreen();
+          state.controller.restart();
+        });
+
+        elements.audio.addEventListener("ended", () => {
+          state.controller?.notifyShotAudioComplete();
+        });
+
+        elements.audio.addEventListener("error", () => {
+          state.controller?.notifyShotAudioError();
+        });
+
+        [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
+          if (!element) {
+            return;
+          }
+          element.volume = 0;
+          element.loop = true;
+          element.addEventListener("error", () => {
+            const cueName = element.dataset?.cueName ?? "";
+            if (cueName) {
+              failedCues.add(cueName);
+            }
+            fadeOutMusic(true);
           });
-          elements.playPauseButton.addEventListener('click', togglePause);
-          elements.restartButton.addEventListener('click', resetToStart);
-          elements.audio.addEventListener('ended', onShotAudioComplete);
-          elements.audio.addEventListener('error', onAudioError);
+        });
+      }
 
-          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
-            if (!element) {
+      function wireControllerEvents(controller) {
+        controller.subscribe("story-ready", (event) => {
+          const title = event.metadata?.title?.trim?.() || "Untitled Story";
+          elements.startTitle.textContent = title;
+          elements.storyTitle.textContent = title;
+        });
+
+        controller.subscribe("stage-change", ({ stage }) => {
+          state.currentStage = stage;
+          if (stage !== "choice") {
+            elements.choiceOverlay.classList.add("hidden");
+          }
+          if (stage !== "terminal") {
+            elements.terminalOverlay.classList.add("hidden");
+          }
+          if (stage !== "incomplete") {
+            elements.incompleteOverlay.classList.add("hidden");
+          }
+          updatePlayPauseButton();
+        });
+
+        controller.subscribe("scenelet-enter", () => {
+          hideAllOverlays();
+        });
+
+        controller.subscribe("shot-enter", ({ shot }) => {
+          hideAllOverlays();
+          updateShotImage(shot);
+        });
+
+        controller.subscribe("audio-start", ({ audioPath, requiresUserInteraction }) => {
+          playShotAudio(audioPath, requiresUserInteraction);
+        });
+
+        controller.subscribe("audio-missing", stopShotAudio);
+
+        controller.subscribe("branch", (event) => {
+          renderBranchChoices(event);
+        });
+
+        controller.subscribe("terminal", () => {
+          elements.terminalOverlay.classList.remove("hidden");
+          stopShotAudio();
+          fadeOutMusic();
+          updatePlayPauseButton();
+        });
+
+        controller.subscribe("incomplete", () => {
+          elements.incompleteOverlay.classList.remove("hidden");
+          stopShotAudio();
+          fadeOutMusic();
+          updatePlayPauseButton();
+        });
+
+        controller.subscribe("pause-change", ({ isPaused }) => {
+          if (isPaused) {
+            if (!elements.audio.paused && !elements.audio.ended && elements.audio.currentTime > 0) {
+              state.audioShouldResume = true;
+              elements.audio.pause();
+            } else {
+              state.audioShouldResume = false;
+            }
+            pauseBackgroundMusic();
+          } else {
+            if (state.audioShouldResume) {
+              state.audioShouldResume = false;
+              elements.audio.play().catch(() => controller.notifyShotAudioError());
+            }
+            resumeBackgroundMusic();
+          }
+          updatePlayPauseButton();
+        });
+
+        controller.subscribe("music-change", ({ cueName, audioPath }) => {
+          if (!audioPath || !cueName) {
+            fadeOutMusic();
+            return;
+          }
+          if (failedCues.has(cueName)) {
+            return;
+          }
+          crossfadeToCue(cueName, audioPath);
+        });
+      }
+
+      function setupStaticUi(story) {
+        const title = story?.metadata?.title?.trim?.() || "Untitled Story";
+        elements.startTitle.textContent = title;
+        elements.storyTitle.textContent = title;
+        updateStartVisual(story);
+      }
+
+      function buildSceneletLookup(story) {
+        const map = new Map();
+        if (!story || !Array.isArray(story.scenelets)) {
+          return map;
+        }
+        for (const scenelet of story.scenelets) {
+          if (scenelet && typeof scenelet.id === "string") {
+            map.set(scenelet.id, scenelet);
+          }
+        }
+        return map;
+      }
+
+      function showStartScreen() {
+        stopShotAudio();
+        fadeOutMusic(true);
+        hideAllOverlays();
+        elements.playerScreen.classList.add("hidden");
+        elements.startScreen.classList.remove("hidden");
+        state.currentStage = "idle";
+        updatePlayPauseButton();
+      }
+
+      function showPlayerScreen() {
+        elements.startScreen.classList.add("hidden");
+        elements.playerScreen.classList.remove("hidden");
+      }
+
+      function clearError() {
+        elements.error.textContent = "";
+        elements.error.classList.add("hidden");
+      }
+
+      function showError(message) {
+        stopShotAudio();
+        fadeOutMusic(true);
+        elements.playerScreen.classList.add("hidden");
+        elements.startScreen.classList.add("hidden");
+        elements.error.textContent = message;
+        elements.error.classList.remove("hidden");
+      }
+
+      function hideAllOverlays() {
+        elements.choiceOverlay.classList.add("hidden");
+        elements.terminalOverlay.classList.add("hidden");
+        elements.incompleteOverlay.classList.add("hidden");
+      }
+
+      function updateShotImage(shot) {
+        if (shot?.imagePath) {
+          elements.shotImage.src = shot.imagePath;
+          elements.shotImage.classList.remove("hidden");
+          elements.imagePlaceholder.classList.add("hidden");
+        } else {
+          elements.shotImage.src = "";
+          elements.shotImage.classList.add("hidden");
+          elements.imagePlaceholder.classList.remove("hidden");
+        }
+      }
+
+      function playShotAudio(audioPath, requiresUserInteraction) {
+        elements.audio.pause();
+        elements.audio.src = audioPath;
+        elements.audio.currentTime = 0;
+        state.audioShouldResume = false;
+        const playPromise = elements.audio.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch((error) => {
+            console.warn("Shot audio failed to play.", { error });
+            if (requiresUserInteraction) {
+              state.controller?.notifyShotAudioError();
+            }
+          });
+        }
+      }
+
+      function stopShotAudio() {
+        elements.audio.pause();
+        if (elements.audio.hasAttribute("src")) {
+          elements.audio.removeAttribute("src");
+          elements.audio.load();
+        }
+        state.audioShouldResume = false;
+      }
+
+      function renderBranchChoices(event) {
+        elements.choicePrompt.textContent = event.prompt;
+        elements.choiceOptions.innerHTML = "";
+
+        for (const choice of event.choices) {
+          const button = document.createElement("button");
+          button.type = "button";
+
+          const preview = findPreviewImage(choice.sceneletId);
+          if (preview) {
+            const img = document.createElement("img");
+            img.src = preview;
+            img.alt = choice.label;
+            button.appendChild(img);
+          } else {
+            const placeholder = document.createElement("div");
+            placeholder.className = "thumbnail-placeholder";
+            placeholder.textContent = "Preview unavailable";
+            button.appendChild(placeholder);
+          }
+
+          const label = document.createElement("span");
+          label.textContent = choice.label;
+          button.appendChild(label);
+
+          button.addEventListener("click", () => {
+            if (!state.controller) {
               return;
             }
-            element.volume = 0;
-            element.loop = true;
-            element.addEventListener('error', () => onMusicPlaybackError(element));
+            elements.choiceOverlay.classList.add("hidden");
+            state.controller.chooseBranch(choice.sceneletId);
           });
 
-          const storyDataElement = document.getElementById('story-data');
-          const rawStoryData = storyDataElement?.textContent ?? '';
-          if (!rawStoryData.trim()) {
-            showError('Embedded story data is missing. Rebuild the bundle and try again.');
-            return;
-          }
-
-          try {
-            const story = loadEmbeddedStory(rawStoryData);
-            storyDataElement?.remove();
-            prepareStory(story);
-            showStartScreen();
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            showError(`Failed to load embedded story data.\n${message}`);
-          }
+          elements.choiceOptions.appendChild(button);
         }
 
-        function loadEmbeddedStory(rawData) {
-          if (!rawData || !rawData.trim()) {
-            throw new Error('Story JSON is empty.');
-          }
+        elements.choiceOverlay.classList.remove("hidden");
+      }
 
-          let parsed;
-          try {
-            parsed = JSON.parse(rawData);
-          } catch (error) {
-            throw new Error('Story JSON is not valid.');
-          }
-
-          return validateStoryData(parsed);
-        }
-
-        function validateStoryData(data) {
-          if (!data || typeof data !== 'object') {
-            throw new Error('Story JSON must contain an object.');
-          }
-
-          const metadata = data.metadata;
-          if (!metadata || typeof metadata !== 'object') {
-            throw new Error('Story JSON missing metadata block.');
-          }
-
-          const title = typeof metadata.title === 'string' && metadata.title.trim()
-            ? metadata.title.trim()
-            : 'Untitled Story';
-
-          const rootId = typeof data.rootSceneletId === 'string' && data.rootSceneletId.trim()
-            ? data.rootSceneletId.trim()
-            : null;
-          if (!rootId) {
-            throw new Error('Story JSON missing rootSceneletId.');
-          }
-
-          if (!Array.isArray(data.scenelets) || data.scenelets.length === 0) {
-            throw new Error('Story JSON missing scenelets array.');
-          }
-
-          const scenelets = new Map();
-          for (const entry of data.scenelets) {
-            if (!entry || typeof entry !== 'object') {
-              throw new Error('Each scenelet must be an object.');
-            }
-            const sceneletId = typeof entry.id === 'string' && entry.id.trim()
-              ? entry.id.trim()
-              : null;
-            if (!sceneletId) {
-              throw new Error('Scenelet missing id field.');
-            }
-            if (scenelets.has(sceneletId)) {
-              throw new Error(`Duplicate scenelet id detected: ${sceneletId}`);
-            }
-
-            const description = typeof entry.description === 'string'
-              ? entry.description
-              : typeof entry.description === 'object' && entry.description !== null
-                ? JSON.stringify(entry.description)
-                : '';
-
-            if (!Array.isArray(entry.shots) || entry.shots.length === 0) {
-              throw new Error(`Scenelet ${sceneletId} is missing playable shots.`);
-            }
-
-            const normalizedShots = entry.shots
-              .map((shot) => {
-                if (!shot || typeof shot !== 'object') {
-                  throw new Error(`Scenelet ${sceneletId} contains an invalid shot.`);
-                }
-                if (!Number.isInteger(shot.shotIndex)) {
-                  throw new Error(`Scenelet ${sceneletId} shot is missing shotIndex.`);
-                }
-                return {
-                  shotIndex: shot.shotIndex,
-                  imagePath: typeof shot.imagePath === 'string' ? shot.imagePath : null,
-                  audioPath: typeof shot.audioPath === 'string' ? shot.audioPath : null,
-                };
-              })
-              .sort((a, b) => a.shotIndex - b.shotIndex);
-
-            const next = normalizeNext(entry.next);
-
-            scenelets.set(sceneletId, {
-              id: sceneletId,
-              description,
-              shots: normalizedShots,
-              next,
-            });
-          }
-
-          if (!scenelets.has(rootId)) {
-            throw new Error(`Story root scenelet ${rootId} does not exist in scenelets array.`);
-          }
-
-          for (const scenelet of scenelets.values()) {
-            if (scenelet.next.type === 'linear' && scenelet.next.sceneletId) {
-              if (!scenelets.has(scenelet.next.sceneletId)) {
-                throw new Error(
-                  `Scenelet ${scenelet.id} references missing scenelet ${scenelet.next.sceneletId}.`
-                );
-              }
-            }
-            if (scenelet.next.type === 'branch') {
-              for (const choice of scenelet.next.choices) {
-                if (!scenelets.has(choice.sceneletId)) {
-                  throw new Error(
-                    `Scenelet ${scenelet.id} choice references missing scenelet ${choice.sceneletId}.`
-                  );
-                }
-              }
-            }
-          }
-
-          const music = normalizeMusicManifest(data.music, scenelets);
-
-          return {
-            metadata: {
-              title,
-              exportedAt: typeof metadata.exportedAt === 'string' ? metadata.exportedAt : '',
-              storyId: typeof metadata.storyId === 'string' ? metadata.storyId : '',
-            },
-            rootSceneletId: rootId,
-            scenelets,
-            music,
-          };
-        }
-
-        function normalizeNext(rawNext) {
-          if (!rawNext || typeof rawNext !== 'object') {
-            return { type: 'terminal' };
-          }
-
-          const type = typeof rawNext.type === 'string' ? rawNext.type : 'terminal';
-          switch (type) {
-            case 'linear': {
-              const targetId = typeof rawNext.sceneletId === 'string' ? rawNext.sceneletId.trim() : '';
-              if (!targetId) {
-                return { type: 'incomplete' };
-              }
-              return { type: 'linear', sceneletId: targetId };
-            }
-            case 'branch': {
-              const prompt = typeof rawNext.choicePrompt === 'string'
-                ? rawNext.choicePrompt.trim()
-                : '';
-              const choices = Array.isArray(rawNext.choices)
-                ? rawNext.choices
-                    .map((choice) => {
-                      if (!choice || typeof choice !== 'object') {
-                        return null;
-                      }
-                      const label = typeof choice.label === 'string' ? choice.label.trim() : '';
-                      const childId = typeof choice.sceneletId === 'string'
-                        ? choice.sceneletId.trim()
-                        : '';
-                      return label && childId ? { label, sceneletId: childId } : null;
-                    })
-                    .filter(Boolean)
-                : [];
-              if (!prompt || choices.length === 0) {
-                return { type: 'incomplete' };
-              }
-              return { type: 'branch', choicePrompt: prompt, choices };
-            }
-            case 'incomplete':
-              return { type: 'incomplete' };
-            default:
-              return { type: 'terminal' };
-          }
-        }
-
-        function normalizeMusicManifest(rawMusic, scenelets) {
-          const cuesByName = new Map();
-          const sceneletCueMap = new Map();
-
-          if (!rawMusic || typeof rawMusic !== 'object') {
-            return { cuesByName, sceneletCueMap };
-          }
-
-          const cueEntries = Array.isArray(rawMusic.cues) ? rawMusic.cues : [];
-          for (const entry of cueEntries) {
-            if (!entry || typeof entry !== 'object') {
-              console.warn('Skipping invalid music cue entry in story bundle.', entry);
-              continue;
-            }
-
-            const cueName = typeof entry.cueName === 'string' ? entry.cueName.trim() : '';
-            const audioPath = typeof entry.audioPath === 'string' ? entry.audioPath.trim() : '';
-            if (!cueName || !audioPath) {
-              console.warn('Music cue missing cueName or audioPath; skipping.', entry);
-              continue;
-            }
-
-            if (cuesByName.has(cueName)) {
-              console.warn('Duplicate music cue encountered; keeping first instance.', { cueName });
-              continue;
-            }
-
-            const rawSceneletIds = Array.isArray(entry.sceneletIds) ? entry.sceneletIds : [];
-            const sceneletIds = rawSceneletIds
-              .map((id) => (typeof id === 'string' ? id.trim() : ''))
-              .filter((id) => id && scenelets.has(id));
-
-            cuesByName.set(cueName, {
-              audioPath,
-              sceneletIds,
-            });
-          }
-
-          const mapping = rawMusic.sceneletCueMap;
-          if (mapping && typeof mapping === 'object') {
-            for (const [sceneletIdRaw, cueNameRaw] of Object.entries(mapping)) {
-              const sceneletId = typeof sceneletIdRaw === 'string' ? sceneletIdRaw.trim() : '';
-              if (!sceneletId) {
-                continue;
-              }
-              if (!scenelets.has(sceneletId)) {
-                console.warn('Music cue map references unknown scenelet.', { sceneletId });
-                continue;
-              }
-
-              const cueName = typeof cueNameRaw === 'string' ? cueNameRaw.trim() : '';
-              if (!cueName) {
-                continue;
-              }
-              if (!cuesByName.has(cueName)) {
-                console.warn('Music cue map references unknown cue.', { sceneletId, cueName });
-                continue;
-              }
-
-              sceneletCueMap.set(sceneletId, cueName);
-            }
-          }
-
-          return { cuesByName, sceneletCueMap };
-        }
-
-        function prepareStory(story) {
-          state.story = story;
-          state.scenelets = story.scenelets;
-          document.title = `${story.metadata.title} · Story Player`;
-          elements.startTitle.textContent = story.metadata.title;
-          elements.storyTitle.textContent = story.metadata.title;
-          updateStartScreenVisual(story);
-          initializeMusicState(story.music);
-        }
-
-        function initializeMusicState(musicManifest) {
-          const target = state.music;
-          target.cuesByName = musicManifest?.cuesByName instanceof Map
-            ? musicManifest.cuesByName
-            : new Map();
-          target.sceneletCueMap = musicManifest?.sceneletCueMap instanceof Map
-            ? musicManifest.sceneletCueMap
-            : new Map();
-          target.currentCue = null;
-          target.pendingCue = null;
-          target.pendingElement = null;
-          target.activeElement = null;
-          target.failedCues = new Set();
-          target.pausedElements = [];
-          clearMusicFadeTimer();
-          if (elements.musicPrimary) {
-            clearMusicElement(elements.musicPrimary);
-          }
-          if (elements.musicSecondary) {
-            clearMusicElement(elements.musicSecondary);
-          }
-        }
-
-        function sanitizeUrlForCss(path) {
-          return String(path).replace(/(["'\\)])/g, '\\$1');
-        }
-
-        function updateStartScreenVisual(story) {
-          if (!elements.startVisual || !elements.startScreen) {
-            return;
-          }
-
-          const rootScenelet = story.scenelets.get(story.rootSceneletId);
-          const imagePath =
-            rootScenelet?.shots?.find(
-              (shot) => typeof shot.imagePath === 'string' && shot.imagePath
-            )?.imagePath ?? null;
-
-          if (imagePath) {
-            const sanitized = sanitizeUrlForCss(imagePath);
-            elements.startVisual.style.setProperty('--start-image', `url("${sanitized}")`);
-            elements.startVisual.classList.remove('hidden');
-            elements.startScreen.classList.add('has-visual');
-          } else {
-            elements.startVisual.classList.add('hidden');
-            elements.startScreen.classList.remove('has-visual');
-            elements.startVisual.style.removeProperty('--start-image');
-          }
-        }
-
-        function showStartScreen() {
-          hideAllOverlays();
-          elements.error.classList.add('hidden');
-          elements.playerScreen.classList.add('hidden');
-          elements.startScreen.classList.remove('hidden');
+      function updatePlayPauseButton() {
+        if (!state.controller) {
           elements.playPauseButton.disabled = true;
-          elements.playPauseButton.textContent = 'Pause';
-          setStage('idle');
+          elements.playPauseButton.textContent = "Pause";
+          return;
         }
+        const { isPaused } = state.controller.getState();
+        const shouldDisable =
+          state.currentStage === "idle" ||
+          state.currentStage === "choice" ||
+          state.currentStage === "terminal" ||
+          state.currentStage === "incomplete";
+        elements.playPauseButton.disabled = shouldDisable;
+        elements.playPauseButton.textContent = isPaused ? "Play" : "Pause";
+      }
 
-        function beginPlayback() {
-          if (!state.story) {
-            return;
+      function updateStartVisual(story) {
+        const imagePath = findOpeningShotImage(story);
+        if (imagePath) {
+          const sanitized = sanitizeUrlForCss(imagePath);
+          elements.startVisual.style.setProperty("--start-image", `url("${sanitized}")`);
+          elements.startVisual.classList.remove("hidden");
+          elements.startScreen.classList.add("has-visual");
+        } else {
+          elements.startVisual.classList.add("hidden");
+          elements.startScreen.classList.remove("has-visual");
+          elements.startVisual.style.removeProperty("--start-image");
+        }
+      }
+
+      function findOpeningShotImage(story) {
+        if (!story || !Array.isArray(story.scenelets)) {
+          return null;
+        }
+        const root =
+          story.scenelets.find((scenelet) => scenelet?.id === story.rootSceneletId) ??
+          story.scenelets[0];
+        if (!root || !Array.isArray(root.shots)) {
+          return null;
+        }
+        for (const shot of root.shots) {
+          if (shot && typeof shot.imagePath === "string" && shot.imagePath.trim()) {
+            return shot.imagePath;
           }
-          resetPlaybackState();
-          elements.startScreen.classList.add('hidden');
-          elements.playerScreen.classList.remove('hidden');
-          elements.playPauseButton.disabled = false;
-          state.initialAudioUnlockPending = true;
-          setStage('ramp-up');
-          playScenelet(state.story.rootSceneletId);
         }
+        return null;
+      }
 
-        function resetPlaybackState() {
-          clearCurrentTimer();
-          state.pendingAction = null;
-          state.currentSceneletId = null;
-          state.currentShotIndex = 0;
-          state.isPaused = false;
-          state.stage = 'idle';
-          state.audioWasPlaying = false;
-          state.initialAudioUnlockPending = false;
-          elements.audio.pause();
-          elements.audio.src = '';
-          stopMusicPlayback();
-          hideAllOverlays();
-          updateControls();
+      function findPreviewImage(sceneletId) {
+        const scenelet = sceneletLookup.get(sceneletId);
+        if (!scenelet || !Array.isArray(scenelet.shots)) {
+          return null;
         }
-
-        function resetToStart() {
-          resetPlaybackState();
-          showStartScreen();
-        }
-
-        function playScenelet(sceneletId) {
-          hideAllOverlays();
-          const scenelet = state.scenelets.get(sceneletId);
-          if (!scenelet) {
-            showError(`Scenelet ${sceneletId} is missing from story data.`);
-            return;
+        for (const shot of scenelet.shots) {
+          if (shot && typeof shot.imagePath === "string" && shot.imagePath.trim()) {
+            return shot.imagePath;
           }
-          state.currentSceneletId = sceneletId;
-          state.currentShotIndex = 0;
-          displayShot(scenelet, scenelet.shots[0]);
         }
+        return null;
+      }
 
-        function displayShot(scenelet, shot) {
-          state.currentSceneletId = scenelet.id;
-          ensureBackgroundMusicForScenelet(scenelet.id);
-          const shotIndex = scenelet.shots.indexOf(shot);
-          state.currentShotIndex = shotIndex;
-          setStage('ramp-up');
-          state.isPaused = false;
-          updateControls();
+      function sanitizeUrlForCss(value) {
+        return String(value)
+          .replace(/\\/g, "\\\\")
+          .replace(/"/g, "\\\"")
+          .replace(/\(/g, "\\(")
+          .replace(/\)/g, "\\)");
+      }
 
-          if (shot.imagePath) {
-            elements.shotImage.src = shot.imagePath;
-            elements.shotImage.classList.remove('hidden');
-            elements.imagePlaceholder.classList.add('hidden');
-          } else {
-            elements.shotImage.src = '';
-            elements.shotImage.classList.add('hidden');
-            elements.imagePlaceholder.classList.remove('hidden');
+      function pauseBackgroundMusic() {
+        musicState.pausedElements = [];
+        [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
+          if (element && !element.paused && element.currentTime > 0) {
+            element.pause();
+            musicState.pausedElements.push(element);
           }
+        });
+      }
 
-          if (shot.audioPath) {
-            if (state.initialAudioUnlockPending) {
-              state.initialAudioUnlockPending = false;
-              startAudioPlayback(shot.audioPath);
-            } else {
-              scheduleAction(() => startAudioPlayback(shot.audioPath), RAMP_UP_MS);
+      function resumeBackgroundMusic() {
+        const toResume = Array.isArray(musicState.pausedElements)
+          ? musicState.pausedElements
+          : [];
+        musicState.pausedElements = [];
+        toResume.forEach((element) => {
+          element.play().catch((error) => {
+            const cueName = element.dataset?.cueName ?? musicState.currentCue ?? "";
+            if (cueName) {
+              failedCues.add(cueName);
             }
-          } else {
-            scheduleAction(() => {
-              setStage('audio');
-              scheduleAction(() => onShotAudioComplete(), NO_AUDIO_HOLD_MS);
-            }, RAMP_UP_MS);
-          }
+            console.warn("Background music failed to resume after pause.", { cueName, error });
+            fadeOutMusic(true);
+          });
+        });
+      }
+
+      function crossfadeToCue(cueName, audioPath) {
+        const incoming = getInactiveMusicElement();
+        if (!incoming) {
+          console.warn("No audio element available for background music playback.");
+          return;
         }
 
-        function startAudioPlayback(path) {
-          if (state.isPaused) {
-            state.pendingAction = () => startAudioPlayback(path);
-            return;
-          }
+        clearMusicFadeTimer();
+        musicState.pendingCue = cueName;
+        musicState.pendingElement = incoming;
 
-          elements.audio.pause();
-          elements.audio.src = path;
-          elements.audio.currentTime = 0;
-          state.audioWasPlaying = true;
-          setStage('audio');
-          elements.audio.play().catch((error) => {
-            if (error && typeof error === 'object' && error.name === 'NotAllowedError') {
-              state.initialAudioUnlockPending = true;
+        resetMusicElement(incoming);
+        incoming.dataset.cueName = cueName;
+        incoming.src = audioPath;
+        incoming.currentTime = 0;
+        incoming.volume = 0;
+
+        const playPromise = incoming.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch((error) => {
+            console.warn("Unable to start background music cue.", { cueName, error });
+            failedCues.add(cueName);
+            if (musicState.pendingCue === cueName) {
+              musicState.pendingCue = null;
+              musicState.pendingElement = null;
             }
-            state.audioWasPlaying = false;
-            handleAudioPlaybackFallback();
+            fadeOutMusic(true);
           });
         }
 
-        function handleAudioPlaybackFallback() {
-          elements.audio.pause();
-          elements.audio.removeAttribute('src');
-          elements.audio.load();
-          setStage('audio');
-          scheduleAction(() => onShotAudioComplete(), NO_AUDIO_HOLD_MS);
-        }
-
-        function onShotAudioComplete() {
-          elements.audio.pause();
-          state.audioWasPlaying = false;
-          setStage('ramp-down');
-          scheduleAction(advanceAfterShot, RAMP_DOWN_MS);
-        }
-
-        function onAudioError() {
-          onShotAudioComplete();
-        }
-
-        function ensureBackgroundMusicForScenelet(sceneletId) {
-          const musicState = state.music;
-          const cueMap = musicState.sceneletCueMap instanceof Map
-            ? musicState.sceneletCueMap
-            : new Map();
-          const cuesByName = musicState.cuesByName instanceof Map
-            ? musicState.cuesByName
-            : new Map();
-
-          if (!cueMap.size || !cuesByName.size) {
-            if (musicState.currentCue || musicState.pendingCue) {
-              fadeOutMusic();
-            }
-            return;
-          }
-
-          const targetCue = cueMap.get(sceneletId) ?? null;
-          if (!targetCue) {
-            if (musicState.currentCue || musicState.pendingCue) {
-              fadeOutMusic();
-            }
-            return;
-          }
-
-          if (musicState.currentCue === targetCue || musicState.pendingCue === targetCue) {
-            return;
-          }
-
-          if (musicState.failedCues.has(targetCue)) {
-            console.warn('Skipping background music cue that previously failed to play.', {
-              cueName: targetCue,
-            });
-            if (musicState.currentCue && musicState.currentCue !== targetCue) {
-              fadeOutMusic();
-            }
-            return;
-          }
-
-          const cueEntry = cuesByName.get(targetCue);
-          if (!cueEntry) {
-            console.warn('Scenelet references unknown music cue.', {
-              sceneletId,
-              cueName: targetCue,
-            });
-            fadeOutMusic();
-            return;
-          }
-
-          const audioPath = typeof cueEntry.audioPath === 'string' ? cueEntry.audioPath.trim() : '';
-          if (!audioPath) {
-            console.warn('Music cue is missing an audioPath.', { cueName: targetCue });
-            fadeOutMusic();
-            return;
-          }
-
-          crossfadeToCue(targetCue, audioPath);
-        }
-
-        function crossfadeToCue(cueName, audioPath) {
-          const musicState = state.music;
-          const incoming = getInactiveMusicElement();
-          if (!incoming) {
-            console.warn('No audio element available for background music playback.');
-            return;
-          }
-
-          clearMusicFadeTimer();
-          musicState.pendingCue = cueName;
-          musicState.pendingElement = incoming;
-
-          clearMusicElement(incoming);
-          incoming.dataset.cueName = cueName;
-          incoming.src = audioPath;
-          incoming.currentTime = 0;
-          incoming.volume = 0;
-
-          const playPromise = incoming.play();
-          if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch((error) => {
-              console.warn('Unable to start background music cue.', {
-                cueName,
-                error,
-              });
-              state.music.failedCues.add(cueName);
-              if (musicState.pendingCue === cueName) {
-                musicState.pendingCue = null;
-                musicState.pendingElement = null;
-              }
-              fadeOutMusic(true);
-            });
-          }
-
-          const outgoing = musicState.activeElement && musicState.activeElement !== incoming
+        const outgoing =
+          musicState.activeElement && musicState.activeElement !== incoming
             ? musicState.activeElement
             : null;
 
-          if (MUSIC_CROSSFADE_MS === 0) {
-            if (outgoing) {
-              clearMusicElement(outgoing);
-            }
+        if (!outgoing || MUSIC_CROSSFADE_MS === 0) {
+          if (outgoing) {
+            resetMusicElement(outgoing);
+          }
+          incoming.volume = MUSIC_VOLUME;
+          musicState.activeElement = incoming;
+          musicState.currentCue = cueName;
+          musicState.pendingCue = null;
+          musicState.pendingElement = null;
+          return;
+        }
+
+        const startTime = performance.now();
+        musicState.fadeTimer = window.setInterval(() => {
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
+          incoming.volume = MUSIC_VOLUME * progress;
+          outgoing.volume = MUSIC_VOLUME * (1 - progress);
+
+          if (progress >= 1) {
+            clearMusicFadeTimer();
+            resetMusicElement(outgoing);
             incoming.volume = MUSIC_VOLUME;
             musicState.activeElement = incoming;
             musicState.currentCue = cueName;
             musicState.pendingCue = null;
             musicState.pendingElement = null;
-            return;
           }
+        }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+      }
 
-          const startTime = performance.now();
-          musicState.fadeTimer = window.setInterval(() => {
-            const elapsed = performance.now() - startTime;
-            const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
-            incoming.volume = MUSIC_VOLUME * progress;
-            if (outgoing) {
-              outgoing.volume = MUSIC_VOLUME * (1 - progress);
-            }
-
-            if (progress >= 1) {
-              clearMusicFadeTimer();
-              if (outgoing) {
-                clearMusicElement(outgoing);
-              }
-              incoming.volume = MUSIC_VOLUME;
-              musicState.activeElement = incoming;
-              musicState.currentCue = cueName;
-              musicState.pendingCue = null;
-              musicState.pendingElement = null;
-            }
-          }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+      function fadeOutMusic(stopImmediately = false) {
+        const active = musicState.activeElement;
+        if (!active) {
+          clearPendingCue();
+          musicState.currentCue = null;
+          return;
         }
 
-        function fadeOutMusic(immediate = false) {
-          const musicState = state.music;
-          musicState.pendingCue = null;
-          const active = musicState.activeElement;
-          const pendingElement = musicState.pendingElement;
+        if (stopImmediately || MUSIC_CROSSFADE_MS === 0) {
+          clearMusicFadeTimer();
+          resetMusicElement(active);
+          musicState.activeElement = null;
+          musicState.currentCue = null;
+          clearPendingCue();
+          return;
+        }
 
-          if (Array.isArray(musicState.pausedElements) && musicState.pausedElements.length) {
-            musicState.pausedElements = musicState.pausedElements.filter(
-              (element) => element && element !== active && element !== pendingElement
-            );
-          }
+        clearMusicFadeTimer();
+        const startTime = performance.now();
+        musicState.fadeTimer = window.setInterval(() => {
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
+          active.volume = MUSIC_VOLUME * (1 - progress);
 
-          if (pendingElement && pendingElement !== active) {
-            clearMusicElement(pendingElement);
-          }
-          musicState.pendingElement = null;
-
-          if (!active) {
-            musicState.currentCue = null;
-            return;
-          }
-
-          if (immediate || MUSIC_CROSSFADE_MS === 0) {
+          if (progress >= 1) {
             clearMusicFadeTimer();
-            clearMusicElement(active);
+            resetMusicElement(active);
             musicState.activeElement = null;
             musicState.currentCue = null;
-            return;
+            clearPendingCue();
           }
+        }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+      }
 
-          clearMusicFadeTimer();
-          const startTime = performance.now();
-          musicState.fadeTimer = window.setInterval(() => {
-            const elapsed = performance.now() - startTime;
-            const progress = Math.min(elapsed / MUSIC_CROSSFADE_MS, 1);
-            active.volume = MUSIC_VOLUME * (1 - progress);
-
-            if (progress >= 1) {
-              clearMusicFadeTimer();
-              clearMusicElement(active);
-              musicState.activeElement = null;
-              musicState.currentCue = null;
-            }
-          }, Math.max(MUSIC_FADE_INTERVAL_MS, 16));
+      function clearMusicFadeTimer() {
+        if (musicState.fadeTimer !== null) {
+          clearInterval(musicState.fadeTimer);
+          musicState.fadeTimer = null;
         }
+      }
 
-        function stopMusicPlayback() {
-          clearMusicFadeTimer();
-          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
-            if (element) {
-              clearMusicElement(element);
-            }
-          });
-          state.music.activeElement = null;
-          state.music.currentCue = null;
-          state.music.pendingCue = null;
-          state.music.pendingElement = null;
-          state.music.pausedElements = [];
+      function getInactiveMusicElement() {
+        const primary = elements.musicPrimary;
+        const secondary = elements.musicSecondary;
+        if (!primary && !secondary) {
+          return null;
         }
-
-        function pauseMusicForPause() {
-          const pausedElements = [];
-          [elements.musicPrimary, elements.musicSecondary].forEach((element) => {
-            if (!element) {
-              return;
-            }
-            if (!element.paused && element.currentTime > 0) {
-              element.pause();
-              pausedElements.push(element);
-            }
-          });
-          state.music.pausedElements = pausedElements;
-        }
-
-        function resumeMusicAfterPause() {
-          const pausedElements = Array.isArray(state.music.pausedElements)
-            ? state.music.pausedElements
-            : [];
-          state.music.pausedElements = [];
-
-          pausedElements.forEach((element) => {
-            element.play().catch((error) => {
-              const cueName = element.dataset?.cueName ?? state.music.currentCue ?? '';
-              if (cueName) {
-                state.music.failedCues.add(cueName);
-              }
-              console.warn('Background music failed to resume after pause.', {
-                cueName,
-                error,
-              });
-              fadeOutMusic(true);
-            });
-          });
-        }
-
-        function getInactiveMusicElement() {
-          const primary = elements.musicPrimary;
-          const secondary = elements.musicSecondary;
-          if (!primary && !secondary) {
-            return null;
-          }
-
-          const active = state.music.activeElement;
-          if (!active) {
-            return primary ?? secondary;
-          }
-
-          if (active === primary) {
-            return secondary ?? primary;
-          }
+        const active = musicState.activeElement;
+        if (!active) {
           return primary ?? secondary;
         }
-
-        function clearMusicFadeTimer() {
-          if (state.music.fadeTimer !== null) {
-            clearInterval(state.music.fadeTimer);
-            state.music.fadeTimer = null;
-          }
+        if (active === primary) {
+          return secondary ?? primary;
         }
+        return primary ?? secondary;
+      }
 
-        function clearMusicElement(element) {
-          if (!element) {
-            return;
-          }
-          element.pause();
-          if (element.hasAttribute('src')) {
-            element.removeAttribute('src');
-            element.load();
-          }
-          element.volume = 0;
-          if (element.dataset) {
-            element.dataset.cueName = '';
-          }
+      function resetMusicElement(element) {
+        if (!element) {
+          return;
         }
-
-        function onMusicPlaybackError(element) {
-          if (!element) {
-            return;
-          }
-          const cueName = element.dataset?.cueName ?? '';
-          if (cueName) {
-            console.warn('Background music playback error.', {
-              cueName,
-              src: element.currentSrc,
-            });
-            state.music.failedCues.add(cueName);
-          } else {
-            console.warn('Background music element encountered an error.', {
-              src: element.currentSrc,
-            });
-          }
-          if (state.music.currentCue === cueName) {
-            fadeOutMusic(true);
-          } else if (state.music.pendingCue === cueName) {
-            state.music.pendingCue = null;
-            if (state.music.pendingElement === element) {
-              state.music.pendingElement = null;
-            }
-          }
+        element.pause();
+        if (element.hasAttribute("src")) {
+          element.removeAttribute("src");
+          element.load();
         }
-
-        function advanceAfterShot() {
-          const scenelet = state.scenelets.get(state.currentSceneletId);
-          if (!scenelet) {
-            return;
-          }
-          const nextIndex = state.currentShotIndex + 1;
-          if (nextIndex < scenelet.shots.length) {
-            displayShot(scenelet, scenelet.shots[nextIndex]);
-            return;
-          }
-
-          handleSceneletTransition(scenelet);
+        element.volume = 0;
+        if (element.dataset) {
+          element.dataset.cueName = "";
         }
+      }
 
-        function handleSceneletTransition(scenelet) {
-          const next = scenelet.next ?? { type: 'terminal' };
-          switch (next.type) {
-            case 'linear':
-              playScenelet(next.sceneletId);
-              break;
-            case 'branch':
-              showChoiceOverlay(next);
-              break;
-            case 'incomplete':
-              showIncompleteOverlay();
-              break;
-            case 'terminal':
-            default:
-              showTerminalOverlay();
-              break;
-          }
+      function clearPendingCue() {
+        if (musicState.pendingElement) {
+          resetMusicElement(musicState.pendingElement);
         }
-
-        function showChoiceOverlay(next) {
-          setStage('choice');
-          state.isPaused = true;
-          updateControls();
-          elements.choicePrompt.textContent = next.choicePrompt;
-          elements.choiceOptions.innerHTML = '';
-
-          for (const choice of next.choices) {
-            const button = document.createElement('button');
-            button.className = 'choice-button';
-
-            const targetScenelet = state.scenelets.get(choice.sceneletId);
-            const previewShot = targetScenelet?.shots?.[0] ?? null;
-            if (previewShot?.imagePath) {
-              const img = document.createElement('img');
-              img.src = previewShot.imagePath;
-              img.alt = choice.label;
-              button.appendChild(img);
-            } else {
-              const placeholder = document.createElement('div');
-              placeholder.className = 'thumbnail-placeholder';
-              placeholder.textContent = 'Preview unavailable';
-              button.appendChild(placeholder);
-            }
-
-            const label = document.createElement('span');
-            label.textContent = choice.label;
-            button.appendChild(label);
-
-            button.addEventListener('click', () => {
-              elements.choiceOverlay.classList.add('hidden');
-              state.isPaused = false;
-              playScenelet(choice.sceneletId);
-            });
-
-            elements.choiceOptions.appendChild(button);
-          }
-
-          elements.choiceOverlay.classList.remove('hidden');
-        }
-
-        function showTerminalOverlay() {
-          setStage('terminal');
-          state.isPaused = true;
-          updateControls();
-          elements.terminalOverlay.classList.remove('hidden');
-          fadeOutMusic();
-        }
-
-        function showIncompleteOverlay() {
-          setStage('terminal');
-          state.isPaused = true;
-          updateControls();
-          elements.incompleteOverlay.classList.remove('hidden');
-          fadeOutMusic();
-        }
-
-        function hideAllOverlays() {
-          elements.choiceOverlay.classList.add('hidden');
-          elements.terminalOverlay.classList.add('hidden');
-          elements.incompleteOverlay.classList.add('hidden');
-        }
-
-        function scheduleAction(callback, delay) {
-          clearCurrentTimer();
-          state.pendingAction = callback;
-          if (state.isPaused) {
-            return;
-          }
-          state.currentTimer = window.setTimeout(() => {
-            state.currentTimer = null;
-            const action = state.pendingAction;
-            state.pendingAction = null;
-            if (typeof action === 'function') {
-              action();
-            }
-          }, delay);
-        }
-
-        function clearCurrentTimer() {
-          if (state.currentTimer !== null) {
-            clearTimeout(state.currentTimer);
-            state.currentTimer = null;
-          }
-        }
-
-        function togglePause() {
-          if (state.stage === 'choice' || state.stage === 'terminal') {
-            return;
-          }
-
-          state.isPaused = !state.isPaused;
-
-          if (state.isPaused) {
-            clearCurrentTimer();
-            pauseMusicForPause();
-            if (state.stage === 'audio' && !elements.audio.paused) {
-              state.audioWasPlaying = true;
-              elements.audio.pause();
-            } else {
-              state.audioWasPlaying = false;
-            }
-          } else {
-            resumeMusicAfterPause();
-            if (state.audioWasPlaying) {
-              state.audioWasPlaying = false;
-              elements.audio.play().catch(() => onShotAudioComplete());
-            } else if (state.pendingAction) {
-              const action = state.pendingAction;
-              state.pendingAction = null;
-              action();
-            }
-          }
-
-          updateControls();
-        }
-
-        function setStage(stage) {
-          state.stage = stage;
-          updateControls();
-        }
-
-        function updateControls() {
-          const shouldDisable = state.stage === 'choice' || state.stage === 'terminal';
-          elements.playPauseButton.disabled = shouldDisable;
-          elements.playPauseButton.textContent = state.isPaused ? 'Play' : 'Pause';
-        }
-
-        function showError(message) {
-          resetPlaybackState();
-          elements.playerScreen.classList.add('hidden');
-          elements.startScreen.classList.add('hidden');
-          elements.error.textContent = message;
-          elements.error.classList.remove('hidden');
-        }
-      })();
+        musicState.pendingElement = null;
+        musicState.pendingCue = null;
+      }
     </script>
+
   </body>
 </html>

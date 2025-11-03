@@ -14,27 +14,14 @@ The project MUST expose a standalone Story Tree UI workspace built with Next.js,
 
 ### Requirement: Render Story Explorer Shell
 The Story Tree UI MUST present a left-aligned navigation shell that mirrors the storyboard aesthetic while anchoring story context in the sidebar.
-
 #### Scenario: Sidebar shows story context and guided navigation
 - **GIVEN** a user opens `/story/{storyId}/constitution` on a desktop viewport (≥1024px)
 - **WHEN** the layout renders
 - **THEN** the sidebar MUST remain visible on the left with a home icon button that links back to `/story`
-- **AND** the story thumbnail (derived from the story thumbnail image path) MUST appear to the left of the story title inside the sidebar header, with a placeholder illustration when the thumbnail is missing
-- **AND** the story title and author text MUST render beside the thumbnail inside the sidebar header (not in the main canvas)
-- **AND** navigation tabs MUST list Constitution, Script, Storyboard, Visual, and Audio with icons sourced from a shared icon library (e.g. Heroicons) sized consistently at 20–24px
-- **AND** each tab entry MUST include the updated descriptive copy: "Story blueprint & principles", "Branching script overview", "Explore branching flow", "Character & world art", and "Music & sound plan".
-
-#### Scenario: Sidebar remains fixed while canvas scrolls
-- **GIVEN** a user scrolls the story detail page on desktop
-- **WHEN** the main content exceeds viewport height
-- **THEN** the sidebar MUST stay fixed in place without scrolling with the content while the main canvas scrolls independently
-- **AND** the sidebar width MUST remain constant so the navigation does not shift position during scroll.
-
-#### Scenario: Main canvas focuses on tab content
-- **GIVEN** a story detail page renders any artifact tab
-- **WHEN** the main content loads
-- **THEN** the main panel MUST fill the remaining viewport width/height, omit the legacy accent dot, and exclude duplicate story titles or metadata already shown in the sidebar
-- **AND** the panel MUST reserve its header area (if any) for tab-specific controls or breadcrumbs rather than story chrome.
+- **AND** the story thumbnail MUST render at the top of the sidebar as a flat surface (no card wrapper) taking the available sidebar width while preserving its aspect ratio via max-width constraints
+- **AND** the story title MUST appear directly beneath the thumbnail with the existing author line removed so only the title remains in the header stack
+- **AND** navigation tabs MUST render as flat pills without card borders, list Constitution, Script, Storyboard, Visual, and Audio, and apply a subtle filled highlight plus `aria-current="page"` when selected
+- **AND** tab icons MUST remain sourced from the shared icon library (e.g. Heroicons) sized consistently at 20–24px with hover states that rely on color, not elevation.
 
 ### Requirement: Render Story Artifact Tabs
 The Story Tree UI MUST render story artifacts with representations tailored to each content type instead of generic placeholders.
@@ -265,23 +252,22 @@ The Constitution tab MUST render Markdown content with full semantic formatting 
 
 ### Requirement: Display Story Catalog Cards
 The story list MUST present each story with artwork and a synopsis so users can quickly scan available productions.
-
 #### Scenario: Story list cards show thumbnail and logline
 - **GIVEN** the story index page `/story` loads at least one story
 - **WHEN** the grid renders
-- **THEN** each story card MUST show the first available key frame image cropped to a square thumbnail on the left (falling back to a neutral illustration when no image paths exist)
-- **AND** the story title MUST render to the right in a larger, bolder type treatment without trailing accent dots
-- **AND** the second line MUST show the logline extracted from the constitution Markdown in a smaller, muted font
+- **THEN** on desktop viewports (≥1024px) the grid MUST place two story cards per row with spacing that keeps each card noticeably wider than its height
+- **AND** each story card MUST show the first available key frame image cropped to a square thumbnail on the left (falling back to a neutral illustration when no image paths exist)
+- **AND** the story title MUST render to the right in a larger, bolder type treatment with no decorative color dot, author credit, or "Open Explorer" sub-action
+- **AND** the second line MUST show the logline extracted from the constitution Markdown by reading the first bullet under the "Logline" heading (or gracefully falling back to muted helper copy when that section is missing) without surfacing error text
 - **AND** the entire card MUST remain accessible as a single link to `/story/{storyId}/constitution` with focus styles that meet WCAG contrast requirements.
 
--### Requirement: Present Audio Design Overview
-The Audio tab MUST foreground core audio design insights in a structured layout while retaining the full JSON artifact for reference.
+### Requirement: Use Subtle Card Elevation
+The Story Tree UI MUST standardize card elevation so surfaces feel nearly flat with a gentle hover response instead of heavy drop shadows.
 
-#### Scenario: Audio tab surfaces structured metadata and cue playback
-- **GIVEN** a story has an `audioDesignDocument` containing `sonic_identity`, `narrator_voice_profile`, `character_voice_profiles`, and `music_and_ambience_cues`
-- **WHEN** a user views `/story/{storyId}/audio`
-- **THEN** the page MUST display the sonic identity section first, including tone, pacing, and instrumentation notes in styled callouts
-- **AND** the page MUST list the narrator and character voice profiles with readable labels for character identifiers, voice names, and performance notes without exposing raw JSON fields directly
-- **AND** the page MUST show a cue playlist that renders each cue name with associated context and includes embedded play/pause controls that source audio from the generated music directory
-- **AND** starting playback for one cue MUST stop any other cue that is currently playing and reset its progress indicator
-- **AND** a collapsible or clearly separated block MUST still render the raw audio design JSON below the structured sections for power users.
+#### Scenario: Cards apply minimal elevation and hover highlight
+- **GIVEN** a user views any Story Tree UI card component (story cards, visual asset cards, sidebar sections)
+- **WHEN** the card renders at rest
+- **THEN** it MUST use a low-opacity shadow or border that feels nearly flat against the background (e.g. 1–2px blur, 5–10% alpha) rather than the previous deep drop shadow
+- **AND** when the user hovers or focuses the card, the elevation MUST increase only slightly in combination with a subtle background highlight to indicate interactivity without large offsets
+- **AND** the hover state MUST avoid shifting layout by using box-shadow and background color changes instead of translating the card vertically.
+

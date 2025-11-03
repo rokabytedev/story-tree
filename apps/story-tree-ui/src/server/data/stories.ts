@@ -12,6 +12,9 @@ import {
   type StoryRecord,
 } from "../../../../../supabase/src/storiesRepository";
 import { createShotsRepository, type ShotRecord } from "../../../../../supabase/src/shotsRepository";
+import type { StoryBundle } from "../../../../../agent-backend/src/bundle/types.js";
+import type { SceneletPersistence } from "../../../../../agent-backend/src/interactive-story/types.js";
+import { loadEmbeddedStoryBundle } from "../../../../../agent-backend/src/player/embeddedBundle.js";
 import { getSupabaseClient } from "../supabase";
 import type {
   StoryTreeData,
@@ -133,6 +136,30 @@ export async function getStoryTreeData(storyId: string): Promise<StoryTreeData |
     return mapStoryTreeEntriesToStoryboardData(snapshot.entries, shotsByScenelet);
   } catch (error) {
     console.error("Failed to assemble story tree snapshot", error);
+    return null;
+  }
+}
+
+export async function getEmbeddedStoryBundle(storyId: string): Promise<StoryBundle | null> {
+  const trimmed = storyId.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const client = getSupabaseClient();
+  const storiesRepository = createStoriesRepository(client);
+  const sceneletsRepository = createSceneletsRepository(client);
+  const shotsRepository = createShotsRepository(client);
+  const sceneletPersistence = createReadOnlySceneletPersistence(sceneletsRepository);
+
+  try {
+    return await loadEmbeddedStoryBundle(trimmed, {
+      storiesRepository,
+      sceneletPersistence,
+      shotsRepository,
+    });
+  } catch (error) {
+    console.error("Failed to load embedded story bundle", error);
     return null;
   }
 }
@@ -307,6 +334,24 @@ async function findStoryThumbnailImagePath(
   }
 
   return null;
+}
+
+function createReadOnlySceneletPersistence(
+  repository: ReturnType<typeof createSceneletsRepository>
+): SceneletPersistence {
+  return {
+    async createScenelet() {
+      throw new Error("createScenelet is not supported by read-only scenelet persistence.");
+    },
+    async markSceneletAsBranchPoint() {
+      throw new Error("markSceneletAsBranchPoint is not supported by read-only scenelet persistence.");
+    },
+    async markSceneletAsTerminal() {
+      throw new Error("markSceneletAsTerminal is not supported by read-only scenelet persistence.");
+    },
+    hasSceneletsForStory: (targetStoryId) => repository.hasSceneletsForStory(targetStoryId),
+    listSceneletsByStory: (targetStoryId) => repository.listSceneletsByStory(targetStoryId),
+  } as SceneletPersistence;
 }
 
 export function mapStoryTreeEntriesToStoryboardData(

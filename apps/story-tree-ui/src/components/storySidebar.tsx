@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { type ComponentType } from "react";
 import { usePathname } from "next/navigation";
-import { BookOpenIcon, FilmIcon, PhotoIcon, MusicalNoteIcon } from "@heroicons/react/24/outline";
+import {
+  BookOpenIcon,
+  FilmIcon,
+  PhotoIcon,
+  MusicalNoteIcon,
+  PlayCircleIcon,
+} from "@heroicons/react/24/outline";
 
 import { StorySidebarHeader } from "@/components/storySidebarHeader";
 
@@ -49,6 +55,12 @@ export const storyTabs: SidebarTab[] = [
     label: "Script",
     description: "Branching script overview",
     Icon: FilmIcon,
+  },
+  {
+    slug: "player",
+    label: "Player",
+    description: "Preview interactive playback",
+    Icon: PlayCircleIcon,
   },
   {
     slug: "storyboard",
