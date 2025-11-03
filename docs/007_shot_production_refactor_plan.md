@@ -8,7 +8,7 @@ Replace the separate storyboard and cinematography tasks with a single `CREATE_S
 - Interactive script scenelets and their `shot_suggestions` exposed by the story tree snapshot serializer.
 - Visual design document (global aesthetics, character and environment designs).
 - Audio design document (voice profiles, sonic identity, cue philosophy).
-- New system prompt `system_prompts/shot_director.md`, authored specifically for scenelet-level generation.
+- New system prompt `system_prompts/create_shot_production.md`, authored specifically for scenelet-level generation.
 
 ## Gemini Prompt Assembly
 Each invocation targets one scenelet identified by `scenelet_id`. The user prompt MUST include sections in this order:

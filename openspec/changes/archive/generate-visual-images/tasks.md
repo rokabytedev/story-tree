@@ -169,13 +169,13 @@ Tasks are grouped into logical batches with clear validation checkpoints. Each b
 - **Dependencies**: Tasks 1.2, 1.3, 1.4, 3.2
 
 ### Task 3.4: Create system prompt for visual renderer
-- **Description**: Create `system_prompts/visual_renderer.md` with instructions for shot image generation consistency
+- **Description**: Create `system_prompts/create_shot_images.md` with instructions for shot image generation consistency
 - **Acceptance**:
   - Prompt guides model to use reference images for character likeness
   - Emphasizes maintaining visual style from references
   - Instructs on composition, lighting, and shot framing
   - Keep under 500 words for efficient token usage
-- **Files**: `system_prompts/visual_renderer.md`
+- **Files**: `system_prompts/create_shot_images.md`
 - **Dependencies**: None
 
 ### Task 3.5: Integrate CREATE_SHOT_IMAGES into workflow
@@ -281,7 +281,7 @@ Tasks are grouped into logical batches with clear validation checkpoints. Each b
   - Generate audio design, shot production
   - Run `CREATE_SHOT_IMAGES` task, verify character consistency using reference images
   - Validate images display correctly in browser via Next.js static serving (`http://localhost:3000/generated/<story-id>/...`)
-- **Validation**: Document any prompt adjustments needed in `system_prompts/visual_renderer.md`
+- **Validation**: Document any prompt adjustments needed in `system_prompts/create_shot_images.md`
 
 ### Task 6.2: Add environment variable documentation
 - **Description**: Document new environment variables in root README or `.env.example`

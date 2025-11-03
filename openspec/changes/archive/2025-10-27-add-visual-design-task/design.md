@@ -108,7 +108,7 @@ The visual design task formats a single user prompt containing:
 1. Story constitution markdown (verbatim).
 2. `Interactive Script Story Tree (YAML)` section with the serializer’s YAML string.
 
-No Supabase ids or display names are added; the constitution already captures naming context. The Gemini system prompt remains `system_prompts/concept_artist_and_production_designer.md`. Payload assembly is pure so tests can snapshot expected prompts. The Gemini response is expected to be JSON with a `visual_design_document` root object. Validation isolates parsing errors with descriptive messages.
+No Supabase ids or display names are added; the constitution already captures naming context. The Gemini system prompt remains `system_prompts/create_visual_design.md`. Payload assembly is pure so tests can snapshot expected prompts. The Gemini response is expected to be JSON with a `visual_design_document` root object. Validation isolates parsing errors with descriptive messages.
 
 ## Workflow Task Contract
 Task identifier: `CREATE_VISUAL_DESIGN`.

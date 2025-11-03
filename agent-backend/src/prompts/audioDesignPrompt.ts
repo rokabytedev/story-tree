@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const systemPromptPath = path.resolve(
   __dirname,
-  '../../../system_prompts/audio_director.md'
+  '../../../system_prompts/create_audio_design.md'
 );
 
 let cachedPrompt: string | undefined;

@@ -36,7 +36,7 @@ e.g.
 
 for visual references, the gemini generation only takes the prompt as input.
 for shot image generation, the gemini request need to take:
-- system prompt: system_prompts/visual_renderer.md
+- system prompt: system_prompts/create_shot_images.md
 - user prompt: 
     - the shot image generation prompt
     - upload reference images to gemini (for now, let's do character images only. find from visual references based on character name matching. ERROR if can't find)

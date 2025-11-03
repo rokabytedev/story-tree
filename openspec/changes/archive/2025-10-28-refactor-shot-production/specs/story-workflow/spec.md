@@ -30,7 +30,7 @@ The workflow MUST expose a `CREATE_SHOT_PRODUCTION` task that runs after audio d
 - **WHEN** `runTask('CREATE_SHOT_PRODUCTION')` executes
 - **THEN** it MUST throw a descriptive error if the story lacks a constitution, has no scenelets, lacks a visual or audio design document, or already has stored shots for any scenelet
 - **AND** when prerequisites pass it MUST assemble the Gemini prompt from the constitution, story tree snapshot, visual design document, audio design document, and target scenelet
-- **AND** it MUST call Gemini with `system_prompts/shot_director.md`, validate that every scenelet receives an ordered, gap-free shot list with compliant prompts, and persist the normalized shots via the shots repository.
+- **AND** it MUST call Gemini with `system_prompts/create_shot_production.md`, validate that every scenelet receives an ordered, gap-free shot list with compliant prompts, and persist the normalized shots via the shots repository.
 
 ### Requirement: Workflow CLI Exposes Shot Production Task
 The workflow CLI MUST allow operators to run the shot production task explicitly or as part of the full pipeline in both stub and real Gemini modes.

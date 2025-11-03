@@ -13,7 +13,7 @@ The workflow MUST expose an audio design task that runs after storyboard generat
 - **GIVEN** a workflow handle
 - **WHEN** `runTask('CREATE_AUDIO_DESIGN')` executes
 - **THEN** it MUST throw a descriptive error when the story lacks a constitution, has no scenelets, lacks a visual design document, or already has an audio design document
-- **AND** when prerequisites pass it MUST assemble the Gemini prompt from the constitution, story tree YAML snapshot, and visual design document using `system_prompts/audio_director.md`
+- **AND** when prerequisites pass it MUST assemble the Gemini prompt from the constitution, story tree YAML snapshot, and visual design document using `system_prompts/create_audio_design.md`
 - **AND** it MUST validate that every `character_voice_profiles[*].character_name` matches the visual design characters, every `associated_scenelet_ids[*]` matches the story tree ids, and required fields are non-empty before persisting via the stories repository.
 
 ### Requirement: Workflow CLI Exposes Audio Design Task

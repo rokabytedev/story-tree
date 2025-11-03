@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const systemPromptPath = path.resolve(
   __dirname,
-  '../../../system_prompts/interactive_scriptwriter.md'
+  '../../../system_prompts/create_interactive_script.md'
 );
 
 let cachedPrompt: string | undefined;

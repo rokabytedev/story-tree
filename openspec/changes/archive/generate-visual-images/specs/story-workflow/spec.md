@@ -76,7 +76,7 @@ The workflow MUST expose a `CREATE_SHOT_IMAGES` task that generates storyboard i
 #### Scenario: Shot image task generates both frame images with system instruction
 - **GIVEN** a shot missing one or both image paths
 - **WHEN** the task calls the Gemini image client
-- **THEN** it MUST load the system instruction from `system_prompts/visual_renderer.md`
+- **THEN** it MUST load the system instruction from `system_prompts/create_shot_images.md`
 - **AND** for the first frame, it MUST pass the shot's `first_frame_prompt` as the user prompt, include character reference images, use 16:9 aspect ratio, save to `shots/<scenelet-id>_shot_<index>_first_frame.png`, and update `first_frame_image_path`
 - **AND** for the key frame, it MUST pass the shot's `key_frame_prompt` as the user prompt, include character reference images, use 16:9 aspect ratio, save to `shots/<scenelet-id>_shot_<index>_key_frame.png`, and update `key_frame_image_path`
 - **AND** both images MUST use the same character reference images for consistency

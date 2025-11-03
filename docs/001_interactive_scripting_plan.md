@@ -1,6 +1,6 @@
 # Goal
 
-**MUST** first immerse to read and understand system_prompts/interactive_scriptwriter.md file carefully to understand the Gemini API generation prompt and response JSON format.
+**MUST** first immerse to read and understand system_prompts/create_interactive_script.md file carefully to understand the Gemini API generation prompt and response JSON format.
 
 1.  **The Generation Algorithm:** A stateful, iterative process for calling the Gemini API to build out the complete story tree.
 2.  **The Database Schema:** A design for storing the story tree's scenelets efficiently in a Supabase (PostgreSQL) database.
@@ -69,7 +69,7 @@ def generate_full_story_tree(story_id, story_constitution):
 
         # 6. Call Gemini API
         # call_gemini_scriptwriter_api should do:
-        # Use the content from system_prompts/interactive_scriptwriter.md as the system prompt
+        # Use the content from system_prompts/create_interactive_script.md as the system prompt
         # Concat `story_constitution`, `current_narrative_path` and `instruction`
         # (with proper section headers and spacing)
         # (handle empty `current_narrative_path` properly - not adding that section)

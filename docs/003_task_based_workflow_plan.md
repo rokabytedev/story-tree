@@ -90,7 +90,7 @@ type WorkflowTask =
   - No existing `visualReferencePackage`.
 - Steps:
   1. Load constitution markdown, story tree YAML, and visual design JSON for context.  
-  2. Run `runVisualReferenceTask`, which assembles the prompt using the `visual_reference_director` system prompt and enforces referential integrity plus minimum prompt quality (≥80 characters, explicit name matches, lighting/atmosphere coverage for environments).  
+  2. Run `runVisualReferenceTask`, which assembles the prompt using the `create_visual_reference` system prompt and enforces referential integrity plus minimum prompt quality (≥80 characters, explicit name matches, lighting/atmosphere coverage for environments).  
   3. Persist the validated `visualReferencePackage` JSON on the story record.  
   4. Log coverage summaries to help operators diagnose validation failures.
 - Postconditions: `stories.visual_reference_package` populated. Reruns rejected until reset tooling clears the artifact.

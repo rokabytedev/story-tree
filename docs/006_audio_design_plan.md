@@ -7,14 +7,14 @@ Add a `CREATE_AUDIO_DESIGN` workflow task that converts the completed pre-produc
 - Story constitution stored in `stories.story_constitution`.
 - Interactive script scenelets generated and exposed through the story tree snapshot serializer used by prior tasks.
 - Visual design document populated at `stories.visual_design_document`.
-- System prompt `system_prompts/audio_director.md` reviewed in detail; it defines the output schema, naming constraints, and creative expectations.
+- System prompt `system_prompts/create_audio_design.md` reviewed in detail; it defines the output schema, naming constraints, and creative expectations.
 
 The task intentionally does **not** require the shot production artifact, but in the default pipeline it executes immediately before `CREATE_SHOT_PRODUCTION` so downstream cinematics inherit the finalized sonic canon.
 
 ## Gemini Prompt Assembly
 Audio design reuses the same deterministic prompt assembly style as the shot production task with audio-specific framing. The request format is:
 
-1. **System Prompt** — supply `system_prompts/audio_director.md` verbatim. Preserve whitespace and headings to avoid mismatched expectations.
+1. **System Prompt** — supply `system_prompts/create_audio_design.md` verbatim. Preserve whitespace and headings to avoid mismatched expectations.
 2. **User Prompt** — a single markdown document assembled in this order:
    - `# Story Constitution` followed by the exact markdown stored on the story.
    - `# Interactive Script Story Tree (YAML)` containing:
@@ -64,7 +64,7 @@ Persist the validated object to `stories.audio_design_document` via the stories 
 - Ensure `run-all` schedules the task after visual design and before shot production.
 - Stub mode:
   - Create deterministic Gemini fixtures under `agent-backend/fixtures/gemini/audio-design/` (e.g., `success.json`, `invalid-character.json`). The primary `success.json` must align with existing shot production and visual design fixtures so `run-all --mode stub` completes without triggering validation errors.
-  - Extend stub loader to return audio design fixtures when the system prompt path matches `audio_director.md`.
+  - Extend stub loader to return audio design fixtures when the system prompt path matches `create_audio_design.md`.
 - Real mode should expose Gemini failures and validation errors without masking stack traces in debug logs. Include human-friendly summaries for referential integrity violations.
 
 ## Testing Strategy

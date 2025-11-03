@@ -1,4 +1,4 @@
-- [x] Introduce a `visual_reference_director` system prompt asset (rename or alias the existing file) and document the intent in developer docs without altering the prompt text.
+- [x] Introduce a `create_visual_reference` system prompt asset (rename or alias the existing file) and document the intent in developer docs without altering the prompt text.
 - [x] Implement a prompt builder that fetches constitution, story tree YAML, and visual design document from repositories, assembles the Gemini request, and snapshot-test the resulting user prompt.
 - [x] Build a response validator that parses `visual_reference_package`, enforces character/environment coverage, checks prompt presence, and surfaces descriptive errors; cover edge cases with unit tests.
 - [x] Extend the stories repository plus workflow task plumbing so `CREATE_VISUAL_REFERENCE` persists validated packages, enforces prerequisites, and refuses reruns when data already exists.

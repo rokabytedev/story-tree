@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const systemPromptPath = path.resolve(
   __dirname,
-  '../../../system_prompts/visual_reference_director.md'
+  '../../../system_prompts/create_visual_reference.md'
 );
 
 let cachedPrompt: string | undefined;

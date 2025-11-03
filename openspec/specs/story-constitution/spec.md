@@ -22,12 +22,12 @@ A reusable Gemini client factory in `agent-backend/` MUST centralise model selec
 - **AND** the factory MUST inject the configured timeout, thinking budget, and model name consistently.
 
 ### Requirement: Generate Story Constitution With Gemini
-The backend MUST expose a TypeScript function that accepts a short story description, loads the `system_prompts/story_constitution.md` text as the system instruction, and invokes Gemini via the shared client to create a story constitution JSON response.
+The backend MUST expose a TypeScript function that accepts a short story description, loads the `system_prompts/create_story_constitution.md` text as the system instruction, and invokes Gemini via the shared client to create a story constitution JSON response.
 
 #### Scenario: Invoke Gemini With system prompt and long timeout
 - **GIVEN** the caller supplies a non-empty story brief
 - **WHEN** the function executes
-- **THEN** it MUST load the full contents of `system_prompts/story_constitution.md`
+- **THEN** it MUST load the full contents of `system_prompts/create_story_constitution.md`
 - **AND** it MUST call the configured Gemini model using that content as the system instruction and the brief as the user content through the shared client factory
 - **AND** it MUST apply a timeout suitable for multi-minute generations and pass through thinking budget configuration required by the prompt.
 

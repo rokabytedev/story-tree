@@ -7,12 +7,12 @@ Introduce a `CREATE_VISUAL_REFERENCE` workflow task that consumes the story cons
 - Constitution markdown stored on the story record (`stories.story_constitution`).
 - Interactive script scenelets persisted in Supabase and exposed through the existing story tree snapshot serializer, providing deterministic `scenelet-#` and `branching-point-#` identifiers.
 - Visual design document stored in `stories.visual_design_document` with complete character and environment definitions.
-- System prompt content found in `system_prompts/visual_reference_director.md` (identical to the previous Generative Art Director prompt).
+- System prompt content found in `system_prompts/create_visual_reference.md` (identical to the previous Generative Art Director prompt).
 
 The task may only execute once all three artifacts exist and `stories.visual_reference_package` is empty.
 
 ## Gemini Prompt Assembly
-1. **System Prompt** — load `system_prompts/visual_reference_director.md` verbatim (identical content to the existing Generative Art Director prompt).
+1. **System Prompt** — load `system_prompts/create_visual_reference.md` verbatim (identical content to the existing Generative Art Director prompt).
 2. **User Prompt** — construct a single markdown document with sections in this order:
    - `# Story Constitution` containing the raw constitution markdown.
    - `# Interactive Script Story Tree (YAML)` containing the YAML snapshot emitted by the story tree serializer.

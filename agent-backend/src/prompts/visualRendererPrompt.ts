@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const systemPromptPath = path.resolve(
   __dirname,
-  '../../../system_prompts/visual_renderer.md'
+  '../../../system_prompts/create_shot_images.md'
 );
 
 let cachedPrompt: string | undefined;

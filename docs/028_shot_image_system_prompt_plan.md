@@ -3,7 +3,7 @@
 - to better control the image generation
 
 # requirements
-- use the `system_prompts/visual_renderer.md` content as is for the system prompt for shot image generation gemini request.
+- use the `system_prompts/create_shot_images.md` content as is for the system prompt for shot image generation gemini request.
 - don't use it for other image generation request. just the shot image generation.
 - the user prompt part stays the same. the only change needed for the user prompt is to redact the `associated_scenelet_ids` field from the `environment_designs[]` because it doesn't provide any useful information gemini and it's confusing.
 - in verbose print, make the gemini raw request include the system prompt so that i can verify it is included in the gemini request.

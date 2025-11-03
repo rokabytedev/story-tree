@@ -29,7 +29,7 @@ Unify storyboard generation and cinematography/audio prompt creation into a sing
   4. `# Audio Design Bible`
   5. `# Target Scenelet` – includes scenelet metadata, dialogue, branching context, and the director’s initial `shot_suggestions`.
 -  6. `# Task Directives` – reiterate stateless prompt rule, remind the model to evaluate the director’s `shot_suggestions` critically before finalizing its own sequence, require that all shots for the scenelet be returned in order, insist on the phrase “No background music.” in each video clip prompt, and describe the JSON output schema.
-- System prompt lives at `system_prompts/shot_director.md` and must explain the combined responsibilities, scenelet-scoped workflow, and expectations for dialogue allocation/prompt verbosity.
+- System prompt lives at `system_prompts/create_shot_production.md` and must explain the combined responsibilities, scenelet-scoped workflow, and expectations for dialogue allocation/prompt verbosity.
 
 ## Gemini Response Contract
 ```json

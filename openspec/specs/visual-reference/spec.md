@@ -9,7 +9,7 @@ The visual reference generator MUST build a Gemini request that combines the con
 #### Scenario: Prompt includes constitution, story tree YAML, and visual design
 - **GIVEN** a story with a stored constitution, generated interactive script, and persisted visual design document
 - **WHEN** the visual reference task prepares the Gemini request
-- **THEN** it MUST load the system prompt from `system_prompts/visual_reference_director.md`
+- **THEN** it MUST load the system prompt from `system_prompts/create_visual_reference.md`
 - **AND** it MUST render one user message that first prints the constitution markdown, then the YAML story tree snapshot labeled `Interactive Script Story Tree (YAML)`, and finally the full visual design document
 - **AND** it MUST append task instructions that reiterate the required JSON output shape and referential integrity rules for character and environment names
 - **AND** unit tests MUST snapshot the assembled user prompt so regressions in ordering or headings fail fast.

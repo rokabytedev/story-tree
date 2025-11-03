@@ -1,6 +1,6 @@
 one problem is that the script writer keeps writing the story for way too long. i changed the system prompts to instruct AI to follow length constraint:
-- system_prompts/story_constitution.md
-- system_prompts/interactive_scriptwriter.md
+- system_prompts/create_story_constitution.md
+- system_prompts/create_interactive_script.md
 read them to understand how it works.
 
 there are several changes you need to introduce to make the length limit working:

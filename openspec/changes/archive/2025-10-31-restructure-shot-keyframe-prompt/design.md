@@ -141,7 +141,7 @@ The `storyboard_payload` JSONB column will store the complete storyboard entry i
 
 ### Shot Production Changes
 
-**IMPORTANT**: `system_prompts/shot_director.md` has already been updated with the new output format. Do not modify this file during implementation.
+**IMPORTANT**: `system_prompts/create_shot_production.md` has already been updated with the new output format. Do not modify this file during implementation.
 
 **Files to modify:**
 - `agent-backend/src/shot-production/parseGeminiResponse.ts` — Parse `audio_and_narrative` and `referenced_designs`
@@ -171,7 +171,7 @@ The `storyboard_payload` JSONB column will store the complete storyboard entry i
 **Image generation integration:**
 - The assembled prompt object is serialized to JSON and sent as `userPrompt` to `geminiImageClient.generateImage()`
 - Reference images are loaded based on `referenced_designs.characters` and `referenced_designs.environments` using existing reference image recommender logic
-- The `visual_renderer.md` system prompt remains unchanged
+- The `create_shot_images.md` system prompt remains unchanged
 
 ### Video Generation (Out of Scope)
 - Video clip prompt assembly is explicitly out of scope for this change.

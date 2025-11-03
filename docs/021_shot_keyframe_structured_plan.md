@@ -12,10 +12,10 @@ goal
 - use the following method to assemble the prompt.
 
 shot production format change
-- i already changed the shot generation system prompt (system_prompts/shot_director.md).
+- i already changed the shot generation system prompt (system_prompts/create_shot_production.md).
 - the new system prompt will instruct gemini to generate a different format of output json.
 - no more generation prompts. the storyboard_entry will have more fields that need to be persisted to db (the entirety of storyboard_entry field should be persisted to the existing shots table column storyboard_payload), and used for image/video generation.
-- read the new system_prompts/shot_director.md file to understand the new structure.
+- read the new system_prompts/create_shot_production.md file to understand the new structure.
 - make code change to adapt to this new output structure.
 - deprecate the generation prompts related code logic, db schema, etc.
 
@@ -147,7 +147,7 @@ requirements
     - handle updated prompt assembly method for shot image generation.
 - don't change the gemini client config etc.
 - don't change the system prompt for shot image generation.
-    - still use system_prompts/visual_renderer.md as system prompt for image generation request to gemini.
+    - still use system_prompts/create_shot_images.md as system prompt for image generation request to gemini.
 - aspect ratio is still 16:9
 - still upload the same reference images as before (the referenced designs)
 

@@ -25,7 +25,7 @@ The generator MUST interpret Gemini responses to continue linearly, branch into 
 - **AND** it MUST avoid pushing additional tasks for that branch.
 
 ### Requirement: Gemini Interactive Scriptwriter Invocation
-The generator MUST call Gemini with the `system_prompts/interactive_scriptwriter.md` prompt, the current path context, and an instruction that distinguishes the root versus continuation scenelets.
+The generator MUST call Gemini with the `system_prompts/create_interactive_script.md` prompt, the current path context, and an instruction that distinguishes the root versus continuation scenelets.
 
 #### Scenario: Prompt formatted for root and continuation
 - **GIVEN** the orchestrator prepares a Gemini request

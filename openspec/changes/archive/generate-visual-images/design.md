@@ -131,7 +131,7 @@ interface ImageGenerationResult {
 
 ### Key Design Decisions
 
-**System Instruction Support**: User confirmed that system instructions work well with Gemini image generation and improve consistency with reference images. We'll use `system_prompts/visual_renderer.md` for shot generation.
+**System Instruction Support**: User confirmed that system instructions work well with Gemini image generation and improve consistency with reference images. We'll use `system_prompts/create_shot_images.md` for shot generation.
 
 **Reference Image Limit**: Gemini API recommends max 3 input images. For shot generation:
 1. Prioritize CHARACTER_MODEL_SHEET images first

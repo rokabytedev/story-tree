@@ -14,7 +14,7 @@
 
 ## Milestone 2: Shot Production Code Updates
 
-**Note**: `system_prompts/shot_director.md` has already been updated. Do not modify this file.
+**Note**: `system_prompts/create_shot_production.md` has already been updated. Do not modify this file.
 
 - [x] **M2.1**: Update `agent-backend/src/shot-production/types.ts` to define `AudioNarrativeEntry` type with `type`, `source`, and `line` fields
 - [x] **M2.2**: Update `agent-backend/src/shot-production/types.ts` to update `ShotProductionStoryboardEntry` interface with `audio_and_narrative` array and `referenced_designs` object
@@ -110,4 +110,4 @@
 - **Breaking Change**: This change is backward-incompatible. Existing shots in the database will lose prompt fields and first frame image paths. Stories under active development should regenerate shots after deployment.
 - **First Frame Fully Deprecated**: First frame image generation is completely removed. Only key frame images will be generated going forward.
 - **Out of Scope**: Video clip prompt assembly is explicitly out of scope. The `video_clip_prompt` field is removed but video generation is not updated in this change.
-- **System Prompt Already Updated**: `system_prompts/shot_director.md` has already been updated with the new output format. Do not modify this file during implementation.
+- **System Prompt Already Updated**: `system_prompts/create_shot_production.md` has already been updated with the new output format. Do not modify this file during implementation.

@@ -6,7 +6,7 @@ Add a `CREATE_VISUAL_DESIGN` workflow task that turns a completed interactive sc
 ## Prerequisites
 - Story constitution already persisted (`stories.story_constitution`).
 - Interactive script generated and stored as scenelets (`scenelets` table).
-- System prompt `system_prompts/concept_artist_and_production_designer.md` reviewed in full; its structure drives the Gemini invocation.
+- System prompt `system_prompts/create_visual_design.md` reviewed in full; its structure drives the Gemini invocation.
 
 ## Story Tree Data Contract
 Visual design requires the entire branching script in a format that is both human-readable and gentle on Gemini. The repository exposes a story tree snapshot that can be rendered directly as YAML with minimal nesting. The serializer emits a single ordered list where scenelets and branching points appear in the exact narrative sequence:
@@ -124,7 +124,7 @@ Additional guarantees:
    - Fetch the target story; validate constitution exists and `visual_design_document` is empty (duplicate runs remain unsupported for now).
    - Retrieve scenelets for the story via the repository and build the story tree snapshot.
 2. **Assemble Gemini Prompt**
-   - System prompt: `concept_artist_and_production_designer.md`.
+   - System prompt: `create_visual_design.md`.
    - User prompt sections:
      1. Constitution markdown (verbatim).
      2. `Interactive Script Story Tree (YAML)` block containing the serializer’s YAML string (no Supabase identifiers). Include a short primer on the snapshot syntax so Gemini understands the flattened structure.

@@ -54,5 +54,5 @@ The shot image generation task MUST assemble key frame prompts directly from sto
 - **WHEN** the shot image task calls Gemini image generation
 - **THEN** it MUST serialize the assembled prompt object to JSON
 - **AND** it MUST pass the JSON as the `userPrompt` parameter
-- **AND** it MUST use the existing `visual_renderer.md` system prompt without modification
+- **AND** it MUST use the existing `create_shot_images.md` system prompt without modification
 - **AND** it MUST load reference images based on the `referenced_designs` character and environment IDs.

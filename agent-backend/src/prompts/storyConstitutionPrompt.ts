@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const systemPromptPath = path.resolve(
   __dirname,
-  '../../../system_prompts/story_constitution.md'
+  '../../../system_prompts/create_story_constitution.md'
 );
 
 let cachedPrompt: string | undefined;
