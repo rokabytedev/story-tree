@@ -247,7 +247,7 @@ The Story Tree UI MUST apply the provided pastel palette through shared theme to
 #### Scenario: Story Tree UI loads pastel palette tokens
 - **GIVEN** the Story Tree workspace loads global styles
 - **WHEN** the page renders
-- **THEN** the CSS variables `--color-page`, `--color-surface`, `--color-surface-muted`, `--color-border`, `--color-highlight`, `--color-text-primary`, and `--color-text-muted` MUST resolve to the palette values `#f0ead2`, `#dde5b6`, `#adc178`, `#a98467`, `#6c584c`, `#3b341f`, and `#6f6042` respectively
+- **THEN** the CSS variables `--color-page`, `--color-surface`, `--color-surface-muted`, `--color-border`, `--color-highlight`, `--color-text-primary`, and `--color-text-muted` MUST resolve to the palette values `#fefae0`, `#faedcd`, `#e9edc9`, `#dfb98e`, `#d4a373`, `#755a3f`, and `#947251` respectively
 - **AND** Tailwind tokens MUST read from those variables so no component uses the retired dark hex codes directly (e.g. no remaining `#0b1120` assignments)
 - **AND** a shared theme module MUST export the palette map so components that need inline styles (e.g. gradients) can consume the same colors without duplicating literals.
 
@@ -285,4 +285,3 @@ The Audio tab MUST foreground core audio design insights in a structured layout 
 - **AND** the page MUST show a cue playlist that renders each cue name with associated context and includes embedded play/pause controls that source audio from the generated music directory
 - **AND** starting playback for one cue MUST stop any other cue that is currently playing and reset its progress indicator
 - **AND** a collapsible or clearly separated block MUST still render the raw audio design JSON below the structured sections for power users.
-

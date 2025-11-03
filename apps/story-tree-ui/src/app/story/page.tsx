@@ -35,7 +35,7 @@ export default async function StoryIndexPage() {
       <section className="mx-auto flex max-w-5xl flex-col gap-10">
         <header className="flex flex-col gap-3">
           <p className="text-sm uppercase tracking-[0.35em] text-text-muted">
-            Stories
+            Story Tree
           </p>
           <h1 className="text-4xl font-semibold">Interactive Children Stories</h1>
           <p className="max-w-3xl text-base text-text-muted">

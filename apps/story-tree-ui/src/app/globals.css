@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --color-page: #f0ead2;
-  --color-surface: #dde5b6;
-  --color-surface-muted: #adc178;
-  --color-surface-elevated: #f7f3df;
-  --color-border: #a98467;
-  --color-highlight: #6c584c;
-  --color-accent-muted: #d8c3b1;
-  --color-text-primary: #3b341f;
-  --color-text-muted: #6f6042;
+  --color-page: #fefae0;
+  --color-surface: #faedcd;
+  --color-surface-muted: #e9edc9;
+  --color-surface-elevated: #fefbe6;
+  --color-border: #dfb98e;
+  --color-highlight: #d4a373;
+  --color-accent-muted: #ccd5ae;
+  --color-text-primary: #755a3f;
+  --color-text-muted: #947251;
   --font-sans-stack: "Inter", "Helvetica Neue", Arial, sans-serif;
   --font-mono-stack: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
 }
@@ -29,6 +29,6 @@ a {
 }
 
 ::selection {
-  background-color: rgba(108, 88, 76, 0.2);
+  background-color: rgba(212, 163, 115, 0.2);
   color: var(--color-text-primary);
 }

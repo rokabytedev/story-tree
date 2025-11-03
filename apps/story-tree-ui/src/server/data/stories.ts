@@ -138,7 +138,7 @@ export async function getStoryTreeData(storyId: string): Promise<StoryTreeData |
 }
 
 const DEFAULT_AUTHOR = "Story Tree Agent";
-const ACCENT_COLORS = ["#6c584c", "#a98467", "#adc178", "#d8c3b1", "#dde5b6", "#f0ead2"] as const;
+const ACCENT_COLORS = ["#d4a373", "#dfb98e", "#faedcd", "#e9edc9", "#ccd5ae"] as const;
 
 function mapStoryRecordToDetail(
   record: StoryRecord,
