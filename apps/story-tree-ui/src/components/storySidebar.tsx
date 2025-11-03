@@ -9,6 +9,7 @@ import {
   PhotoIcon,
   MusicalNoteIcon,
   PlayCircleIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 
 import { StorySidebarHeader } from "@/components/storySidebarHeader";
@@ -19,23 +20,6 @@ type SidebarTab = {
   description: string;
   Icon: ComponentType<{ className?: string }>;
 };
-
-function StoryboardGridIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className={className}
-    >
-      <rect x="4.75" y="4.75" width="14.5" height="6.5" rx="1.5" />
-      <rect x="4.75" y="12.75" width="6.75" height="6.5" rx="1.5" />
-      <rect x="12.5" y="12.75" width="6.75" height="6.5" rx="1.5" />
-    </svg>
-  );
-}
 
 export const storyTabs: SidebarTab[] = [
   {
@@ -66,7 +50,7 @@ export const storyTabs: SidebarTab[] = [
     slug: "storyboard",
     label: "Storyboard",
     description: "Explore branching flow",
-    Icon: StoryboardGridIcon,
+    Icon: Squares2X2Icon,
   },
   {
     slug: "player",
