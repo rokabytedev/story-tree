@@ -42,13 +42,16 @@ export function assembleKeyFramePrompt(
     visualDesignDocument,
     referencedDesigns.environments ?? []
   );
-  const sanitizedEnvironmentDesigns = redactEnvironmentAssociatedSceneletIds(environmentDesigns);
+  const sanitizedCharacterDesigns = redactCharacterModelSheetPaths(characterDesigns);
+  const sanitizedEnvironmentDesigns = redactEnvironmentReferenceImagePaths(
+    redactEnvironmentAssociatedSceneletIds(environmentDesigns)
+  );
 
   const { audioAndNarrative, ...visualInstructions } = storyboard;
 
   return {
     global_aesthetic: globalAesthetic,
-    character_designs: characterDesigns,
+    character_designs: sanitizedCharacterDesigns,
     environment_designs: sanitizedEnvironmentDesigns,
     ...visualInstructions,
   };
@@ -198,6 +201,56 @@ function redactEnvironmentAssociatedSceneletIds(
 
     if (Object.prototype.hasOwnProperty.call(cloned, 'associatedSceneletIds')) {
       delete cloned['associatedSceneletIds'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignEnvironmentDesign) : design;
+  });
+}
+
+function redactCharacterModelSheetPaths(
+  characterDesigns: VisualDesignCharacterDesign[]
+): VisualDesignCharacterDesign[] {
+  return characterDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'character_model_sheet_image_path')) {
+      delete cloned['character_model_sheet_image_path'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'characterModelSheetImagePath')) {
+      delete cloned['characterModelSheetImagePath'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignCharacterDesign) : design;
+  });
+}
+
+function redactEnvironmentReferenceImagePaths(
+  environmentDesigns: VisualDesignEnvironmentDesign[]
+): VisualDesignEnvironmentDesign[] {
+  return environmentDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'environment_reference_image_path')) {
+      delete cloned['environment_reference_image_path'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'environmentReferenceImagePath')) {
+      delete cloned['environmentReferenceImagePath'];
       mutated = true;
     }
 

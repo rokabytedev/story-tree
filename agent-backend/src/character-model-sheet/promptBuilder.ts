@@ -79,9 +79,10 @@ export function buildModelSheetPrompt(
   characterDesign: CharacterDesign
 ): string {
   // Build the JSON data block (without comments in actual output)
+  const sanitizedDesign = sanitizeCharacterDesign(characterDesign);
   const dataBlock = {
     global_aesthetic: globalAesthetic,
-    character_design: characterDesign,
+    character_design: sanitizedDesign,
   };
 
   // Combine the template with the JSON data
@@ -90,4 +91,35 @@ export function buildModelSheetPrompt(
 ${JSON.stringify(dataBlock, null, 2)}`;
 
   return prompt;
+}
+
+function sanitizeCharacterDesign(design: CharacterDesign): CharacterDesign {
+  if (!design || typeof design !== 'object') {
+    return design;
+  }
+
+  const cloned = { ...design } as Record<string, unknown>;
+  let mutated = false;
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'associated_scenelet_ids')) {
+    delete cloned['associated_scenelet_ids'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'associatedSceneletIds')) {
+    delete cloned['associatedSceneletIds'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'character_model_sheet_image_path')) {
+    delete cloned['character_model_sheet_image_path'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'characterModelSheetImagePath')) {
+    delete cloned['characterModelSheetImagePath'];
+    mutated = true;
+  }
+
+  return mutated ? (cloned as CharacterDesign) : design;
 }

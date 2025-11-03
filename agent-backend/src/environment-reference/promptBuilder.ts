@@ -116,12 +116,45 @@ export function buildEnvironmentReferencePrompt(
   globalAesthetic: GlobalAesthetic,
   environmentDesign: EnvironmentDesign
 ): string {
+  const sanitizedEnvironment = sanitizeEnvironmentDesign(environmentDesign);
+
   const dataBlock = {
     global_aesthetic: globalAesthetic,
-    environment_design: environmentDesign,
+    environment_design: sanitizedEnvironment,
   };
 
   return `${ENVIRONMENT_PROMPT_TEMPLATE}
 
 ${JSON.stringify(dataBlock, null, 2)}`;
+}
+
+function sanitizeEnvironmentDesign(design: EnvironmentDesign): EnvironmentDesign {
+  if (!design || typeof design !== 'object') {
+    return design;
+  }
+
+  const cloned = { ...design } as Record<string, unknown>;
+  let mutated = false;
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'associated_scenelet_ids')) {
+    delete cloned['associated_scenelet_ids'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'associatedSceneletIds')) {
+    delete cloned['associatedSceneletIds'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'environment_reference_image_path')) {
+    delete cloned['environment_reference_image_path'];
+    mutated = true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cloned, 'environmentReferenceImagePath')) {
+    delete cloned['environmentReferenceImagePath'];
+    mutated = true;
+  }
+
+  return mutated ? (cloned as EnvironmentDesign) : design;
 }
