@@ -74,8 +74,8 @@
         align-items: center;
         justify-content: space-between;
         gap: 24px;
-        padding: 22px 28px;
-        border-bottom: 1px solid var(--color-border);
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
         background: var(--panel);
       }
 
@@ -112,10 +112,10 @@
         position: relative;
         flex: 1;
         display: flex;
-        align-items: center;
+        align-items: stretch;
         justify-content: center;
         background: var(--color-page);
-        padding: 20px 28px;
+        padding: 0;
       }
 
       .image-frame {
@@ -123,42 +123,25 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: min(100%, 960px);
+        width: 100%;
+        flex: 1;
         min-height: 360px;
-        border-radius: 24px;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface-muted);
+        border-radius: 0;
+        border: none;
+        background: var(--color-page);
         overflow: hidden;
       }
 
-      .image-frame::before {
-        content: "";
-        position: absolute;
-        inset: -8%;
-        background-image: var(--frame-start-image, none);
-        background-size: cover;
-        background-position: center;
-        filter: blur(32px);
-        transform: scale(1.1);
-        opacity: 0;
-        transition: opacity 200ms ease;
-        pointer-events: none;
-      }
-
-      .image-frame.has-start-image::before {
-        opacity: 0.8;
-      }
-
       #shot-image {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
+        width: 100%;
+        height: 100%;
         object-fit: contain;
+        display: block;
       }
 
       #image-placeholder {
         width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -166,11 +149,12 @@
         text-align: center;
         font-size: 14px;
         color: var(--muted);
+        background: var(--color-page);
       }
 
       .player-footer {
-        padding: 18px 28px;
-        border-top: 1px solid var(--color-border);
+        padding: 16px 24px;
+        border-top: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
         display: flex;
         justify-content: flex-end;
         gap: 12px;
@@ -202,13 +186,17 @@
         display: flex;
         flex-direction: column;
         gap: 24px;
+        border-radius: 24px;
+        border: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
+        background: var(--panel);
+        padding: 32px;
       }
 
       .choice-prompt-card {
-        border-radius: 20px;
-        border: 1px solid var(--color-border);
-        background: var(--panel);
-        padding: 18px 26px;
+        border-radius: 16px;
+        border: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
+        background: var(--color-surface-muted);
+        padding: 16px 24px;
         text-align: left;
       }
 
@@ -226,27 +214,33 @@
       }
 
       .choice-button {
-        border-radius: 18px;
+        border-radius: 16px;
         overflow: hidden;
-        background: var(--panel);
-        border: 1px solid var(--color-border);
+        background: rgba(250, 237, 205, 0.9);
+        border: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
         padding: 0;
         display: flex;
         flex-direction: column;
         cursor: pointer;
-        transition: transform 120ms ease, border-color 120ms ease;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
       }
 
       .choice-button:hover {
         transform: translateY(-2px);
         border-color: var(--accent);
+        background: rgba(212, 163, 115, 0.05);
+      }
+
+      .choice-button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
       }
 
       .choice-button img {
         display: block;
         width: 100%;
-        height: auto;
-        background: var(--color-surface-muted);
+        object-fit: cover;
+        background: var(--color-page);
       }
 
       .choice-button .thumbnail-placeholder {
@@ -255,22 +249,28 @@
         justify-content: center;
         color: var(--muted);
         font-size: 13px;
-        padding: 20px;
-        background: var(--color-surface-muted);
+        padding: 48px 16px;
+        background: rgba(254, 250, 224, 0.6);
       }
 
       .choice-button span {
-        padding: 16px;
-        font-size: 15px;
+        padding: 12px 16px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--text);
+        transition: color 120ms ease;
+      }
+
+      .choice-button:hover span,
+      .choice-button:focus-visible span {
+        color: var(--accent);
       }
 
       .overlay-content {
         background: var(--panel);
-        border: 1px solid var(--color-border);
-        border-radius: 20px;
-        padding: 28px;
+        border: 1px solid var(--color-border-subtle, rgba(223, 185, 142, 0.6));
+        border-radius: 24px;
+        padding: 32px;
         text-align: center;
         display: flex;
         flex-direction: column;
@@ -734,16 +734,10 @@ __PLAYER_RUNTIME_PLACEHOLDER__
       }
 
       function updateShotImage(shot) {
-        const frame = elements.imageFrame;
         if (shot?.imagePath) {
           elements.shotImage.src = shot.imagePath;
           elements.shotImage.classList.remove("hidden");
           elements.imagePlaceholder.classList.add("hidden");
-          if (frame) {
-            const sanitized = sanitizeUrlForCss(shot.imagePath);
-            frame.style.setProperty("--frame-start-image", `url("${sanitized}")`);
-            frame.classList.add("has-start-image");
-          }
         } else {
           elements.shotImage.src = "";
           elements.shotImage.classList.add("hidden");
@@ -842,22 +836,16 @@ __PLAYER_RUNTIME_PLACEHOLDER__
 
       function updateStartVisual(story) {
         const imagePath = findOpeningShotImage(story);
-        const frame = elements.imageFrame;
-        if (!frame) {
-          return;
-        }
         if (imagePath) {
-          const sanitized = sanitizeUrlForCss(imagePath);
-          frame.style.setProperty("--frame-start-image", `url("${sanitized}")`);
-          frame.classList.add("has-start-image");
           if (!elements.shotImage.src) {
             elements.shotImage.src = imagePath;
             elements.shotImage.classList.remove("hidden");
             elements.imagePlaceholder.classList.add("hidden");
           }
         } else {
-          frame.style.removeProperty("--frame-start-image");
-          frame.classList.remove("has-start-image");
+          elements.shotImage.src = "";
+          elements.shotImage.classList.add("hidden");
+          elements.imagePlaceholder.classList.remove("hidden");
         }
       }
 
@@ -890,14 +878,6 @@ __PLAYER_RUNTIME_PLACEHOLDER__
           }
         }
         return null;
-      }
-
-      function sanitizeUrlForCss(value) {
-        return String(value)
-          .replace(/\\/g, "\\\\")
-          .replace(/"/g, '\\"')
-          .replace(/\(/g, "\\(")
-          .replace(/\)/g, "\\)");
       }
 
       function pauseBackgroundMusic() {

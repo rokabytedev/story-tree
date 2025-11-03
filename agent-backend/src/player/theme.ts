@@ -12,6 +12,38 @@ export async function writePlayerThemeStyles(outputDir: string): Promise<string>
   return targetPath;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  let normalized = hex.trim();
+  if (!normalized) {
+    return hex;
+  }
+
+  if (normalized.startsWith('#')) {
+    normalized = normalized.slice(1);
+  }
+
+  if (normalized.length === 3) {
+    normalized = normalized
+      .split('')
+      .map((char) => `${char}${char}`)
+      .join('');
+  }
+
+  if (normalized.length !== 6) {
+    return hex;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+  if ([r, g, b].some((value) => Number.isNaN(value))) {
+    return hex;
+  }
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function buildPlayerThemeCss(): string {
   const lines: string[] = [];
   lines.push(':root {');
@@ -20,6 +52,7 @@ export function buildPlayerThemeCss(): string {
   lines.push(`  --color-surface-muted: ${storybookPalette.surfaceMuted};`);
   lines.push(`  --color-surface-elevated: ${storybookPalette.surfaceElevated};`);
   lines.push(`  --color-border: ${storybookPalette.border};`);
+  lines.push(`  --color-border-subtle: ${hexToRgba(storybookPalette.border, 0.6)};`);
   lines.push(`  --color-highlight: ${storybookPalette.highlight};`);
   lines.push(`  --color-accent-muted: ${storybookPalette.accentMuted};`);
   lines.push(`  --color-text-primary: ${storybookPalette.textPrimary};`);
