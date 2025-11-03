@@ -14,8 +14,8 @@ import type {
 const CANVAS_PADDING_X = 48;
 const CANVAS_PADDING_Y = 48;
 const EDGE_STYLE = {
-  stroke: "rgba(148, 163, 184, 0.6)",
-  strokeWidth: 1.6,
+  stroke: "rgba(71, 85, 105, 0.85)",
+  strokeWidth: 2,
 };
 
 export function createReactFlowGraph(

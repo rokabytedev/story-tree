@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { type ComponentType } from "react";
 import { usePathname } from "next/navigation";
-import {
-  BookOpenIcon,
-  FilmIcon,
-  Squares2X2Icon,
-  PhotoIcon,
-  MusicalNoteIcon,
-} from "@heroicons/react/24/outline";
+import { BookOpenIcon, FilmIcon, PhotoIcon, MusicalNoteIcon } from "@heroicons/react/24/outline";
 
 import { StorySidebarHeader } from "@/components/storySidebarHeader";
 
@@ -19,6 +13,29 @@ type SidebarTab = {
   description: string;
   Icon: ComponentType<{ className?: string }>;
 };
+
+function StoryboardTreeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className={className}
+    >
+      <circle cx="12" cy="6" r="2.25" />
+      <circle cx="12" cy="12" r="2.25" />
+      <circle cx="7" cy="18" r="2.25" />
+      <circle cx="17" cy="18" r="2.25" />
+      <path d="M12 8.25v1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m10.41 13.59-2.82 2.82" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m13.59 13.59 2.82 2.82" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 15.75v2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 15.75v2.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export const storyTabs: SidebarTab[] = [
   {
@@ -37,7 +54,7 @@ export const storyTabs: SidebarTab[] = [
     slug: "storyboard",
     label: "Storyboard",
     description: "Explore branching flow",
-    Icon: Squares2X2Icon,
+    Icon: StoryboardTreeIcon,
   },
   {
     slug: "visual",
@@ -79,22 +96,22 @@ export function StorySidebar({ storyId, story, className = "" }: StorySidebarPro
           const href = `/story/${storyId}/${slug}`;
           const isActive = pathname === href;
           return (
-            <li key={slug}>
+            <li key={slug} className="-mx-6">
               <Link
                 href={href}
                 aria-label={`${label} — ${description}`}
                 aria-current={isActive ? "page" : undefined}
-                className={`group flex w-full items-start gap-3 px-3 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
+                className={`group flex w-full items-start gap-3 px-6 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlight ${
                   isActive
-                    ? "bg-highlight/10 font-semibold text-highlight"
-                    : "text-text-muted hover:bg-surface hover:text-text-primary"
+                    ? "bg-page font-semibold text-highlight"
+                    : "text-text-muted hover:bg-page hover:text-text-primary"
                 }`}
               >
                 <span
                   className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
                     isActive
                       ? "bg-highlight/20 text-highlight"
-                      : "text-text-muted group-hover:bg-page group-hover:text-highlight"
+                      : "text-text-muted group-hover:bg-highlight/10 group-hover:text-highlight"
                   }`}
                   aria-hidden="true"
                 >

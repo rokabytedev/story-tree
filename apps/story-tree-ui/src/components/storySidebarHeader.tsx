@@ -69,7 +69,7 @@ export function StorySidebarHeader({
         </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-text-muted">
-            Story Explorer
+            Interactive Story
           </p>
           <h2 className="text-xl font-semibold leading-tight text-text-primary">{displayTitle}</h2>
         </div>
