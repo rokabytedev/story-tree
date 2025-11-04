@@ -36,7 +36,7 @@ export function createGeminiTtsClient(options: GeminiTtsClientOptions = {}): Gem
   const model = options.model?.trim() || DEFAULT_TTS_MODEL;
   const defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const verbose = options.verbose ?? false;
-  const retryOptions = options.retry;
+  const defaultRetryOptions = options.retry;
 
   return {
     async synthesize(request: GeminiTtsRequest): Promise<Buffer> {
@@ -76,10 +76,16 @@ export function createGeminiTtsClient(options: GeminiTtsClientOptions = {}): Gem
         );
       }
 
-      const response = await executeGeminiWithRetry(
+      const retryOptions = mergeRetryOptions(defaultRetryOptions, request.retry);
+      const verboseMode = verbose || request.verbose || false;
+
+      const audioBuffer = await executeGeminiWithRetry(
         async () => {
           try {
-            return await transport.generateContent(parameters);
+            const response = await transport.generateContent(parameters);
+            return extractAudioBuffer(response, {
+              verbose: verboseMode,
+            });
           } catch (error) {
             throw normalizeGeminiError(error);
           }
@@ -87,11 +93,7 @@ export function createGeminiTtsClient(options: GeminiTtsClientOptions = {}): Gem
         retryOptions
       );
 
-      const audioBuffer = extractAudioBuffer(response, {
-        verbose: verbose || request.verbose || false,
-      });
-
-      if (verbose || request.verbose) {
+      if (verboseMode) {
         console.log('[gemini-tts-client] Response:', {
           promptBytes: Buffer.byteLength(prompt, 'utf8'),
           audioBytes: audioBuffer.length,
@@ -102,6 +104,59 @@ export function createGeminiTtsClient(options: GeminiTtsClientOptions = {}): Gem
       return audioBuffer;
     },
   };
+}
+
+function mergeRetryOptions(
+  base: GeminiTtsClientOptions['retry'],
+  override: GeminiTtsRequest['retry']
+): GeminiRetryOptions | undefined {
+  if (!base && !override) {
+    return undefined;
+  }
+
+  if (!base) {
+    return { ...override };
+  }
+
+  if (!override) {
+    return { ...base };
+  }
+
+  const merged: GeminiRetryOptions = {};
+
+  if (base.policy !== undefined) {
+    merged.policy = base.policy;
+  }
+
+  if (base.logger) {
+    merged.logger = base.logger;
+  }
+
+  if (base.sleep) {
+    merged.sleep = base.sleep;
+  }
+
+  if (base.random) {
+    merged.random = base.random;
+  }
+
+  if (override.policy !== undefined) {
+    merged.policy = override.policy;
+  }
+
+  if (override.logger) {
+    merged.logger = override.logger;
+  }
+
+  if (override.sleep) {
+    merged.sleep = override.sleep;
+  }
+
+  if (override.random) {
+    merged.random = override.random;
+  }
+
+  return merged;
 }
 
 function resolveTransport(options: GeminiTtsClientOptions): GeminiTtsTransport {
@@ -160,7 +215,9 @@ function extractAudioBuffer(
 ): Buffer {
   const candidate = response.candidates?.[0]?.content;
   if (!candidate) {
-    throw new GeminiApiError('Gemini TTS response did not include audio content.');
+    throw new GeminiApiError('Gemini TTS response did not include audio content.', {
+      isRetryable: true,
+    });
   }
 
   for (const part of candidate.parts ?? []) {
@@ -180,7 +237,9 @@ function extractAudioBuffer(
     }
   }
 
-  throw new GeminiApiError('Gemini TTS response did not contain inline audio data.');
+  throw new GeminiApiError('Gemini TTS response did not contain inline audio data.', {
+    isRetryable: true,
+  });
 }
 
 function normalizeAudioBuffer(

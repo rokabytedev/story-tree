@@ -6,6 +6,7 @@ import type {
   ShotRecord,
 } from '../shot-production/types.js';
 import type { AgentWorkflowStoriesRepository } from '../workflow/types.js';
+import type { GeminiRetryOptions } from '../gemini/types.js';
 
 export type ShotAudioMode = 'default' | 'resume' | 'override';
 
@@ -33,6 +34,7 @@ export interface GeminiTtsRequest {
   speakers: GeminiTtsSpeakerConfig[];
   verbose?: boolean;
   timeoutMs?: number;
+  retry?: GeminiRetryOptions;
 }
 
 export interface GeminiTtsClient {
@@ -96,6 +98,7 @@ export interface ShotAudioTaskDependencies {
   targetShotIndex?: number;
   verbose?: boolean;
   logger?: ShotAudioTaskLogger;
+  retry?: GeminiRetryOptions;
 }
 
 export interface ShotAudioTaskResult {

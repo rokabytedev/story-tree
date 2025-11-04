@@ -847,6 +847,10 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.targetShotIndex = overrides.targetShotIndex;
     }
 
+    if (overrides?.retry) {
+      dependencies.retry = overrides.retry;
+    }
+
     if (overrides?.verbose !== undefined) {
       dependencies.verbose = overrides.verbose;
     }

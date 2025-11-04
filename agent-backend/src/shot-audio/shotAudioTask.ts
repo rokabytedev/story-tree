@@ -46,6 +46,7 @@ export async function runShotAudioTask(
     targetSceneletId,
     targetShotIndex,
     verbose,
+    retry,
   } = dependencies;
 
   if (!storiesRepository) {
@@ -165,6 +166,7 @@ export async function runShotAudioTask(
 
         const audioBuffer = await synthesizeAudio(geminiClient, prompt, {
           verbose: verbose ?? false,
+          retry,
         });
 
         const storageResult = await audioFileStorage.saveShotAudio({
@@ -207,6 +209,7 @@ export async function runShotAudioTask(
     verbose: verbose ?? false,
     targetSceneletId: trimmedSceneletId,
     sceneletDisplayIds,
+    retry,
   });
 
   logger?.debug?.('Shot audio task completed', {
@@ -240,6 +243,7 @@ interface BranchSceneletProcessingOptions {
   verbose: boolean;
   targetSceneletId?: string;
   sceneletDisplayIds: Map<string, string>;
+  retry?: ShotAudioTaskDependencies['retry'];
 }
 
 interface BranchProcessingResult {
@@ -260,6 +264,7 @@ async function processBranchScenelets(options: BranchSceneletProcessingOptions):
     verbose,
     targetSceneletId,
     sceneletDisplayIds,
+    retry,
   } = options;
 
   const scenelets = await sceneletPersistence.listSceneletsByStory(storyId);
@@ -341,7 +346,10 @@ async function processBranchScenelets(options: BranchSceneletProcessingOptions):
     try {
       const script = buildBranchAudioScript(prompt, choiceLabels);
       const promptPayload = assembleBranchAudioPrompt(audioDesign, script);
-      const audioBuffer = await synthesizeAudio(geminiClient, promptPayload, { verbose });
+      const audioBuffer = await synthesizeAudio(geminiClient, promptPayload, {
+        verbose,
+        retry,
+      });
       const storageResult = await audioFileStorage.saveBranchAudio({
         storyId,
         sceneletId: displayId,
@@ -594,13 +602,14 @@ function hasAudio(shot: ShotRecord): boolean {
 async function synthesizeAudio(
   client: GeminiTtsClient,
   prompt: ShotAudioPrompt,
-  options: { verbose: boolean }
+  options: { verbose: boolean; retry?: ShotAudioTaskDependencies['retry'] }
 ): Promise<Buffer> {
   return client.synthesize({
     prompt: prompt.prompt,
     mode: prompt.mode,
     speakers: prompt.speakers,
     verbose: options.verbose,
+    retry: options.retry,
   });
 }
 
