@@ -143,6 +143,11 @@ export interface ShotProductionTaskResult {
   totalShots: number;
 }
 
+export type ShotProductionTaskRunner = (
+  storyId: string,
+  dependencies: ShotProductionTaskDependencies
+) => Promise<ShotProductionTaskResult>;
+
 export interface ShotProductionSceneletResult {
   sceneletId: string;
   shotCount: number;

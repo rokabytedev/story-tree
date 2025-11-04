@@ -1,10 +1,15 @@
 "use client";
 
+import type { HTMLAttributes } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 type MarkdownPreviewProps = {
   content: string;
+};
+
+type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
+  inline?: boolean;
 };
 
 const markdownComponents: Components = {
@@ -98,7 +103,7 @@ const markdownComponents: Components = {
       rel="noopener noreferrer"
     />
   ),
-  code: ({ inline, className, children, ...props }) => {
+  code: ({ inline, className, children, ...props }: MarkdownCodeProps) => {
     if (inline) {
       return (
         <code

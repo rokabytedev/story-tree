@@ -1,9 +1,11 @@
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { SceneletNodeData } from "./types";
 import { ShotCarousel } from "./ShotCarousel";
 
-function SceneletNodeBase({ data }: NodeProps<SceneletNodeData>) {
+type SceneletNodeProps = NodeProps<Node<SceneletNodeData>>;
+
+function SceneletNodeBase({ data }: SceneletNodeProps) {
   const { scenelet, onShotClick } = data;
 
   return (

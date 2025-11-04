@@ -156,20 +156,23 @@ function parseGlobalAesthetic(record: UnknownRecord): VisualGlobalAestheticViewM
       const hex = coerceString(
         entry.hex_code ?? entry.hexCode ?? entry.hex_value ?? entry.hex
       );
-      const name =
-        coerceString(entry.color_name ?? entry.name ?? entry.label) ?? hex;
 
       if (!hex) {
         return null;
       }
 
-      return {
+      const name: string =
+        coerceString(entry.color_name ?? entry.name ?? entry.label) ?? hex;
+
+      const paletteEntry: VisualPaletteEntryViewModel = {
         name,
         hex,
         usageNotes: coerceString(
           entry.usage_notes ?? entry.notes ?? entry.description ?? entry.detail
         ),
-      } satisfies VisualPaletteEntryViewModel;
+      };
+
+      return paletteEntry;
     })
     .filter((entry): entry is VisualPaletteEntryViewModel => Boolean(entry));
 
@@ -248,7 +251,7 @@ function parseCharacterDesigns(record: UnknownRecord): VisualCharacterSummary[] 
           entry.scenelets
       );
 
-      return {
+      const summary: VisualCharacterSummary = {
         id,
         name,
         role: coerceString(entry.role ?? entry.character_role),
@@ -258,7 +261,9 @@ function parseCharacterDesigns(record: UnknownRecord): VisualCharacterSummary[] 
         facialFeatures,
         imagePath,
         sceneletIds,
-      } satisfies VisualCharacterSummary;
+      };
+
+      return summary;
     })
     .filter((entry): entry is VisualCharacterSummary => Boolean(entry));
 }
@@ -336,7 +341,7 @@ function parseEnvironmentDesigns(
           entry.scenelets
       );
 
-      return {
+      const summary: VisualEnvironmentSummary = {
         id,
         name,
         overallDescription,
@@ -345,7 +350,9 @@ function parseEnvironmentDesigns(
         keyElements,
         sceneletIds,
         referenceImagePath,
-      } satisfies VisualEnvironmentSummary;
+      };
+
+      return summary;
     })
     .filter((entry): entry is VisualEnvironmentSummary => Boolean(entry));
 }

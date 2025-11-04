@@ -351,6 +351,9 @@ function createReadOnlySceneletPersistence(
     },
     hasSceneletsForStory: (targetStoryId) => repository.hasSceneletsForStory(targetStoryId),
     listSceneletsByStory: (targetStoryId) => repository.listSceneletsByStory(targetStoryId),
+    async updateBranchAudioPath() {
+      throw new Error("updateBranchAudioPath is not supported by read-only scenelet persistence.");
+    },
   } as SceneletPersistence;
 }
 

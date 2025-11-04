@@ -41,13 +41,13 @@ export interface StoryTreeData {
   branchingPoints: StoryboardBranchingPoint[];
 }
 
-export interface SceneletNodeData {
+export interface SceneletNodeData extends Record<string, unknown> {
   type: "scenelet";
   scenelet: StoryboardScenelet;
   onShotClick?: (shot: ShotImage) => void;
 }
 
-export interface BranchingPointNodeData {
+export interface BranchingPointNodeData extends Record<string, unknown> {
   type: "branching-point";
   branchingPoint: StoryboardBranchingPoint;
 }

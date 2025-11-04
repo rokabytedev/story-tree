@@ -2,11 +2,15 @@
 
 import { useMemo } from "react";
 import { Background, Controls, Panel, ReactFlow } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { BranchingPointNode } from "./BranchingPointNode";
 import { SceneletNode } from "./SceneletNode";
 import { createReactFlowGraph } from "./dataTransformers";
 import type { BranchingPointNodeData, SceneletNodeData, ShotImage, StoryTreeData } from "./types";
+
+type StoryboardNode = Node<SceneletNodeData | BranchingPointNodeData>;
+type StoryboardEdge = Edge;
 
 const nodeTypes = {
   scenelet: SceneletNode,
@@ -31,7 +35,7 @@ export function StoryboardCanvas({ data, onShotClick }: StoryboardCanvasProps) {
 
   return (
     <div className="relative h-full w-full min-h-[640px]">
-      <ReactFlow<SceneletNodeData | BranchingPointNodeData>
+      <ReactFlow<StoryboardNode, StoryboardEdge>
         nodes={graph.nodes}
         edges={graph.edges}
         nodeTypes={nodeTypes}

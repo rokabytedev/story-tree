@@ -167,7 +167,7 @@ function parseVoiceProfiles(record: UnknownRecord): AudioVoiceProfileViewModel[]
         return null;
       }
 
-      return {
+      const profile: AudioVoiceProfileViewModel = {
         characterId,
         characterName: coerceString(entry.character_name ?? entry.characterName) ?? characterId,
         voiceName: coerceString(entry.voice_name ?? entry.voiceName),
@@ -175,7 +175,9 @@ function parseVoiceProfiles(record: UnknownRecord): AudioVoiceProfileViewModel[]
           coerceString(entry.voice_profile ?? entry.voiceProfile) ??
           coerceString(entry.voice_description ?? entry.voiceDescription),
         usageNotes: coerceString(entry.usage_notes ?? entry.usageNotes ?? entry.notes),
-      } satisfies AudioVoiceProfileViewModel;
+      };
+
+      return profile;
     })
     .filter((entry): entry is AudioVoiceProfileViewModel => Boolean(entry));
 }
@@ -199,15 +201,21 @@ function parseMusicCues(record: UnknownRecord): AudioCueViewModel[] {
         return null;
       }
 
-      return {
+      const sceneletIds = coerceStringArray(
+        entry.associated_scenelet_ids ?? entry.associatedSceneletIds ?? entry.scenelets
+      );
+
+      const cue: AudioCueViewModel = {
         cueName,
         description: coerceString(entry.cue_description ?? entry.description),
-        prompt: coerceString(entry.music_generation_prompt ?? entry.musicGenerationPrompt ?? entry.prompt),
-        sceneletIds: coerceStringArray(
-          entry.associated_scenelet_ids ?? entry.associatedSceneletIds ?? entry.scenelets
+        prompt: coerceString(
+          entry.music_generation_prompt ?? entry.musicGenerationPrompt ?? entry.prompt
         ),
+        sceneletIds,
         audioFilePath: coerceString(entry.audio_file_path ?? entry.audioFilePath ?? entry.asset_path),
-      } satisfies AudioCueViewModel;
+      };
+
+      return cue;
     })
     .filter((entry): entry is AudioCueViewModel => Boolean(entry));
 }

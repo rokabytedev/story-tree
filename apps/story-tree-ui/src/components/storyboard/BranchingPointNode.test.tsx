@@ -2,7 +2,8 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import type { StoryboardBranchingPoint } from "./types";
+import type { Node, NodeProps } from "@xyflow/react";
+import type { BranchingPointNodeData, StoryboardBranchingPoint } from "./types";
 import { BranchingPointNode } from "./BranchingPointNode";
 
 const branchingPoint: StoryboardBranchingPoint = {
@@ -17,13 +18,23 @@ const branchingPoint: StoryboardBranchingPoint = {
 
 describe("BranchingPointNode", () => {
   it("switches to the surface background color for cards", () => {
+    const nodeProps: NodeProps<Node<BranchingPointNodeData>> = {
+      id: branchingPoint.id,
+      data: { type: "branching-point", branchingPoint },
+      type: "branching-point",
+      dragging: false,
+      draggable: false,
+      selectable: true,
+      deletable: false,
+      selected: false,
+      zIndex: 0,
+      isConnectable: false,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+    };
+
     const markup = renderToStaticMarkup(
-      <BranchingPointNode
-        {...({
-          id: branchingPoint.id,
-          data: { type: "branching-point", branchingPoint },
-        } as any)}
-      />,
+      <BranchingPointNode {...nodeProps} />,
     );
 
     expect(markup).toContain("bg-surface");

@@ -34,6 +34,11 @@ export interface VisualReferenceImageTaskResult {
   generatedEnvironmentImages: number;
 }
 
+export type VisualReferenceImageTaskRunner = (
+  storyId: string,
+  dependencies: VisualReferenceImageTaskDependencies
+) => Promise<VisualReferenceImageTaskResult>;
+
 export interface VisualReferenceImageStoryRecord extends AgentWorkflowStoryRecord {
   visualReferencePackage: unknown | null;
 }
@@ -65,4 +70,3 @@ export interface VisualReferencePackage extends Record<string, unknown> {
   character_model_sheets: VisualReferenceCharacterSheet[];
   environment_keyframes: VisualReferenceEnvironmentEntry[];
 }
-

@@ -35,9 +35,9 @@ const INITIAL_VIEW_STATE: PlayerViewState = {
   reachedIncomplete: false,
 };
 
-const MUSIC_VOLUME = 0.25;
-const MUSIC_CROSSFADE_MS = 500;
-const MUSIC_FADE_INTERVAL_MS = 50;
+const MUSIC_VOLUME: number = 0.25;
+const MUSIC_CROSSFADE_MS: number = 500;
+const MUSIC_FADE_INTERVAL_MS: number = 50;
 
 type MusicState = {
   activeElement: HTMLAudioElement | null;
@@ -585,7 +585,6 @@ export function EmbeddedPlayer({ bundle }: EmbeddedPlayerProps) {
         showIncompleteOverlay={showIncompleteOverlay}
         getChoicePreviewImage={getChoicePreviewImage}
         startImage={startVisualImage}
-        stage={viewState.stage}
       />
       <audio ref={shotAudioRef} preload="auto" data-testid="shot-audio" />
       <audio ref={musicPrimaryRef} preload="auto" loop />
@@ -608,7 +607,6 @@ type PlayerSurfaceProps = {
   showIncompleteOverlay: boolean;
   getChoicePreviewImage: (sceneletId: string) => string | null;
   startImage: string | null;
-  stage: PlayerStage;
 };
 
 function PlayerSurface({
@@ -625,7 +623,6 @@ function PlayerSurface({
   showIncompleteOverlay,
   getChoicePreviewImage,
   startImage,
-  stage,
 }: PlayerSurfaceProps) {
   const VisualIcon = isPaused ? PlayIcon : PauseIcon;
   const displayImage = shot?.imagePath ?? startImage ?? null;

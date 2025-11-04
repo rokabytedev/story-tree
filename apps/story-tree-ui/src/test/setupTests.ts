@@ -1,4 +1,10 @@
 import React from "react";
+import type {
+  AnchorHTMLAttributes,
+  HTMLAttributes,
+  ImgHTMLAttributes,
+  PropsWithChildren,
+} from "react";
 import { vi } from "vitest";
 
 Object.defineProperty(window.HTMLMediaElement.prototype, "load", {
@@ -9,21 +15,20 @@ Object.defineProperty(window.HTMLMediaElement.prototype, "load", {
 });
 
 vi.mock("next/image", () => {
-  const MockImage = ({
-    alt,
-    src,
-    fill: _fill,
-    sizes: _sizes,
-    ...rest
-  }: {
+  type MockImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> & {
     alt?: string;
     src: string | { src: string };
-  }) => {
+    fill?: boolean;
+  };
+
+  const MockImage = ({ alt, src, fill, sizes, ...imgProps }: MockImageProps) => {
+    void fill;
+    void sizes;
     const resolvedSrc = typeof src === "string" ? src : src?.src ?? "";
     return React.createElement("img", {
       alt,
       src: resolvedSrc,
-      ...rest,
+      ...imgProps,
     });
   };
 
@@ -36,9 +41,11 @@ vi.mock("next/image", () => {
 });
 
 vi.mock("next/link", () => {
+  type MockLinkProps = PropsWithChildren<AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }>;
+
   return {
     __esModule: true,
-    default: ({ href, children, ...props }: any) =>
+    default: ({ href, children, ...props }: MockLinkProps) =>
       React.createElement("a", { href, ...props }, children),
   };
 });
@@ -51,7 +58,7 @@ vi.mock("@xyflow/react", () => {
     Right: "right",
   };
 
-  const Handle = ({ children, ...props }: any) =>
+  const Handle = ({ children, ...props }: PropsWithChildren<HTMLAttributes<HTMLDivElement>>) =>
     React.createElement("div", props, children);
 
   return {

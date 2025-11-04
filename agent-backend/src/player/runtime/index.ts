@@ -161,11 +161,13 @@ export function createPlayerController(
     type: TType,
     listener: EventListener<Extract<PlayerEvent, { type: TType }>>
   ): () => void {
-    const bucket = listeners[type] ?? new Set();
-    bucket.add(listener as EventListener<PlayerEvent>);
-    listeners[type] = bucket;
+    const bucket =
+      (listeners[type] as Set<EventListener<Extract<PlayerEvent, { type: TType }>>>) ??
+      new Set<EventListener<Extract<PlayerEvent, { type: TType }>>>();
+    bucket.add(listener);
+    listeners[type] = bucket as ListenerMap[TType];
     return () => {
-      bucket.delete(listener as EventListener<PlayerEvent>);
+      bucket.delete(listener);
     };
   }
 

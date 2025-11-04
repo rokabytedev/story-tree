@@ -1,8 +1,10 @@
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { BranchingPointNodeData } from "./types";
 
-function BranchingPointNodeBase({ data }: NodeProps<BranchingPointNodeData>) {
+type BranchingPointNodeProps = NodeProps<Node<BranchingPointNodeData>>;
+
+function BranchingPointNodeBase({ data }: BranchingPointNodeProps) {
   const { branchingPoint } = data;
 
   return (
