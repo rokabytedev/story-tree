@@ -66,8 +66,11 @@ export function assembleShotVideoPrompt(
     audio_design: audioDesign,
     storyboard_payload: storyboard,
     critical_instruction: [
-      'Do not include captions, subtitles, or watermarks.',
-      'Do not include background music. Output visuals only.',
+      '**Character Model Sheets = Immutable Law.** The provided character reference images are the absolute, pixel-for-pixel ground truth for those characters. They define the permanent, unchangeable geometry, texture, color, markings, and attire. This data is **IMMUTABLE**.',
+      '**Environment Reference Images = The Inspirational Blueprint.** The environment reference images (in a 2x2 grid) establish the *aesthetic and thematic consistency* of a location. They define the mood, color palette, lighting style, textures, and the "kit of parts" (e.g., types of trees, style of furniture). They are a stylistic guide, **not a compositional mandate**.',
+      '**DO NOT** generate any captions, subtitles, or watermarks.',
+      '**DO NOT** generate any background music.',
+      "**IMPORTANT AUDIO RULE**: If the `source` of a `line` in `audioAndNarrative` is `narrator`, this designates a NON-DIEGETIC voice-over. The on-screen characters **MUST NOT** speak or lip-sync to this audio. Their actions should be independent of the act of speaking. The audio is for the audience only.",
     ],
   };
 }
