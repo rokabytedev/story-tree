@@ -7,7 +7,7 @@ import type { AgentWorkflowStoryRecord, AgentWorkflowStoriesRepository } from '.
 import type { ShotProductionShotsRepository, ShotsMissingImages, ShotRecord } from '../src/shot-production/types.js';
 import { ReferenceImageRecommenderError } from '../src/reference-images/referenceImageRecommender.js';
 import { ReferenceImageLoadError } from '../src/image-generation/referenceImageLoader.js';
-import { loadVisualRendererSystemPrompt } from '../src/prompts/visualRendererPrompt.js';
+import { loadVisualRendererPromptInstructions } from '../src/prompts/visualRendererPrompt.js';
 
 vi.mock('../src/reference-images/index.js', async () => {
   const actual = await vi.importActual<typeof import('../src/reference-images/index.js')>(
@@ -227,10 +227,15 @@ describe('runShotImageTask', () => {
     ]);
 
     expect(generateImage).toHaveBeenCalledTimes(1);
-    const [{ userPrompt, referenceImages, systemInstruction }] = generateImage.mock.calls[0] ?? [];
+    const [{ userPrompt, referenceImages, systemInstruction, retry: callRetry }] =
+      generateImage.mock.calls[0] ?? [];
     expect(referenceImages).toHaveLength(1);
-    expect(generateImage).toHaveBeenCalledWith(expect.objectContaining({ retry: retryOptions }));
-    const parsedPrompt = JSON.parse(userPrompt as string);
+    expect(callRetry).toBe(retryOptions);
+
+    const instructions = await loadVisualRendererPromptInstructions();
+    expect(typeof userPrompt).toBe('string');
+    expect((userPrompt as string).startsWith(instructions)).toBe(true);
+    const parsedPrompt = JSON.parse((userPrompt as string).slice(instructions.length).trimStart());
     expect(parsedPrompt.global_aesthetic).toMatchObject({
       visual_style: story.visualDesignDocument.visual_style,
       master_color_palette: story.visualDesignDocument.master_color_palette,
@@ -239,8 +244,7 @@ describe('runShotImageTask', () => {
     expect(parsedPrompt.environment_designs).toHaveLength(1);
     expect(parsedPrompt.environment_designs[0]).not.toHaveProperty('associated_scenelet_ids');
     expect(parsedPrompt).not.toHaveProperty('audioAndNarrative');
-    const visualRendererPrompt = await loadVisualRendererSystemPrompt();
-    expect(systemInstruction).toBe(visualRendererPrompt);
+    expect(systemInstruction).toBeUndefined();
 
     expect(saveImage).toHaveBeenCalledWith(
       Buffer.from('generated-key-frame'),

@@ -64,52 +64,30 @@ describe('environment reference prompt builder', () => {
   it('builds structured environment reference prompt', () => {
     const prompt = buildEnvironmentReferencePrompt(
       SAMPLE_DOCUMENT.global_aesthetic,
-      SAMPLE_DOCUMENT.environment_designs[0]!
+      SAMPLE_DOCUMENT.environment_designs[0]!,
+      'INSTRUCTIONS'
     );
 
-    expect(prompt).toMatchInlineSnapshot(`
-"# Role: Environment Concept Artist
+    expect(prompt.startsWith('INSTRUCTIONS')).toBe(true);
+    expect(prompt.includes('\n\n{')).toBe(true);
+    const jsonPayload = prompt.slice('INSTRUCTIONS'.length).trimStart();
+    const parsed = JSON.parse(jsonPayload);
 
-Your purpose is to generate high-fidelity environment reference images for film, animation, and game production. The output must serve as a precise visual guide for a specific scene.
-
-# Core Directive: Strict Adherence to the User's Prompt
-
-Your most critical function is to create an image that is a direct and literal visualization of the user's request.
-
-*   **Analyze:** Deconstruct the user's prompt to identify every specified element: objects, lighting, atmosphere, color palette, camera angle, and composition.
-*   **Construct:** Build the scene using *only* the elements explicitly mentioned.
-*   **Omit:** Do not add, invent, or infer any objects, characters, animals, or environmental details that are not described in the prompt. Your role is to be a precise tool, not an interpretive artist.
-
-{
-  "global_aesthetic": {
-    "visual_style": {
-      "name": "Moody Cinematic",
-      "description": "High-contrast lighting with rich color accents"
-    },
-    "master_color_palette": [
-      {
-        "hex_code": "#1b1f3b",
-        "color_name": "Midnight Indigo",
-        "usage_notes": "Dominant shadows"
+    expect(parsed).toEqual({
+      global_aesthetic: SAMPLE_DOCUMENT.global_aesthetic,
+      environment_design: {
+        environment_id: 'crystal-cavern',
+        environment_name: 'Crystal Cavern',
+        detailed_description: {
+          overall_description:
+            'A massive subterranean chamber filled with luminous crystals.',
+          lighting_and_atmosphere:
+            'Soft bioluminescent glow with drifting particulates.',
+          color_tones: 'Deep blues with teal highlights and amber rim light.',
+          key_elements:
+            'Multi-tier crystal clusters, reflective water pools, carved walkways.',
+        },
       },
-      {
-        "hex_code": "#f2a900",
-        "color_name": "Amber Glow",
-        "usage_notes": "Practical lighting"
-      }
-    ]
-  },
-  "environment_design": {
-    "environment_id": "crystal-cavern",
-    "environment_name": "Crystal Cavern",
-    "detailed_description": {
-      "overall_description": "A massive subterranean chamber filled with luminous crystals.",
-      "lighting_and_atmosphere": "Soft bioluminescent glow with drifting particulates.",
-      "color_tones": "Deep blues with teal highlights and amber rim light.",
-      "key_elements": "Multi-tier crystal clusters, reflective water pools, carved walkways."
-    }
-  }
-}"
-    `);
+    });
   });
 });

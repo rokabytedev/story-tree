@@ -1,6 +1,7 @@
 import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
 import { ImageStorageService } from '../image-generation/imageStorage.js';
 import type { GeminiImageClient } from '../image-generation/types.js';
+import { loadEnvironmentReferencePromptInstructions } from '../prompts/environmentReferencePrompt.js';
 import { EnvironmentReferenceTaskError } from './errors.js';
 import {
   buildEnvironmentReferencePrompt,
@@ -80,6 +81,7 @@ export async function runEnvironmentReferenceTask(
   const geminiClient = resolveGeminiClient(dependencies);
   const imageStorage = resolveImageStorage(dependencies);
   const globalAesthetic = extractGlobalAesthetic(visualDesignDocument);
+  const promptInstructions = await loadEnvironmentReferencePromptInstructions();
 
   let generatedCount = 0;
   let skippedCount = 0;
@@ -111,7 +113,11 @@ export async function runEnvironmentReferenceTask(
         ? environment
         : extractEnvironmentDesign(visualDesignDocument, environmentId);
 
-      const prompt = buildEnvironmentReferencePrompt(globalAesthetic, environmentDesign);
+      const prompt = buildEnvironmentReferencePrompt(
+        globalAesthetic,
+        environmentDesign,
+        promptInstructions
+      );
 
       if (verbose && logger?.debug) {
         logger.debug('Generating environment reference image', {

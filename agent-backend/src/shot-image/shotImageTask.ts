@@ -4,7 +4,8 @@ import { assembleKeyFramePrompt } from './keyFramePromptAssembler.js';
 import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.js';
 import { recommendReferenceImages, ReferenceImageRecommenderError } from '../reference-images/index.js';
 import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
-import { loadVisualRendererSystemPrompt } from '../prompts/visualRendererPrompt.js';
+import { prependInstructionsToPayload } from '../prompts/promptComposer.js';
+import { loadVisualRendererPromptInstructions } from '../prompts/visualRendererPrompt.js';
 import type {
   ReferencedDesigns,
   ShotProductionStoryboardEntry,
@@ -139,7 +140,7 @@ export async function runShotImageTask(
 
   const totalShots = shotsToProcess.length;
   let generatedKeyFrameImages = 0;
-  const visualRendererSystemPrompt = await loadVisualRendererSystemPrompt();
+  const visualRendererPromptInstructions = await loadVisualRendererPromptInstructions();
 
   // Process each shot that needs images
   for (const shotInfo of shotsToProcess) {
@@ -207,9 +208,13 @@ export async function runShotImageTask(
 
     logger?.debug?.('Generating key frame image', { sceneletId, shotIndex });
 
+    const userPrompt = prependInstructionsToPayload(
+      visualRendererPromptInstructions,
+      JSON.stringify(promptObject)
+    );
+
     const keyFrameResult = await geminiImageClient.generateImage({
-      userPrompt: JSON.stringify(promptObject),
-      systemInstruction: visualRendererSystemPrompt,
+      userPrompt,
       referenceImages: referenceImageBuffers.slice(0, 3),
       aspectRatio,
       retry,

@@ -1,3 +1,4 @@
+import { prependInstructionsToPayload } from '../prompts/promptComposer.js';
 import { EnvironmentReferenceTaskError } from './errors.js';
 
 export interface GlobalAesthetic {
@@ -25,18 +26,6 @@ export interface VisualDesignDocument {
   environment_designs?: EnvironmentDesign[];
   [key: string]: unknown;
 }
-
-const ENVIRONMENT_PROMPT_TEMPLATE = `# Role: Environment Concept Artist
-
-Your purpose is to generate high-fidelity environment reference images for film, animation, and game production. The output must serve as a precise visual guide for a specific scene.
-
-# Core Directive: Strict Adherence to the User's Prompt
-
-Your most critical function is to create an image that is a direct and literal visualization of the user's request.
-
-*   **Analyze:** Deconstruct the user's prompt to identify every specified element: objects, lighting, atmosphere, color palette, camera angle, and composition.
-*   **Construct:** Build the scene using *only* the elements explicitly mentioned.
-*   **Omit:** Do not add, invent, or infer any objects, characters, animals, or environmental details that are not described in the prompt. Your role is to be a precise tool, not an interpretive artist.`;
 
 export function parseVisualDesignDocument(raw: unknown): VisualDesignDocument | null {
   if (raw === null || raw === undefined) {
@@ -114,7 +103,8 @@ export function extractEnvironmentDesign(
 
 export function buildEnvironmentReferencePrompt(
   globalAesthetic: GlobalAesthetic,
-  environmentDesign: EnvironmentDesign
+  environmentDesign: EnvironmentDesign,
+  promptInstructions: string
 ): string {
   const sanitizedEnvironment = sanitizeEnvironmentDesign(environmentDesign);
 
@@ -123,9 +113,8 @@ export function buildEnvironmentReferencePrompt(
     environment_design: sanitizedEnvironment,
   };
 
-  return `${ENVIRONMENT_PROMPT_TEMPLATE}
-
-${JSON.stringify(dataBlock, null, 2)}`;
+  const payload = JSON.stringify(dataBlock, null, 2);
+  return prependInstructionsToPayload(promptInstructions, payload);
 }
 
 function sanitizeEnvironmentDesign(design: EnvironmentDesign): EnvironmentDesign {

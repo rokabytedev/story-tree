@@ -8,7 +8,7 @@ const systemPromptPath = path.resolve(
 
 let cachedPrompt: string | undefined;
 
-export async function loadVisualRendererSystemPrompt(): Promise<string> {
+export async function loadVisualRendererPromptInstructions(): Promise<string> {
   if (cachedPrompt) {
     return cachedPrompt;
   }
@@ -16,3 +16,5 @@ export async function loadVisualRendererSystemPrompt(): Promise<string> {
   cachedPrompt = await readFile(systemPromptPath, 'utf8');
   return cachedPrompt;
 }
+
+export { loadVisualRendererPromptInstructions as loadVisualRendererSystemPrompt };

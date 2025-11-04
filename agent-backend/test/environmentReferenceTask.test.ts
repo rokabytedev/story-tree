@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { runEnvironmentReferenceTask } from '../src/environment-reference/environmentReferenceTask.js';
 import { EnvironmentReferenceTaskError } from '../src/environment-reference/errors.js';
+import { loadEnvironmentReferencePromptInstructions } from '../src/prompts/environmentReferencePrompt.js';
 import type {
   EnvironmentReferenceStoryRecord,
   EnvironmentReferenceTaskDependencies,
@@ -123,12 +124,21 @@ describe('runEnvironmentReferenceTask', () => {
     );
 
     expect(generateImage).toHaveBeenCalledTimes(1);
-    expect(generateImage).toHaveBeenCalledWith({
-      userPrompt: expect.stringContaining('# Role: Environment Concept Artist'),
-      aspectRatio: '16:9',
-      timeoutMs: 10_000,
-      retry: undefined,
-    });
+    const [{ userPrompt, aspectRatio, timeoutMs, retry }] = generateImage.mock.calls[0] ?? [];
+    expect(aspectRatio).toBe('16:9');
+    expect(timeoutMs).toBe(10_000);
+    expect(retry).toBeUndefined();
+
+    const instructions = await loadEnvironmentReferencePromptInstructions();
+    expect(typeof userPrompt).toBe('string');
+    expect((userPrompt as string).startsWith(instructions)).toBe(true);
+    const jsonPayload = (userPrompt as string).slice(instructions.length).trimStart();
+    expect(jsonPayload.startsWith('{')).toBe(true);
+    const parsedPrompt = JSON.parse(jsonPayload);
+    expect(parsedPrompt.global_aesthetic).toEqual(
+      (story.visualDesignDocument as { global_aesthetic: unknown }).global_aesthetic
+    );
+    expect(parsedPrompt.environment_design.environment_id).toBe('crystal-cavern');
     expect(saveImage).toHaveBeenCalledTimes(1);
     expect(repository.updates).toHaveLength(1);
 
