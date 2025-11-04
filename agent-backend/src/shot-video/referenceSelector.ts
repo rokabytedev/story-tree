@@ -97,16 +97,17 @@ export function selectVideoReferenceImages(
   }
 
   // Priority 2: existing key frame image
-  if (typeof shot.keyFrameImagePath === 'string' && shot.keyFrameImagePath.trim()) {
-    const absolute = resolveGeneratedAssetPath(shot.keyFrameImagePath, normalizedBasePath);
-    if (absolute && existsSync(absolute)) {
-      enqueueSelection(selections, seenPaths, {
-        path: absolute,
-        type: 'KEY_FRAME',
-        id: `${shot.sceneletId}#${shot.shotIndex}`,
-      });
-    }
-  }
+  // Disable key frame for now because it causes the video to be bad.
+  // if (typeof shot.keyFrameImagePath === 'string' && shot.keyFrameImagePath.trim()) {
+  //   const absolute = resolveGeneratedAssetPath(shot.keyFrameImagePath, normalizedBasePath);
+  //   if (absolute && existsSync(absolute)) {
+  //     enqueueSelection(selections, seenPaths, {
+  //       path: absolute,
+  //       type: 'KEY_FRAME',
+  //       id: `${shot.sceneletId}#${shot.shotIndex}`,
+  //     });
+  //   }
+  // }
 
   const requestedLimit = options.maxImages;
   const safeLimit =
