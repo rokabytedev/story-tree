@@ -1,10 +1,17 @@
 {
   "visual_design_document": {
     "project_overview": "Stub visual design document for testing shot production integration.",
+    "global_aesthetic": {
+      "visual_style": {
+        "tagline": "Stylized cinematic sci-fi with expressive holographic interfaces."
+      },
+      "master_color_palette": ["#1E1E2F", "#4A90E2", "#F5A623"]
+    },
     "character_designs": [
       {
         "character_name": "Rhea",
         "role": "Explorer",
+        "character_model_sheet_image_path": "story-stub/visuals/characters/rhea/character-model-sheet-1.png",
         "detailed_description": {
           "silhouette": "Athletic frame with confident posture.",
           "color_palette": ["#2F4F4F", "#F5DEB3"],
@@ -14,6 +21,7 @@
       {
         "character_name": "Mentor Guide",
         "role": "Strategist",
+        "character_model_sheet_image_path": "story-stub/visuals/characters/mentor-guide/character-model-sheet-1.png",
         "detailed_description": {
           "silhouette": "Tall figure with flowing coat lines that echo circuit traces.",
           "color_palette": ["#8A2BE2", "#E0FFFF"],
@@ -23,6 +31,7 @@
       {
         "character_name": "Narrator",
         "role": "Voice of System",
+        "character_model_sheet_image_path": "story-stub/visuals/characters/narrator/character-model-sheet-1.png",
         "detailed_description": {
           "silhouette": "Disembodied light ribbon forming abstract face when speaking.",
           "color_palette": ["#FFD700"],
@@ -32,6 +41,7 @@
       {
         "character_name": "Testing Agent",
         "role": "Guide",
+        "character_model_sheet_image_path": "story-stub/visuals/characters/testing-agent/character-model-sheet-1.png",
         "detailed_description": {
           "silhouette": "Compact floating orb companion.",
           "color_palette": ["#1E90FF", "#FFFFFF"],
@@ -43,6 +53,7 @@
       {
         "environment_name": "Choice Clearing",
         "associated_scenelet_ids": ["scenelet-1", "scenelet-2"],
+        "environment_reference_image_path": "story-stub/visuals/environments/choice-clearing/keyframe_1.png",
         "detailed_description": {
           "overview": "A clearing illuminated by suspended light threads.",
           "key_props": ["Ancient decision obelisk", "Floating choice glyphs"],
@@ -52,6 +63,7 @@
       {
         "environment_name": "Sandbox Studio",
         "associated_scenelet_ids": ["scenelet-3", "scenelet-4", "scenelet-5"],
+        "environment_reference_image_path": "story-stub/visuals/environments/sandbox-studio/keyframe_1.png",
         "detailed_description": {
           "overview": "Collaborative holo-lab where designers iterate on branching scenes.",
           "key_props": ["Modular display pylons", "Ceiling-mounted projector rigs"],
@@ -61,6 +73,7 @@
       {
         "environment_name": "Challenge Bay",
         "associated_scenelet_ids": ["scenelet-4"],
+        "environment_reference_image_path": "story-stub/visuals/environments/challenge-bay/keyframe_1.png",
         "detailed_description": {
           "overview": "Expansive bay with retractable platforms used for high-stakes trials.",
           "key_props": ["Hydraulic risers", "Spectator galleries suspended above the floor"],
@@ -70,6 +83,7 @@
       {
         "environment_name": "Challenge Arena",
         "associated_scenelet_ids": ["scenelet-5"],
+        "environment_reference_image_path": "story-stub/visuals/environments/challenge-arena/keyframe_1.png",
         "detailed_description": {
           "overview": "Circular arena with adaptive walls that reshape for each challenge.",
           "key_props": ["Segmented barrier walls", "Ceiling gantries for rapid lighting changes"],

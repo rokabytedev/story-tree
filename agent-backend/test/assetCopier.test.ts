@@ -16,6 +16,7 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload: overrides.storyboardPayload ?? {},
     keyFrameImagePath: overrides.keyFrameImagePath,
+    videoFilePath: overrides.videoFilePath,
     audioFilePath: overrides.audioFilePath,
     createdAt: overrides.createdAt ?? new Date().toISOString(),
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),

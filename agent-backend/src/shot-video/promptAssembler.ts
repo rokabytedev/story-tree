@@ -1,0 +1,259 @@
+import { ShotVideoTaskError } from './errors.js';
+import type { ShotRecord, ShotProductionStoryboardEntry } from '../shot-production/types.js';
+import type {
+  VisualDesignCharacterDesign,
+  VisualDesignDocument,
+  VisualDesignEnvironmentDesign,
+} from '../visual-design/types.js';
+
+export interface AssembledShotVideoPrompt {
+  global_aesthetic: Record<string, unknown>;
+  character_designs: VisualDesignCharacterDesign[];
+  environment_designs: VisualDesignEnvironmentDesign[];
+  storyboard_payload: ShotProductionStoryboardEntry;
+  critical_instruction: string[];
+}
+
+export function assembleShotVideoPrompt(
+  shot: ShotRecord,
+  visualDesignDocument: VisualDesignDocument
+): AssembledShotVideoPrompt {
+  if (!shot) {
+    throw new ShotVideoTaskError('assembleShotVideoPrompt requires a shot record.');
+  }
+
+  const storyboard = extractStoryboard(shot.storyboardPayload);
+  const referencedDesigns = storyboard.referencedDesigns;
+  if (!referencedDesigns) {
+    throw new ShotVideoTaskError('Shot storyboard payload is missing referencedDesigns.');
+  }
+
+  const globalAesthetic = extractGlobalAesthetic(visualDesignDocument);
+  const characterDesigns = filterCharacterDesigns(
+    visualDesignDocument,
+    referencedDesigns.characters ?? []
+  );
+  const environmentDesigns = filterEnvironmentDesigns(
+    visualDesignDocument,
+    referencedDesigns.environments ?? []
+  );
+
+  const sanitizedCharacterDesigns = redactCharacterModelSheetPaths(characterDesigns);
+  const sanitizedEnvironmentDesigns = redactEnvironmentReferenceImagePaths(
+    redactEnvironmentAssociatedSceneletIds(environmentDesigns)
+  );
+
+  return {
+    global_aesthetic: globalAesthetic,
+    character_designs: sanitizedCharacterDesigns,
+    environment_designs: sanitizedEnvironmentDesigns,
+    storyboard_payload: storyboard,
+    critical_instruction: [
+      'Do not include captions, subtitles, or watermarks.',
+      'Do not include background music. Output visuals only.',
+    ],
+  };
+}
+
+function extractStoryboard(payload: unknown): ShotProductionStoryboardEntry {
+  if (!payload || typeof payload !== 'object') {
+    throw new ShotVideoTaskError('Shot storyboard payload must be an object for prompt assembly.');
+  }
+
+  return payload as ShotProductionStoryboardEntry;
+}
+
+function extractGlobalAesthetic(document: VisualDesignDocument): Record<string, unknown> {
+  if (!document || typeof document !== 'object') {
+    throw new ShotVideoTaskError('Visual design document must be provided to assemble prompts.');
+  }
+
+  const record = document as Record<string, unknown> & {
+    global_aesthetic?: Record<string, unknown>;
+  };
+
+  const globalAesthetic = record.global_aesthetic;
+
+  const visualStyle =
+    globalAesthetic?.visual_style ??
+    globalAesthetic?.visualStyle ??
+    record.visual_style ??
+    record.visualStyle;
+
+  const masterPalette =
+    globalAesthetic?.master_color_palette ??
+    globalAesthetic?.masterColorPalette ??
+    record.master_color_palette ??
+    record.masterColorPalette;
+
+  if (visualStyle === undefined || masterPalette === undefined) {
+    throw new ShotVideoTaskError(
+      'Visual design document is missing global aesthetic fields (visual_style or master_color_palette).'
+    );
+  }
+
+  if (globalAesthetic && typeof globalAesthetic === 'object') {
+    return {
+      ...globalAesthetic,
+      visual_style: visualStyle,
+      master_color_palette: masterPalette,
+    };
+  }
+
+  return {
+    visual_style: visualStyle,
+    master_color_palette: masterPalette,
+  };
+}
+
+function filterCharacterDesigns(
+  document: VisualDesignDocument,
+  referencedIds: string[]
+): VisualDesignCharacterDesign[] {
+  const designs = document.character_designs ?? document.characterDesigns ?? [];
+  return filterDesigns(designs, referencedIds, 'character', ['character_id', 'characterId']);
+}
+
+function filterEnvironmentDesigns(
+  document: VisualDesignDocument,
+  referencedIds: string[]
+): VisualDesignEnvironmentDesign[] {
+  const designs = document.environment_designs ?? document.environmentDesigns ?? [];
+  return filterDesigns(designs, referencedIds, 'environment', ['environment_id', 'environmentId']);
+}
+
+function filterDesigns<T extends Record<string, unknown>>(
+  designs: T[],
+  referencedIds: string[],
+  kind: 'character' | 'environment',
+  idKeys: string[]
+): T[] {
+  if (!Array.isArray(referencedIds) || referencedIds.length === 0) {
+    return [];
+  }
+
+  const lookup = new Map<string, T>();
+
+  for (const design of designs ?? []) {
+    const id = resolveDesignId(design, idKeys);
+    if (id) {
+      lookup.set(id, design);
+    }
+  }
+
+  const missing: string[] = [];
+  const filtered: T[] = [];
+
+  for (const id of referencedIds) {
+    if (!id) {
+      continue;
+    }
+    const trimmed = id.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const design = lookup.get(trimmed);
+    if (!design) {
+      missing.push(trimmed);
+      continue;
+    }
+
+    filtered.push(design);
+  }
+
+  if (missing.length > 0) {
+    throw new ShotVideoTaskError(
+      `Shot referenced ${kind} design ids that do not exist in the visual design document: ${missing.join(
+        ', '
+      )}.`
+    );
+  }
+
+  return filtered;
+}
+
+function resolveDesignId(design: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = design[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function redactCharacterModelSheetPaths(
+  characterDesigns: VisualDesignCharacterDesign[]
+): VisualDesignCharacterDesign[] {
+  return characterDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'character_model_sheet_image_path')) {
+      delete cloned['character_model_sheet_image_path'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'characterModelSheetImagePath')) {
+      delete cloned['characterModelSheetImagePath'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignCharacterDesign) : design;
+  });
+}
+
+function redactEnvironmentAssociatedSceneletIds(
+  environmentDesigns: VisualDesignEnvironmentDesign[]
+): VisualDesignEnvironmentDesign[] {
+  return environmentDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'associated_scenelet_ids')) {
+      delete cloned['associated_scenelet_ids'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'associatedSceneletIds')) {
+      delete cloned['associatedSceneletIds'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignEnvironmentDesign) : design;
+  });
+}
+
+function redactEnvironmentReferenceImagePaths(
+  environmentDesigns: VisualDesignEnvironmentDesign[]
+): VisualDesignEnvironmentDesign[] {
+  return environmentDesigns.map((design) => {
+    if (!design || typeof design !== 'object') {
+      return design;
+    }
+
+    const cloned = { ...design } as Record<string, unknown>;
+    let mutated = false;
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'environment_reference_image_path')) {
+      delete cloned['environment_reference_image_path'];
+      mutated = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cloned, 'environmentReferenceImagePath')) {
+      delete cloned['environmentReferenceImagePath'];
+      mutated = true;
+    }
+
+    return mutated ? (cloned as VisualDesignEnvironmentDesign) : design;
+  });
+}

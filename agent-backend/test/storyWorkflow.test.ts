@@ -251,6 +251,9 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
     async findShotsMissingImages(_storyId) {
       return [];
     },
+    async findShotsMissingVideos(_storyId) {
+      return [];
+    },
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
     },
@@ -261,7 +264,21 @@ function createShotsRepository(preexisting?: Set<string>): ShotProductionShotsRe
         sceneletSequence: 1,
         shotIndex,
         storyboardPayload: {},
+        videoFilePath: undefined,
         audioFilePath: audioPath ?? null,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+      } as any;
+    },
+    async updateShotVideoPath(_storyId, sceneletId, shotIndex, videoPath) {
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: videoPath ?? undefined,
+        audioFilePath: undefined,
         createdAt: '2025-01-01T00:00:00.000Z',
         updatedAt: '2025-01-01T00:00:00.000Z',
       } as any;

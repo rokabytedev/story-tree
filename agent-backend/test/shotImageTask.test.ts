@@ -101,6 +101,9 @@ function createShotsRepository(
     async findShotsMissingImages() {
       return shotsMissingImages;
     },
+    async findShotsMissingVideos() {
+      return [];
+    },
     async getShotsByStory() {
       return shotsByScenelet;
     },
@@ -117,7 +120,21 @@ function createShotsRepository(
         sceneletSequence: 1,
         shotIndex,
         storyboardPayload: {},
+        videoFilePath: undefined,
         audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    },
+    async updateShotVideoPath(_storyId, sceneletId, shotIndex, videoPath) {
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: videoPath ?? undefined,
+        audioFilePath: undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as ShotRecord;
@@ -172,6 +189,7 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
         ],
       },
     keyFrameImagePath: overrides.keyFrameImagePath,
+    videoFilePath: overrides.videoFilePath,
     createdAt: overrides.createdAt ?? '2025-01-01T00:00:00Z',
     updatedAt: overrides.updatedAt ?? '2025-01-01T00:00:00Z',
   };

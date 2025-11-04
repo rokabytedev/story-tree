@@ -8,6 +8,7 @@ export interface StoryboardDialogueLine {
 export interface ShotImage {
   shotIndex: number;
   keyFrameImagePath: string | null;
+  videoFilePath: string | null;
   storyboardPayload: unknown;
   createdAt: string;
 }

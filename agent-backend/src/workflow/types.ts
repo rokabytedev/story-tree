@@ -27,6 +27,10 @@ import type {
   ShotAudioTaskDependencies,
   ShotAudioTaskRunner,
 } from '../shot-audio/types.js';
+import type {
+  ShotVideoTaskDependencies,
+  ShotVideoTaskRunner,
+} from '../shot-video/types.js';
 import type { PlayerBundleTaskOptions, PlayerBundleTaskResult } from '../bundle/types.js';
 import type {
   CharacterModelSheetTaskDependencies,
@@ -106,6 +110,8 @@ export interface AgentWorkflowOptions {
   runShotProductionTask?: ShotProductionTaskRunner;
   shotImageTaskOptions?: ShotImageTaskOptions;
   runShotImageTask?: ShotImageTaskRunner;
+  shotVideoTaskOptions?: ShotVideoTaskOptions;
+  runShotVideoTask?: ShotVideoTaskRunner;
   shotAudioTaskOptions?: ShotAudioTaskOptions;
   runShotAudioTask?: ShotAudioTaskRunner;
   characterModelSheetTaskOptions?: CharacterModelSheetTaskOptions;
@@ -134,6 +140,7 @@ export type StoryWorkflowTask =
   | 'CREATE_AUDIO_DESIGN'
   | 'CREATE_SHOT_PRODUCTION'
   | 'CREATE_SHOT_IMAGES'
+  | 'CREATE_SHOT_VIDEO'
   | 'CREATE_SHOT_AUDIO'
   | 'CREATE_CHARACTER_MODEL_SHEETS'
   | 'CREATE_ENVIRONMENT_REFERENCE_IMAGE'
@@ -167,6 +174,10 @@ export type ShotProductionTaskOptions = Partial<
 
 export type ShotImageTaskOptions = Partial<
   Omit<ShotImageTaskDependencies, 'storiesRepository' | 'shotsRepository'>
+>;
+
+export type ShotVideoTaskOptions = Partial<
+  Omit<ShotVideoTaskDependencies, 'storiesRepository' | 'shotsRepository'>
 >;
 
 export type ShotAudioTaskOptions = Partial<

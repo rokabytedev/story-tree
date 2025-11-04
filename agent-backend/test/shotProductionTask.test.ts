@@ -6,6 +6,7 @@ import type {
   ShotProductionShotsRepository,
   ShotProductionTaskDependencies,
   ShotProductionTaskResult,
+  ShotRecord,
 } from '../src/shot-production/types.js';
 import type { AgentWorkflowStoryRecord, AgentWorkflowStoriesRepository } from '../src/workflow/types.js';
 import type { StoryTreeSnapshot } from '../src/story-storage/types.js';
@@ -92,8 +93,37 @@ function createShotsRepository(existingKeys: Set<string> = new Set<string>()): S
     async findShotsMissingImages(_storyId) {
       return [];
     },
+    async findShotsMissingVideos(_storyId, _options) {
+      return [];
+    },
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
+    },
+    async updateShotAudioPath(_storyId, sceneletId, shotIndex, audioPath) {
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: undefined,
+        audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    },
+    async updateShotVideoPath(_storyId, sceneletId, shotIndex, videoPath) {
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: videoPath ?? undefined,
+        audioFilePath: undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
     },
   };
 }

@@ -50,3 +50,36 @@ export interface GeminiRetryOptions {
    */
   random?: () => number;
 }
+
+export type GeminiVideoAspectRatio = '16:9' | '9:16' | '1:1';
+
+export type GeminiVideoResolution = '720p' | '1080p';
+
+export interface GeminiVideoReferenceImage {
+  data: Buffer;
+  mimeType: 'image/png' | 'image/jpeg';
+}
+
+export interface GeminiVideoGenerationRequest {
+  userPrompt: string;
+  referenceImages?: GeminiVideoReferenceImage[];
+  model?: string;
+  aspectRatio?: GeminiVideoAspectRatio;
+  resolution?: GeminiVideoResolution;
+  durationSeconds?: number;
+  retry?: GeminiRetryOptions;
+}
+
+export interface GeminiVideoGenerationResult {
+  videoData: Buffer;
+  mimeType: 'video/mp4';
+}
+
+export type GeminiVideoRequestPreview = Record<string, unknown>;
+
+export interface GeminiVideoClient {
+  generateVideo(options: GeminiVideoGenerationRequest): Promise<GeminiVideoGenerationResult>;
+  previewGenerateVideoRequest?(
+    request: GeminiVideoGenerationRequest
+  ): GeminiVideoRequestPreview;
+}

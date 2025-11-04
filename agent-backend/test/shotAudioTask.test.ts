@@ -59,10 +59,11 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
         ],
       } as any),
     keyFrameImagePath: overrides.keyFrameImagePath,
+    videoFilePath: overrides.videoFilePath,
     audioFilePath: overrides.audioFilePath,
     createdAt: overrides.createdAt ?? '2025-01-01T00:00:00.000Z',
     updatedAt: overrides.updatedAt ?? '2025-01-01T00:00:00.000Z',
-} as ShotRecord;
+  } as ShotRecord;
 }
 
 function createSceneletRecordStub(overrides: Partial<SceneletRecord> = {}): SceneletRecord {
@@ -170,8 +171,10 @@ function createDependencies(shot: ShotRecord, overrides: DependencyOverrides = {
       createSceneletShots: vi.fn(),
       findSceneletIdsMissingShots: vi.fn(),
       findShotsMissingImages: vi.fn(),
+      findShotsMissingVideos: vi.fn(),
       updateShotImagePaths: vi.fn(),
       updateShotAudioPath,
+      updateShotVideoPath: vi.fn(),
     } as any),
     sceneletPersistence,
     promptAssembler: overrides.promptAssembler ?? (() => ({

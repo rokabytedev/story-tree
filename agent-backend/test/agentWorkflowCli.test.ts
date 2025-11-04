@@ -259,6 +259,7 @@ function createShotsRepositoryStub() {
             audioAndNarrative,
           },
           keyFrameImagePath: undefined,
+          videoFilePath: undefined,
           audioFilePath: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -280,6 +281,7 @@ function createShotsRepositoryStub() {
       return [];
     }),
     findShotsMissingImages: vi.fn(async (_storyId: string) => []),
+    findShotsMissingVideos: vi.fn(async (_storyId: string) => []),
     updateShotImagePaths: vi.fn(async (_storyId: string, _sceneletId: string, _shotIndex: number, _paths: unknown) => {}),
     updateShotAudioPath: vi.fn(async (storyId: string, sceneletId: string, shotIndex: number, audioPath: string | null) => {
       const storyShots = shotsByStory.get(storyId);
@@ -300,7 +302,33 @@ function createShotsRepositoryStub() {
         sceneletSequence: 1,
         shotIndex,
         storyboardPayload: {},
+        videoFilePath: undefined,
         audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    }),
+    updateShotVideoPath: vi.fn(async (storyId: string, sceneletId: string, shotIndex: number, videoPath: string | null) => {
+      const storyShots = shotsByStory.get(storyId);
+      if (storyShots) {
+        for (const records of Object.values(storyShots)) {
+          for (const record of records) {
+            if (record.sceneletId === sceneletId && record.shotIndex === shotIndex) {
+              record.videoFilePath = videoPath ?? undefined;
+              record.updatedAt = new Date().toISOString();
+              return record;
+            }
+          }
+        }
+      }
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: videoPath ?? undefined,
+        audioFilePath: undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as ShotRecord;
@@ -662,7 +690,7 @@ describe('agentWorkflow CLI', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors.join(' ')).toContain(
-      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_IMAGES, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+      '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_IMAGES, CREATE_SHOT_VIDEO, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
     );
   });
 
@@ -715,6 +743,74 @@ describe('agentWorkflow CLI', () => {
       task: 'CREATE_SHOT_IMAGES',
       status: 'completed',
     });
+  });
+
+  it('accepts --resume-shot-video flag for CREATE_SHOT_VIDEO tasks', async () => {
+    const { repository } = createStoriesRepositoryStub([
+      {
+        id: 'story-1',
+        displayName: 'Test Story',
+        initialPrompt: 'Test prompt',
+        storyConstitution: null,
+        visualDesignDocument: {},
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    const workflowModule = await import('../src/workflow/storyWorkflow.js');
+    const runTask = vi.fn<StoryWorkflow['runTask']>(async (task) => {
+      expect(task).toBe('CREATE_SHOT_VIDEO');
+    });
+
+    const workflow: StoryWorkflow = {
+      storyId: 'story-1',
+      runTask,
+      async runAllTasks() {
+        throw new Error('not implemented');
+      },
+    };
+
+    const resumeCalls: Array<[string, AgentWorkflowOptions]> = [];
+    const resumeSpy = vi
+      .spyOn(workflowModule, 'resumeWorkflowFromStoryId')
+      .mockImplementation(async (storyId: string, options: AgentWorkflowOptions) => {
+        resumeCalls.push([storyId, options]);
+        return workflow;
+      });
+
+    try {
+      await runCli(
+        [
+          'run-task',
+          '--task',
+          'CREATE_SHOT_VIDEO',
+          '--story-id',
+          'story-1',
+          '--resume-shot-video',
+          '--mode',
+          'stub',
+        ],
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+        }
+      );
+    } finally {
+      resumeSpy.mockRestore();
+    }
+
+    expect(resumeCalls).toHaveLength(1);
+    const [, workflowOptions] = resumeCalls[0] ?? [];
+    expect(workflowOptions.shotVideoTaskOptions?.mode).toBe('resume');
+    expect(runTask).toHaveBeenCalledTimes(1);
   });
 
   it('passes override flag to shot image task options', async () => {
@@ -802,6 +898,112 @@ describe('agentWorkflow CLI', () => {
     expect(errors).toEqual([]);
   });
 
+  it('accepts --dry-run for CREATE_SHOT_VIDEO tasks', async () => {
+    const { repository } = createStoriesRepositoryStub([
+      {
+        id: 'story-1',
+        displayName: 'Test Story',
+        initialPrompt: 'Test prompt',
+        storyConstitution: null,
+        visualDesignDocument: {},
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    const workflowModule = await import('../src/workflow/storyWorkflow.js');
+    const runTask = vi.fn<StoryWorkflow['runTask']>(async (task) => {
+      expect(task).toBe('CREATE_SHOT_VIDEO');
+    });
+
+    const workflow: StoryWorkflow = {
+      storyId: 'story-1',
+      runTask,
+      async runAllTasks() {
+        throw new Error('not implemented');
+      },
+    };
+
+    const resumeCalls: Array<[string, AgentWorkflowOptions]> = [];
+    const resumeSpy = vi
+      .spyOn(workflowModule, 'resumeWorkflowFromStoryId')
+      .mockImplementation(async (storyId: string, options: AgentWorkflowOptions) => {
+        resumeCalls.push([storyId, options]);
+        return workflow;
+      });
+
+    try {
+      await runCli(
+        [
+          'run-task',
+          '--task',
+          'CREATE_SHOT_VIDEO',
+          '--story-id',
+          'story-1',
+          '--scenelet-id',
+          'scenelet-1',
+          '--dry-run',
+          '--mode',
+          'real',
+        ],
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+        }
+      );
+    } finally {
+      resumeSpy.mockRestore();
+    }
+
+    expect(resumeCalls).toHaveLength(1);
+    const [, workflowOptions] = resumeCalls[0] ?? [];
+    expect(workflowOptions.shotVideoTaskOptions?.dryRun).toBe(true);
+    expect(workflowOptions.shotVideoTaskOptions?.targetSceneletId).toBe('scenelet-1');
+    expect(runTask).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects --dry-run for non video tasks', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue(createShotsRepositoryStub());
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_IMAGES',
+        '--story-id',
+        'story-1',
+        '--dry-run',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain('--dry-run is only supported with CREATE_SHOT_VIDEO task.');
+  });
+
   it('throws when shot-index flag is missing "--" prefix', async () => {
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue({
@@ -822,8 +1024,10 @@ describe('agentWorkflow CLI', () => {
       createSceneletShots: vi.fn(),
       findSceneletIdsMissingShots: vi.fn(async () => []),
       findShotsMissingImages: vi.fn(async () => []),
+      findShotsMissingVideos: vi.fn(async () => []),
       updateShotImagePaths: vi.fn(),
       updateShotAudioPath: vi.fn(),
+      updateShotVideoPath: vi.fn(),
     } as any);
 
     errors.length = 0;
@@ -873,8 +1077,10 @@ describe('agentWorkflow CLI', () => {
       createSceneletShots: vi.fn(),
       findSceneletIdsMissingShots: vi.fn(async () => []),
       findShotsMissingImages: vi.fn(async () => []),
+      findShotsMissingVideos: vi.fn(async () => []),
       updateShotImagePaths: vi.fn(),
       updateShotAudioPath: vi.fn(),
+      updateShotVideoPath: vi.fn(),
     } as any);
 
     errors.length = 0;
@@ -1006,6 +1212,7 @@ describe('agentWorkflow CLI', () => {
     expect(combinedErrors).toContain('CREATE_INTERACTIVE_SCRIPT');
     expect(combinedErrors).toContain('CREATE_VISUAL_DESIGN');
     expect(combinedErrors).toContain('CREATE_SHOT_PRODUCTION');
+    expect(combinedErrors).toContain('CREATE_SHOT_VIDEO');
     expect(combinedErrors).toContain('CREATE_AUDIO_DESIGN');
   });
 

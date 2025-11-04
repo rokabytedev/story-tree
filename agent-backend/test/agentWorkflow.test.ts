@@ -163,6 +163,9 @@ function createShotsRepository(): ShotProductionShotsRepository & {
     async findShotsMissingImages(_storyId) {
       return [];
     },
+    async findShotsMissingVideos(_storyId, _options) {
+      return [];
+    },
     async updateShotImagePaths(_storyId, _sceneletId, _shotIndex, _paths) {
       // Mock implementation
     },
@@ -186,7 +189,34 @@ function createShotsRepository(): ShotProductionShotsRepository & {
         sceneletSequence: 1,
         shotIndex,
         storyboardPayload: {},
+        videoFilePath: undefined,
         audioFilePath: audioPath ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ShotRecord;
+    },
+    async updateShotVideoPath(storyId, sceneletId, shotIndex, videoPath) {
+      const storyShots = shotsByStory.get(storyId);
+      if (storyShots) {
+        for (const records of Object.values(storyShots)) {
+          for (const record of records) {
+            if (record.sceneletId === sceneletId && record.shotIndex === shotIndex) {
+              record.videoFilePath = videoPath ?? undefined;
+              record.updatedAt = new Date().toISOString();
+              return record;
+            }
+          }
+        }
+      }
+
+      return {
+        sceneletRef: 'mock-ref',
+        sceneletId,
+        sceneletSequence: 1,
+        shotIndex,
+        storyboardPayload: {},
+        videoFilePath: videoPath ?? undefined,
+        audioFilePath: undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as ShotRecord;

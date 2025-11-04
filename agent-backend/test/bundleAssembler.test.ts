@@ -45,6 +45,7 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
     shotIndex: overrides.shotIndex ?? 1,
     storyboardPayload: overrides.storyboardPayload ?? {},
     keyFrameImagePath: overrides.keyFrameImagePath,
+    videoFilePath: overrides.videoFilePath,
     audioFilePath: overrides.audioFilePath,
     createdAt: overrides.createdAt ?? ISO_NOW,
     updatedAt: overrides.updatedAt ?? ISO_NOW,
@@ -500,10 +501,14 @@ function makeDependencies(input: DependencyInput): BundleAssemblerDependencies {
         throw new Error('Not implemented');
       },
       findShotsMissingImages: async () => [],
+      findShotsMissingVideos: async () => [],
       updateShotImagePaths: async () => {
         throw new Error('Not implemented');
       },
       updateShotAudioPath: async () => {
+        throw new Error('Not implemented');
+      },
+      updateShotVideoPath: async () => {
         throw new Error('Not implemented');
       },
     },

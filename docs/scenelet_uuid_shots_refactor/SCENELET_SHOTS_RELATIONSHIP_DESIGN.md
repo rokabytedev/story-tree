@@ -31,6 +31,7 @@ create table shots (
   shot_index integer,
   storyboard_payload jsonb,
   key_frame_image_path text,
+  video_file_path text,
   audio_file_path text,
   -- ... other fields
   unique (story_id, scenelet_id, shot_index)

@@ -27,8 +27,11 @@ import { loadStoryTreeSnapshot } from '../story-storage/storyTreeSnapshot.js';
 import { createGeminiImageClient } from '../image-generation/geminiImageClient.js';
 import { createGeminiJsonClient } from '../gemini/client.js';
 import { ImageStorageService } from '../image-generation/imageStorage.js';
+import { createGeminiVideoClient } from '../video-generation/geminiVideoClient.js';
+import { createStubGeminiVideoClient } from '../video-generation/stubGeminiVideoClient.js';
 import { createGeminiTtsClient } from '../shot-audio/geminiTtsClient.js';
 import { createFileSystemAudioStorage } from '../shot-audio/audioFileStorage.js';
+import { createFileSystemVideoStorage } from '../shot-video/videoStorage.js';
 import { runPlayerBundleTask as runPlayerBundleTaskCli } from '../bundle/index.js';
 import type { PlayerBundleTaskOptions } from '../bundle/types.js';
 
@@ -50,6 +53,7 @@ const SHOT_PRODUCTION_FIXTURE_DIRECTORY = resolve(
   REPO_ROOT,
   'fixtures/gemini/shot-production'
 );
+const SHOT_VIDEO_FIXTURE = resolve(REPO_ROOT, 'fixtures/videos/stub-shot.mp4');
 const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_CONSTITUTION',
   'CREATE_INTERACTIVE_SCRIPT',
@@ -59,6 +63,7 @@ const SUPPORTED_TASKS: StoryWorkflowTask[] = [
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
   'CREATE_SHOT_IMAGES',
+  'CREATE_SHOT_VIDEO',
   'CREATE_SHOT_AUDIO',
   'CREATE_CHARACTER_MODEL_SHEETS',
   'CREATE_ENVIRONMENT_REFERENCE_IMAGE',
@@ -87,6 +92,7 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   resumeInteractiveScript?: boolean;
   resumeShotProduction?: boolean;
   resumeShotImages?: boolean;
+  resumeShotVideo?: boolean;
   resumeEnvironmentReference?: boolean;
   resumeShotAudio?: boolean;
   resumeCharacterModelSheets?: boolean;
@@ -96,6 +102,7 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   sceneletId?: string;
   shotIndex?: number;
   override?: boolean;
+  dryRun?: boolean;
   outputPath?: string;
   overwrite?: boolean;
 }
@@ -291,8 +298,14 @@ async function buildWorkflowDependencies(
   const geminiJsonClient = mode === 'real'
     ? createGeminiJsonClient({ verbose })
     : undefined;
+  const geminiVideoClient = mode === 'real'
+    ? createGeminiVideoClient({ verbose })
+    : undefined;
   const imageStorage = mode === 'real'
     ? new ImageStorageService()
+    : undefined;
+  const videoStorage = mode === 'real'
+    ? createFileSystemVideoStorage()
     : undefined;
   const geminiTtsClient = mode === 'real'
     ? createGeminiTtsClient({ verbose })
@@ -304,6 +317,7 @@ async function buildWorkflowDependencies(
   // Extract run-task specific options with proper type narrowing
   let visualRefImageOptions = {};
   let shotImageOptions = {};
+  let shotVideoOptions = {};
   let shotAudioOptions = {};
   let characterModelSheetOptions = {};
   let environmentReferenceOptions = {};
@@ -329,10 +343,12 @@ async function buildWorkflowDependencies(
     }
     if (options.sceneletId) {
       shotImageOptions = { ...shotImageOptions, targetSceneletId: options.sceneletId };
+      shotVideoOptions = { ...shotVideoOptions, targetSceneletId: options.sceneletId };
       shotAudioOptions = { ...shotAudioOptions, targetSceneletId: options.sceneletId };
     }
     if (options.shotIndex !== undefined) {
       shotImageOptions = { ...shotImageOptions, targetShotIndex: options.shotIndex };
+      shotVideoOptions = { ...shotVideoOptions, targetShotIndex: options.shotIndex };
       shotAudioOptions = { ...shotAudioOptions, targetShotIndex: options.shotIndex };
     }
     if (options.override !== undefined) {
@@ -341,6 +357,12 @@ async function buildWorkflowDependencies(
       }
       if (options.task === 'CREATE_SHOT_IMAGES') {
         shotImageOptions = { ...shotImageOptions, override: options.override };
+      }
+      if (options.task === 'CREATE_SHOT_VIDEO') {
+        shotVideoOptions = {
+          ...shotVideoOptions,
+          mode: options.override ? 'override' : shotVideoOptions.mode,
+        };
       }
       if (options.task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE') {
         environmentReferenceOptions = { ...environmentReferenceOptions, override: options.override };
@@ -368,6 +390,18 @@ async function buildWorkflowDependencies(
       shotAudioOptions = {
         ...shotAudioOptions,
         mode: 'resume',
+      };
+    }
+    if (options.resumeShotVideo) {
+      shotVideoOptions = {
+        ...shotVideoOptions,
+        mode: 'resume',
+      };
+    }
+    if (options.dryRun) {
+      shotVideoOptions = {
+        ...shotVideoOptions,
+        dryRun: true,
       };
     }
   }
@@ -413,6 +447,13 @@ async function buildWorkflowDependencies(
       ...(geminiImageClient ? { geminiImageClient } : {}),
       ...(imageStorage ? { imageStorage } : {}),
       ...shotImageOptions,
+    },
+    shotVideoTaskOptions: {
+      logger,
+      verbose,
+      ...(geminiVideoClient ? { geminiVideoClient } : {}),
+      ...(videoStorage ? { videoStorage } : {}),
+      ...shotVideoOptions,
     },
     shotAudioTaskOptions: {
       logger,
@@ -580,6 +621,16 @@ async function buildWorkflowDependencies(
         },
       },
     };
+    workflowOptions.shotVideoTaskOptions = {
+      ...workflowOptions.shotVideoTaskOptions,
+      verbose,
+      geminiVideoClient: createStubGeminiVideoClient({ fixturePath: SHOT_VIDEO_FIXTURE }),
+      videoStorage: createFileSystemVideoStorage({ generatedRoot: generatedAssetsRoot }),
+      referenceRecommenderOptions: {
+        validateFileExistence: false,
+      },
+      referenceImageLimit: 0,
+    };
     workflowOptions.shotAudioTaskOptions = {
       ...workflowOptions.shotAudioTaskOptions,
       geminiClient: {
@@ -683,6 +734,8 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let overrideFlag: boolean | undefined;
   let resumeModelSheetsFlag = false;
   let resumeShotAudioFlag = false;
+  let resumeShotVideoFlag = false;
+  let dryRunFlag = false;
   let bundleOutputPath: string | undefined;
   let bundleOverwrite = false;
 
@@ -808,6 +861,12 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '--resume-shot-audio':
         resumeShotAudioFlag = true;
         break;
+      case '--resume-shot-video':
+        resumeShotVideoFlag = true;
+        break;
+      case '--dry-run':
+        dryRunFlag = true;
+        break;
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -834,14 +893,23 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       const resumeInteractiveScript = resumeFlag && task === 'CREATE_INTERACTIVE_SCRIPT';
       const resumeShotProduction = resumeFlag && task === 'CREATE_SHOT_PRODUCTION';
       const resumeShotImages = resumeFlag && task === 'CREATE_SHOT_IMAGES';
+      const resumeShotVideo = (resumeFlag || resumeShotVideoFlag) && task === 'CREATE_SHOT_VIDEO';
       const resumeModelSheets = resumeModelSheetsFlag && task === 'CREATE_CHARACTER_MODEL_SHEETS';
       const resumeEnvironmentReference =
         resumeFlag && task === 'CREATE_ENVIRONMENT_REFERENCE_IMAGE';
       const resumeShotAudio = (resumeFlag || resumeShotAudioFlag) && task === 'CREATE_SHOT_AUDIO';
 
-      if (resumeFlag && !resumeInteractiveScript && !resumeShotProduction && !resumeShotImages && !resumeEnvironmentReference && !resumeShotAudio) {
+      if (
+        resumeFlag &&
+        !resumeInteractiveScript &&
+        !resumeShotProduction &&
+        !resumeShotImages &&
+        !resumeShotVideo &&
+        !resumeEnvironmentReference &&
+        !resumeShotAudio
+      ) {
         throw new CliParseError(
-          '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_IMAGES, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
+          '--resume can only be used with CREATE_INTERACTIVE_SCRIPT, CREATE_SHOT_PRODUCTION, CREATE_SHOT_IMAGES, CREATE_SHOT_VIDEO, CREATE_SHOT_AUDIO, or CREATE_ENVIRONMENT_REFERENCE_IMAGE.'
         );
       }
 
@@ -863,6 +931,18 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         throw new CliParseError('--resume-shot-audio can only be used with CREATE_SHOT_AUDIO task.');
       }
 
+      if (resumeShotVideoFlag && task !== 'CREATE_SHOT_VIDEO') {
+        throw new CliParseError('--resume-shot-video can only be used with CREATE_SHOT_VIDEO task.');
+      }
+
+      if (dryRunFlag && task !== 'CREATE_SHOT_VIDEO') {
+        throw new CliParseError('--dry-run is only supported with CREATE_SHOT_VIDEO task.');
+      }
+
+      if (dryRunFlag && overrideFlag) {
+        throw new CliParseError('--dry-run cannot be combined with --override.');
+      }
+
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
@@ -870,6 +950,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         resumeInteractiveScript,
         resumeShotProduction,
         resumeShotImages,
+        resumeShotVideo,
         resumeEnvironmentReference,
         resumeShotAudio,
         characterId,
@@ -879,6 +960,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         shotIndex,
         override: overrideFlag,
         resumeCharacterModelSheets: resumeModelSheets,
+        dryRun: dryRunFlag || undefined,
         outputPath: bundleOutputPath,
         overwrite: bundleOverwrite,
         ...modeOptions,
@@ -1114,13 +1196,15 @@ function printHelp(): void {
   console.log('  --character-id <id>          Generate only images for specific character (CREATE_VISUAL_REFERENCE_IMAGES).');
   console.log('  --environment-id <id>        Target a specific environment (CREATE_VISUAL_REFERENCE_IMAGES or CREATE_ENVIRONMENT_REFERENCE_IMAGE).');
   console.log('  --image-index <number>       Generate only specific image index (1-based, use with --character-id or --environment-id).');
-  console.log('  --scenelet-id <id>           Target a specific scenelet (CREATE_SHOT_IMAGES or CREATE_SHOT_AUDIO).');
+  console.log('  --scenelet-id <id>           Target a specific scenelet (CREATE_SHOT_IMAGES, CREATE_SHOT_VIDEO, or CREATE_SHOT_AUDIO).');
   console.log('  --shot-index <number>        Target a specific shot (1-based, use with --scenelet-id).');
-  console.log('  --override [true|false]      Regenerate outputs even if they already exist (model sheets, environment references, or shot audio).');
+  console.log('  --override [true|false]      Regenerate outputs even if they already exist (model sheets, environment references, shot video, or shot audio).');
+  console.log('  --dry-run                    Validate shot video prompts and asset wiring without calling Gemini (CREATE_SHOT_VIDEO).');
   console.log('  --output-path <path>         Override player bundle output directory (CREATE_PLAYER_BUNDLE).');
   console.log('  --overwrite                  Replace existing player bundle output when the folder already exists.');
   console.log('  --resume-model-sheets        Resume character model sheet generation (batch mode only).');
   console.log('  --resume-shot-audio          Resume shot audio generation (skips shots with existing audio).');
+  console.log('  --resume-shot-video          Resume shot video generation (skips shots with existing video).');
   console.log('  --help (-h)                  Show this help message.');
   console.log('');
   console.log('Examples:');
@@ -1141,6 +1225,15 @@ function printHelp(): void {
   console.log('');
   console.log('  # Generate only shot index 2 in scenelet "intro-scene"');
   console.log('  run-task --task CREATE_SHOT_IMAGES --story-id abc-123 --scenelet-id intro-scene --shot-index 2 --mode stub');
+  console.log('');
+  console.log('  # Assemble prompts for shot videos without invoking Gemini (dry-run)');
+  console.log('  run-task --task CREATE_SHOT_VIDEO --story-id abc-123 --scenelet-id intro-scene --dry-run --mode real');
+  console.log('');
+  console.log('  # Generate shot videos for all shots using stub fixtures');
+  console.log('  run-task --task CREATE_SHOT_VIDEO --story-id abc-123 --mode stub');
+  console.log('');
+  console.log('  # Resume shot video generation for scenelet "intro-scene"');
+  console.log('  run-task --task CREATE_SHOT_VIDEO --story-id abc-123 --scenelet-id intro-scene --mode stub --resume-shot-video');
   console.log('');
   console.log('  # Generate shot audio for all shots (requires audio design and shot production)');
   console.log('  run-task --task CREATE_SHOT_AUDIO --story-id abc-123 --mode stub');
@@ -1163,8 +1256,8 @@ function printHelp(): void {
   console.log('  # Generate a standalone player bundle to ./output/stories');
   console.log('  run-task --task CREATE_PLAYER_BUNDLE --story-id abc-123 --output-path ./output --overwrite');
   console.log('');
-  console.log('Note: CREATE_SHOT_IMAGES automatically uses character model sheets and environment keyframes');
-  console.log('      from the visual reference package based on the shot\'s referenced_designs field.');
+  console.log('Note: CREATE_SHOT_IMAGES and CREATE_SHOT_VIDEO automatically use character model sheets and');
+  console.log('      environment keyframes from the visual reference package based on each shot\'s referenced_designs field.');
 }
 
 function loadEnvironmentVariables(): void {

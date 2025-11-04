@@ -11,6 +11,7 @@ type ShotRow = {
   shot_index: number;
   storyboard_payload: unknown;
   key_frame_image_path: string | null;
+  video_file_path: string | null;
   audio_file_path: string | null;
   created_at: string;
   updated_at: string;
@@ -23,6 +24,7 @@ export interface ShotRecord {
   shotIndex: number;
   storyboardPayload: unknown;
   keyFrameImagePath?: string;
+  videoFilePath?: string;
   audioFilePath?: string;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +33,7 @@ export interface ShotRecord {
 export interface CreateShotInput {
   shotIndex: number;
   storyboardPayload: unknown;
+  videoFilePath?: string | null;
   audioFilePath?: string | null;
 }
 
@@ -42,6 +45,17 @@ export interface ShotsMissingImages {
   sceneletId: string;
   shotIndex: number;
   missingKeyFrame: boolean;
+}
+
+export interface ShotsMissingVideos {
+  sceneletId: string;
+  shotIndex: number;
+  missingVideo: boolean;
+}
+
+export interface FindShotsMissingVideosOptions {
+  sceneletId?: string;
+  shotIndex?: number;
 }
 
 export interface ShotsRepository {
@@ -78,6 +92,16 @@ export interface ShotsRepository {
     audioFilePath: string | null
   ): Promise<ShotRecord>;
   findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]>;
+  updateShotVideoPath(
+    storyId: string,
+    sceneletId: string,
+    shotIndex: number,
+    videoFilePath: string | null
+  ): Promise<ShotRecord>;
+  findShotsMissingVideos(
+    storyId: string,
+    options?: FindShotsMissingVideosOptions
+  ): Promise<ShotsMissingVideos[]>;
 }
 
 export class ShotsRepositoryError extends Error {
@@ -225,6 +249,7 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
           scenelet_sequence: sceneletSequence,
           shot_index: shot.shotIndex,
           storyboard_payload: shot.storyboardPayload,
+          video_file_path: shot.videoFilePath ?? null,
           audio_file_path: shot.audioFilePath ?? null,
         };
       });
@@ -386,6 +411,57 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
       return mapRowToRecord(rows[0] as ShotRow);
     },
 
+    async updateShotVideoPath(
+      storyId: string,
+      sceneletId: string,
+      shotIndex: number,
+      videoFilePath: string | null
+    ): Promise<ShotRecord> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new ShotsRepositoryError('Story id must be provided to update shot video path.');
+      }
+
+      const trimmedSceneletId = sceneletId?.trim();
+      if (!trimmedSceneletId) {
+        throw new ShotsRepositoryError('Scenelet id must be provided to update shot video path.');
+      }
+
+      if (!Number.isInteger(shotIndex) || shotIndex <= 0) {
+        throw new ShotsRepositoryError('Shot index must be a positive integer.');
+      }
+
+      const { error } = await client
+        .from(SHOTS_TABLE)
+        .update({ video_file_path: videoFilePath ?? null })
+        .eq('story_id', trimmedStoryId)
+        .eq('scenelet_id', trimmedSceneletId)
+        .eq('shot_index', shotIndex);
+
+      if (error) {
+        throw new ShotsRepositoryError('Failed to update shot video path.', error);
+      }
+
+      const response = await client
+        .from(SHOTS_TABLE)
+        .select()
+        .eq('story_id', trimmedStoryId)
+        .eq('scenelet_id', trimmedSceneletId)
+        .eq('shot_index', shotIndex)
+        .limit(1);
+
+      if (response.error) {
+        throw new ShotsRepositoryError('Failed to load updated shot.', response.error);
+      }
+
+      const rows = Array.isArray(response.data) ? response.data : [];
+      if (rows.length === 0) {
+        throw new ShotsRepositoryError('Shot not found after video path update.', null);
+      }
+
+      return mapRowToRecord(rows[0] as ShotRow);
+    },
+
     async findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]> {
       const trimmedStoryId = storyId?.trim();
       if (!trimmedStoryId) {
@@ -415,6 +491,59 @@ export function createShotsRepository(client: SupabaseClient): ShotsRepository {
           missingKeyFrame: !row.key_frame_image_path,
         }));
     },
+
+    async findShotsMissingVideos(
+      storyId: string,
+      options: FindShotsMissingVideosOptions = {}
+    ): Promise<ShotsMissingVideos[]> {
+      const trimmedStoryId = storyId?.trim();
+      if (!trimmedStoryId) {
+        throw new ShotsRepositoryError('Story id must be provided to find shots missing videos.');
+      }
+
+      const trimmedSceneletId = options.sceneletId?.trim();
+
+      if (
+        Object.prototype.hasOwnProperty.call(options, 'shotIndex') &&
+        options.shotIndex !== undefined &&
+        (!Number.isInteger(options.shotIndex) || options.shotIndex <= 0)
+      ) {
+        throw new ShotsRepositoryError('Shot index filter must be a positive integer.');
+      }
+
+      let query = client
+        .from(SHOTS_TABLE)
+        .select('scenelet_id, shot_index, video_file_path')
+        .eq('story_id', trimmedStoryId)
+        .order('scenelet_sequence', { ascending: true })
+        .order('shot_index', { ascending: true });
+
+      if (trimmedSceneletId) {
+        query = query.eq('scenelet_id', trimmedSceneletId);
+      }
+
+      if (options.shotIndex !== undefined) {
+        query = query.eq('shot_index', options.shotIndex);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new ShotsRepositoryError('Failed to find shots missing videos.', error);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+
+      return data
+        .filter((row) => !row.video_file_path)
+        .map((row) => ({
+          sceneletId: row.scenelet_id,
+          shotIndex: row.shot_index,
+          missingVideo: !row.video_file_path,
+        }));
+    },
   };
 }
 
@@ -426,6 +555,7 @@ function mapRowToRecord(row: ShotRow): ShotRecord {
     shotIndex: row.shot_index,
     storyboardPayload: row.storyboard_payload,
     keyFrameImagePath: row.key_frame_image_path ?? undefined,
+    videoFilePath: row.video_file_path ?? undefined,
     audioFilePath: row.audio_file_path ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

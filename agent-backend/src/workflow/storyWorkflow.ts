@@ -45,11 +45,13 @@ import type {
   ShotProductionShotsRepository,
 } from '../shot-production/types.js';
 import { runShotImageTask } from '../shot-image/shotImageTask.js';
+import { runShotVideoTask } from '../shot-video/shotVideoTask.js';
 import type {
   ShotImageTaskOptions,
   ShotImageTaskRunner,
   ShotImageTaskDependencies,
 } from '../shot-image/types.js';
+import type { ShotVideoTaskDependencies } from '../shot-video/types.js';
 import { runShotAudioTask } from '../shot-audio/shotAudioTask.js';
 import type {
   ShotAudioTaskOptions,
@@ -72,6 +74,8 @@ import type {
   AgentWorkflowResult,
   AgentWorkflowStoryRecord,
   AgentWorkflowStoriesRepository,
+  ShotVideoTaskOptions,
+  ShotVideoTaskRunner,
   StoryWorkflow,
   StoryWorkflowTask,
 } from './types.js';
@@ -88,6 +92,7 @@ const TASK_SEQUENCE: StoryWorkflowTask[] = [
   'CREATE_AUDIO_DESIGN',
   'CREATE_SHOT_PRODUCTION',
   'CREATE_SHOT_IMAGES',
+  'CREATE_SHOT_VIDEO',
   'CREATE_SHOT_AUDIO',
 ];
 
@@ -166,6 +171,8 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private readonly shotProductionOptions?: ShotProductionTaskOptions;
   private readonly shotImageTaskRunner: ShotImageTaskRunner;
   private readonly shotImageOptions?: ShotImageTaskOptions;
+  private readonly shotVideoTaskRunner: ShotVideoTaskRunner;
+  private readonly shotVideoOptions?: ShotVideoTaskOptions;
   private readonly shotAudioTaskRunner: ShotAudioTaskRunner;
   private readonly shotAudioOptions?: ShotAudioTaskOptions;
   private readonly characterModelSheetTaskRunner: CharacterModelSheetTaskRunner;
@@ -226,6 +233,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.runShotImageTask ?? runShotImageTask;
     this.shotImageOptions = dependencies.shotImageTaskOptions
       ? { ...dependencies.shotImageTaskOptions }
+      : undefined;
+    this.shotVideoTaskRunner =
+      dependencies.runShotVideoTask ?? runShotVideoTask;
+    this.shotVideoOptions = dependencies.shotVideoTaskOptions
+      ? { ...dependencies.shotVideoTaskOptions }
       : undefined;
     this.shotAudioTaskRunner =
       dependencies.runShotAudioTask ?? runShotAudioTask;
@@ -290,6 +302,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
       case 'CREATE_SHOT_IMAGES':
         await this.runShotImagesTask();
         return;
+      case 'CREATE_SHOT_VIDEO':
+        await this.runShotVideoGenerationTask();
+        return;
       case 'CREATE_SHOT_AUDIO':
         await this.runShotAudioGenerationTask();
         return;
@@ -332,6 +347,9 @@ class StoryWorkflowImpl implements StoryWorkflow {
           break;
         case 'CREATE_SHOT_IMAGES':
           await this.runShotImagesTask();
+          break;
+        case 'CREATE_SHOT_VIDEO':
+          await this.runShotVideoGenerationTask();
           break;
         case 'CREATE_SHOT_AUDIO':
           await this.runShotAudioGenerationTask();
@@ -493,6 +511,11 @@ class StoryWorkflowImpl implements StoryWorkflow {
   private async runShotImagesTask(): Promise<void> {
     const dependencies = this.buildShotImageDependencies();
     await this.shotImageTaskRunner(this.storyId, dependencies);
+  }
+
+  private async runShotVideoGenerationTask(): Promise<void> {
+    const dependencies = this.buildShotVideoDependencies();
+    await this.shotVideoTaskRunner(this.storyId, dependencies);
   }
 
   private async runShotAudioGenerationTask(): Promise<void> {
@@ -715,6 +738,65 @@ class StoryWorkflowImpl implements StoryWorkflow {
 
     if (overrides?.override !== undefined) {
       dependencies.override = overrides.override;
+    }
+
+    const logger = overrides?.logger ?? this.logger;
+    if (logger) {
+      dependencies.logger = logger;
+    }
+
+    return dependencies;
+  }
+
+  private buildShotVideoDependencies(): ShotVideoTaskDependencies {
+    const overrides = this.shotVideoOptions;
+    const dependencies: ShotVideoTaskDependencies = {
+      storiesRepository: this.storiesRepository,
+      shotsRepository: this.shotsRepository,
+    };
+
+    if (overrides?.geminiVideoClient) {
+      dependencies.geminiVideoClient = overrides.geminiVideoClient;
+    }
+
+    if (overrides?.videoStorage) {
+      dependencies.videoStorage = overrides.videoStorage;
+    }
+
+    if (overrides?.targetSceneletId) {
+      dependencies.targetSceneletId = overrides.targetSceneletId;
+    }
+
+    if (overrides?.targetShotIndex !== undefined) {
+      dependencies.targetShotIndex = overrides.targetShotIndex;
+    }
+
+    if (overrides?.mode) {
+      dependencies.mode = overrides.mode;
+    }
+
+    if (overrides?.dryRun !== undefined) {
+      dependencies.dryRun = overrides.dryRun;
+    }
+
+    if (overrides?.retry) {
+      dependencies.retry = overrides.retry;
+    }
+
+    if (overrides?.verbose !== undefined) {
+      dependencies.verbose = overrides.verbose;
+    }
+
+    if (overrides?.basePublicPath) {
+      dependencies.basePublicPath = overrides.basePublicPath;
+    }
+
+    if (overrides?.referenceRecommenderOptions) {
+      dependencies.referenceRecommenderOptions = overrides.referenceRecommenderOptions;
+    }
+
+    if (overrides?.referenceImageLimit !== undefined) {
+      dependencies.referenceImageLimit = overrides.referenceImageLimit;
     }
 
     const logger = overrides?.logger ?? this.logger;

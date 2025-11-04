@@ -15,6 +15,12 @@ export interface ShotsMissingImages {
   missingKeyFrame: boolean;
 }
 
+export interface ShotsMissingVideos {
+  sceneletId: string;
+  shotIndex: number;
+  missingVideo: boolean;
+}
+
 export interface ShotRecord {
   sceneletRef: string;
   sceneletId: string;
@@ -22,6 +28,7 @@ export interface ShotRecord {
   shotIndex: number;
   storyboardPayload: unknown;
   keyFrameImagePath?: string;
+  videoFilePath?: string;
   audioFilePath?: string;
   createdAt: string;
   updatedAt: string;
@@ -39,6 +46,10 @@ export interface ShotProductionShotsRepository {
   findSceneletIdsMissingShots(storyId: string, sceneletIds: string[]): Promise<string[]>;
   getShotsByStory(storyId: string): Promise<Record<string, ShotRecord[]>>;
   findShotsMissingImages(storyId: string): Promise<ShotsMissingImages[]>;
+  findShotsMissingVideos(
+    storyId: string,
+    options?: { sceneletId?: string; shotIndex?: number }
+  ): Promise<ShotsMissingVideos[]>;
   updateShotImagePaths(
     storyId: string,
     sceneletId: string,
@@ -50,6 +61,12 @@ export interface ShotProductionShotsRepository {
     sceneletId: string,
     shotIndex: number,
     audioFilePath: string | null
+  ): Promise<ShotRecord>;
+  updateShotVideoPath(
+    storyId: string,
+    sceneletId: string,
+    shotIndex: number,
+    videoFilePath: string | null
   ): Promise<ShotRecord>;
 }
 
@@ -69,6 +86,7 @@ export interface ShotProductionResponseValidationContext {
 export interface ShotCreationInput {
   shotIndex: number;
   storyboardPayload: unknown;
+  videoFilePath?: string | null;
 }
 
 export interface AudioNarrativeEntry {

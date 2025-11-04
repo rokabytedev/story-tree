@@ -415,7 +415,7 @@ function transformBranchingPointDigest(digest: BranchingPointDigest): Storyboard
   };
 }
 
-function transformImagePath(dbPath: string | undefined): string | null {
+function transformAssetPath(dbPath: string | undefined): string | null {
   if (!dbPath) return null;
   const trimmed = dbPath.trim();
   if (!trimmed) return null;
@@ -431,7 +431,8 @@ function transformImagePath(dbPath: string | undefined): string | null {
 function mapShotRecordToShotImage(record: ShotRecord): ShotImage {
   return {
     shotIndex: record.shotIndex,
-    keyFrameImagePath: transformImagePath(record.keyFrameImagePath),
+    keyFrameImagePath: transformAssetPath(record.keyFrameImagePath),
+    videoFilePath: transformAssetPath(record.videoFilePath),
     storyboardPayload: record.storyboardPayload,
     createdAt: record.createdAt,
   };

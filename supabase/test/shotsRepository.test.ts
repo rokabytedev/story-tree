@@ -16,6 +16,7 @@ type ShotRow = {
   shot_index: number;
   storyboard_payload: unknown;
   key_frame_image_path: string | null;
+  video_file_path: string | null;
   audio_file_path: string | null;
   created_at: string;
   updated_at: string;
@@ -35,6 +36,7 @@ interface FakeResponses {
   selectStoryShots?: FakeResponse<ShotRow[]>;
   selectSceneletIds?: FakeResponse<Array<{ scenelet_id: string }>>;
   selectShotsMissingImages?: FakeResponse<Array<Pick<ShotRow, 'scenelet_id' | 'shot_index' | 'key_frame_image_path'>>>;
+  selectShotsMissingVideos?: FakeResponse<Array<Pick<ShotRow, 'scenelet_id' | 'shot_index' | 'video_file_path'>>>;
   insert?: FakeResponse<ShotRow[]>;
   update?: FakeResponse<null>;
 }
@@ -128,6 +130,10 @@ function resolveSelectResponse(
     return responses.selectShotsMissingImages ?? { data: [], error: null };
   }
 
+  if (columns === 'scenelet_id, shot_index, video_file_path') {
+    return responses.selectShotsMissingVideos ?? { data: [], error: null };
+  }
+
   return responses.selectStoryShots ?? { data: [], error: null };
 }
 
@@ -153,6 +159,9 @@ function makeShotRow(overrides: Partial<ShotRow> = {}): ShotRow {
     storyboard_payload: overrides.storyboard_payload ?? { framing_and_angle: 'Wide' },
     key_frame_image_path: Object.prototype.hasOwnProperty.call(overrides, 'key_frame_image_path')
       ? overrides.key_frame_image_path ?? null
+      : null,
+    video_file_path: Object.prototype.hasOwnProperty.call(overrides, 'video_file_path')
+      ? overrides.video_file_path ?? null
       : null,
     audio_file_path: Object.prototype.hasOwnProperty.call(overrides, 'audio_file_path')
       ? overrides.audio_file_path ?? null
@@ -221,6 +230,7 @@ describe('shotsRepository.getShotsByStory', () => {
         scenelet_id: 'scenelet-1',
         shot_index: 1,
         audio_file_path: 'path/to/audio.wav',
+        video_file_path: 'path/to/video.mp4',
       }),
     ];
 
@@ -231,6 +241,7 @@ describe('shotsRepository.getShotsByStory', () => {
     const result = await repo.getShotsByStory('story-123');
     const [shot] = result['33333333-3333-3333-3333-333333333333'];
     expect(shot.audioFilePath).toBe('path/to/audio.wav');
+    expect(shot.videoFilePath).toBe('path/to/video.mp4');
   });
 
   it('omits audio file path when null', async () => {
@@ -250,6 +261,25 @@ describe('shotsRepository.getShotsByStory', () => {
     const result = await repo.getShotsByStory('story-123');
     const [shot] = result['44444444-4444-4444-4444-444444444444'];
     expect(shot.audioFilePath).toBeUndefined();
+  });
+
+  it('omits video file path when null', async () => {
+    const rows = [
+      makeShotRow({
+        scenelet_ref: '55555555-5555-5555-5555-555555555555',
+        scenelet_id: 'scenelet-1',
+        shot_index: 1,
+        video_file_path: null,
+      }),
+    ];
+
+    const { repo } = makeRepository({
+      selectStoryShots: { data: rows, error: null },
+    });
+
+    const result = await repo.getShotsByStory('story-123');
+    const [shot] = result['55555555-5555-5555-5555-555555555555'];
+    expect(shot.videoFilePath).toBeUndefined();
   });
 
   it('returns an empty record when no shots exist', async () => {
@@ -312,6 +342,7 @@ describe('shotsRepository.createSceneletShots', () => {
       scenelet_sequence: 4,
       shot_index: 1,
       storyboard_payload: { framing_and_angle: 'Wide shot' },
+      video_file_path: null,
       audio_file_path: null,
     });
     expect(insertedRows[0]).not.toHaveProperty('id');
@@ -336,7 +367,28 @@ describe('shotsRepository.createSceneletShots', () => {
 
     const insertedRows = table.inserted[0];
     expect(insertedRows[0]).toMatchObject({
+      video_file_path: null,
       audio_file_path: 'generated/story/shots/scenelet-9/1_audio.wav',
+    });
+  });
+
+  it('persists video file path when provided', async () => {
+    const { repo, table } = makeRepository({
+      selectExisting: { data: [], error: null },
+      insert: { data: [], error: null },
+    });
+
+    await repo.createSceneletShots('story-123', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'scenelet-11', 5, [
+      {
+        shotIndex: 1,
+        storyboardPayload: { framing_and_angle: 'Medium shot' },
+        videoFilePath: 'generated/story/shots/scenelet-11/shot-1.mp4',
+      },
+    ]);
+
+    const insertedRows = table.inserted[0];
+    expect(insertedRows[0]).toMatchObject({
+      video_file_path: 'generated/story/shots/scenelet-11/shot-1.mp4',
     });
   });
 
@@ -731,6 +783,116 @@ describe('shotsRepository.updateShotAudioPath', () => {
   });
 });
 
+describe('shotsRepository.updateShotVideoPath', () => {
+  it('updates video file path for a shot', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+      selectStoryShots: {
+        data: [
+          makeShotRow({
+            story_id: 'story-123',
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            video_file_path: 'generated/story-123/shots/scenelet-1/shot-1.mp4',
+          }),
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.updateShotVideoPath(
+      'story-123',
+      'scenelet-1',
+      1,
+      'generated/story-123/shots/scenelet-1/shot-1.mp4'
+    );
+
+    expect(table.updated[0]).toMatchObject({
+      data: { video_file_path: 'generated/story-123/shots/scenelet-1/shot-1.mp4' },
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-1' },
+        { type: 'eq', column: 'shot_index', value: 1 },
+      ],
+    });
+    expect(table.selectCalls[0]).toMatchObject({
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-1' },
+        { type: 'eq', column: 'shot_index', value: 1 },
+      ],
+    });
+    expect(result.videoFilePath).toBe('generated/story-123/shots/scenelet-1/shot-1.mp4');
+  });
+
+  it('allows clearing video path with null', async () => {
+    const { repo, table } = makeRepository({
+      update: { data: null, error: null },
+      selectStoryShots: {
+        data: [
+          makeShotRow({
+            story_id: 'story-123',
+            scenelet_id: 'scenelet-1',
+            shot_index: 2,
+            video_file_path: null,
+          }),
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.updateShotVideoPath('story-123', 'scenelet-1', 2, null);
+
+    expect(table.updated[0]?.data).toEqual({ video_file_path: null });
+    expect(result.videoFilePath).toBeUndefined();
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotVideoPath('  ', 'scenelet-1', 1, 'path.mp4')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when scenelet id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotVideoPath('story-123', '  ', 1, 'path.mp4')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when shot index is invalid', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.updateShotVideoPath('story-123', 'scenelet-1', 0, 'path.mp4')).rejects.toBeInstanceOf(
+      ShotsRepositoryError
+    );
+  });
+
+  it('throws when Supabase update fails', async () => {
+    const { repo } = makeRepository({
+      update: { data: null, error: { message: 'constraint violation' } },
+    });
+
+    await expect(
+      repo.updateShotVideoPath('story-123', 'scenelet-1', 1, 'generated/path.mp4')
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when shot is not found after update', async () => {
+    const { repo } = makeRepository({
+      update: { data: null, error: null },
+      selectStoryShots: { data: [], error: null },
+    });
+
+    await expect(
+      repo.updateShotVideoPath('story-123', 'scenelet-1', 1, 'generated/path.mp4')
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+});
+
 describe('shotsRepository.findShotsMissingImages', () => {
   it('returns shots missing key frame images', async () => {
     const { repo } = makeRepository({
@@ -797,5 +959,137 @@ describe('shotsRepository.findShotsMissingImages', () => {
     });
 
     await expect(repo.findShotsMissingImages('story-123')).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+});
+
+describe('shotsRepository.findShotsMissingVideos', () => {
+  it('returns shots missing videos', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingVideos: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            video_file_path: null,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingVideos('story-123');
+
+    expect(result).toEqual([
+      {
+        sceneletId: 'scenelet-1',
+        shotIndex: 1,
+        missingVideo: true,
+      },
+    ]);
+  });
+
+  it('returns empty array when all shots have videos', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingVideos: {
+        data: [
+          {
+            scenelet_id: 'scenelet-1',
+            shot_index: 1,
+            video_file_path: 'generated/story/shots/scenelet-1/shot-1.mp4',
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingVideos('story-123');
+
+    expect(result).toEqual([]);
+  });
+
+  it('supports scenelet filtering', async () => {
+    const { repo, table } = makeRepository({
+      selectShotsMissingVideos: {
+        data: [
+          {
+            scenelet_id: 'scenelet-2',
+            shot_index: 2,
+            video_file_path: null,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingVideos('story-123', { sceneletId: 'scenelet-2' });
+
+    expect(table.selectCalls[0]).toMatchObject({
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-2' },
+      ],
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  it('supports shot index filtering', async () => {
+    const { repo, table } = makeRepository({
+      selectShotsMissingVideos: {
+        data: [
+          {
+            scenelet_id: 'scenelet-3',
+            shot_index: 3,
+            video_file_path: null,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await repo.findShotsMissingVideos('story-123', {
+      sceneletId: 'scenelet-3',
+      shotIndex: 3,
+    });
+
+    expect(table.selectCalls[0]).toMatchObject({
+      filters: [
+        { type: 'eq', column: 'story_id', value: 'story-123' },
+        { type: 'eq', column: 'scenelet_id', value: 'scenelet-3' },
+        { type: 'eq', column: 'shot_index', value: 3 },
+      ],
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  it('returns empty array when no rows exist', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingVideos: { data: [], error: null },
+    });
+
+    const result = await repo.findShotsMissingVideos('story-123');
+
+    expect(result).toEqual([]);
+  });
+
+  it('throws when story id is blank', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(repo.findShotsMissingVideos('  ')).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when shot index filter is invalid', async () => {
+    const { repo } = makeRepository({});
+
+    await expect(
+      repo.findShotsMissingVideos('story-123', { shotIndex: 0 })
+    ).rejects.toBeInstanceOf(ShotsRepositoryError);
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const { repo } = makeRepository({
+      selectShotsMissingVideos: { data: null, error: { message: 'permission denied' } },
+    });
+
+    await expect(repo.findShotsMissingVideos('story-123')).rejects.toBeInstanceOf(ShotsRepositoryError);
   });
 });
