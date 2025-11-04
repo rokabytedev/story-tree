@@ -11,6 +11,7 @@ import { normalizeNameForPath } from '../image-generation/normalizeNameForPath.j
 import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-generation/index.js';
 import type { ShotRecord } from '../shot-production/types.js';
 import type { VisualDesignDocument } from '../visual-design/types.js';
+import type { AudioDesignDocument } from '../audio-design/types.js';
 import type { GeminiVideoClient, GeminiVideoGenerationRequest } from '../gemini/types.js';
 
 const FALLBACK_VIDEO_MODEL = process.env.GEMINI_VIDEO_MODEL?.trim() || 'veo-3.1-generate-preview';
@@ -60,6 +61,14 @@ export async function runShotVideoTask(
   }
 
   const visualDesignDocument = parseVisualDesignDocument(story.visualDesignDocument, storyId);
+
+  if (story.audioDesignDocument === null || story.audioDesignDocument === undefined) {
+    throw new ShotVideoTaskError(
+      `Story ${storyId} does not have an audio design document. Run CREATE_AUDIO_DESIGN first.`
+    );
+  }
+
+  const audioDesignDocument = parseAudioDesignDocument(story.audioDesignDocument);
 
   logger?.debug?.('Starting shot video generation task', {
     storyId,
@@ -140,7 +149,7 @@ export async function runShotVideoTask(
   let generatedVideos = 0;
 
   for (const shot of shotsToProcess) {
-    const promptObject = assembleShotVideoPrompt(shot, visualDesignDocument);
+    const promptObject = assembleShotVideoPrompt(shot, visualDesignDocument, audioDesignDocument);
     const promptJson = JSON.stringify(promptObject, null, 2);
 
     let referenceSelections: VideoReferenceSelection[] = [];
@@ -285,6 +294,37 @@ function parseVisualDesignDocument(raw: unknown, storyId: string): VisualDesignD
   throw new ShotVideoTaskError('Visual design document must be a JSON object.');
 }
 
+function parseAudioDesignDocument(raw: unknown): AudioDesignDocument {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new ShotVideoTaskError('Audio design document is empty. Run CREATE_AUDIO_DESIGN first.');
+    }
+
+    try {
+      return JSON.parse(trimmed) as AudioDesignDocument;
+    } catch (error) {
+      throw new ShotVideoTaskError('Audio design document is not valid JSON.', error as Error);
+    }
+  }
+
+  if (!raw || typeof raw !== 'object') {
+    throw new ShotVideoTaskError('Audio design document must be an object.');
+  }
+
+  const record = raw as Record<string, unknown>;
+  const nested = record.audio_design_document ?? record.audioDesignDocument;
+
+  if (nested !== undefined) {
+    if (!nested || typeof nested !== 'object') {
+      throw new ShotVideoTaskError('Persisted audio design document payload must be an object.');
+    }
+    return nested as AudioDesignDocument;
+  }
+
+  return record as AudioDesignDocument;
+}
+
 function mapShotsBySceneletId(shotsByScenelet: Record<string, ShotRecord[]>): Map<string, ShotRecord[]> {
   const map = new Map<string, ShotRecord[]>();
   for (const shots of Object.values(shotsByScenelet)) {
@@ -383,7 +423,6 @@ function buildFallbackGeminiRequestPreview(
       aspectRatio: request.aspectRatio ?? FALLBACK_VIDEO_ASPECT_RATIO,
       resolution: request.resolution ?? FALLBACK_VIDEO_RESOLUTION,
       durationSeconds: request.durationSeconds ?? FALLBACK_VIDEO_DURATION_SECONDS,
-      generateAudio: false,
       referenceImages: referenceImages.length
         ? referenceImages.map((reference) => ({
             referenceType: 'ASSET',

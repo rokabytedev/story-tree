@@ -24,6 +24,7 @@ import { selectVideoReferenceImages } from '../src/shot-video/referenceSelector.
 import { runShotVideoTask } from '../src/shot-video/shotVideoTask.js';
 import type { ShotRecord } from '../src/shot-production/types.js';
 import type { VisualDesignDocument } from '../src/visual-design/types.js';
+import type { AudioDesignDocument } from '../src/audio-design/types.js';
 import { ShotVideoTaskError } from '../src/shot-video/errors.js';
 
 const { recommendReferenceImages } = vi.mocked(
@@ -48,7 +49,20 @@ function createShotRecord(overrides: Partial<ShotRecord> = {}): ShotRecord {
           characters: ['hero'],
           environments: ['arena'],
         },
-        audioAndNarrative: [],
+        audioAndNarrative: [
+          {
+            type: 'monologue',
+            source: 'narrator',
+            line: 'Our hero faces the challenge.',
+            delivery: 'Warm and energetic.',
+          },
+          {
+            type: 'dialogue',
+            source: 'hero',
+            line: 'I am ready!',
+            delivery: 'Confident.',
+          },
+        ],
       } as any),
     keyFrameImagePath: overrides.keyFrameImagePath,
     videoFilePath: overrides.videoFilePath,
@@ -73,6 +87,12 @@ function createVisualDesignDocument(): VisualDesignDocument {
         character_model_sheet_image_path: 'story-123/visuals/characters/hero/model-sheet.png',
         costume: 'Armored',
       },
+      {
+        character_id: 'villain',
+        character_name: 'Villain',
+        character_model_sheet_image_path: 'story-123/visuals/characters/villain/model-sheet.png',
+        costume: 'Cloaked',
+      },
     ],
     environment_designs: [
       {
@@ -85,12 +105,40 @@ function createVisualDesignDocument(): VisualDesignDocument {
   };
 }
 
+function createAudioDesignDocument(): AudioDesignDocument {
+  return {
+    sonic_identity: {
+      musical_direction: 'Synth wave vibe',
+      sound_effect_philosophy: 'Punchy foley that emphasizes motion.',
+    },
+    narrator_voice_profile: {
+      character_id: 'narrator',
+      voice_name: 'Narrator Prime',
+      voice_profile: 'Warm and inviting.',
+    },
+    character_voice_profiles: [
+      {
+        character_id: 'hero',
+        character_name: 'Hero',
+        voice_name: 'Dynamic Hero',
+        voice_profile: 'Energetic, confident delivery.',
+      },
+      {
+        character_id: 'villain',
+        character_name: 'Villain',
+        voice_name: 'Shadow Whisper',
+      },
+    ],
+    music_and_ambience_cues: [],
+  };
+}
+
 describe('assembleShotVideoPrompt', () => {
   it('builds a structured prompt including storyboard and critical instructions', () => {
     const shot = createShotRecord();
     const visualDesignDocument = createVisualDesignDocument();
 
-    const prompt = assembleShotVideoPrompt(shot, visualDesignDocument);
+    const prompt = assembleShotVideoPrompt(shot, visualDesignDocument, createAudioDesignDocument());
 
     expect(prompt.global_aesthetic.master_color_palette).toEqual(['#ff00ff']);
     expect(prompt.character_designs).toHaveLength(1);
@@ -98,11 +146,50 @@ describe('assembleShotVideoPrompt', () => {
     expect(prompt.environment_designs).toHaveLength(1);
     expect(prompt.environment_designs[0]).not.toHaveProperty('environment_reference_image_path');
     expect(prompt.environment_designs[0]).not.toHaveProperty('associated_scenelet_ids');
+    expect(prompt.audio_design.sonic_identity).toEqual({
+      sound_effect_philosophy: 'Punchy foley that emphasizes motion.',
+    });
+    expect(prompt.audio_design.narrator_voice_profile).toEqual(
+      expect.objectContaining({ voice_name: 'Narrator Prime' })
+    );
+    expect(prompt.audio_design.character_voice_profiles).toHaveLength(1);
+    expect(prompt.audio_design.character_voice_profiles[0]).toEqual(
+      expect.objectContaining({ character_id: 'hero' })
+    );
     expect(prompt.storyboard_payload).toEqual(shot.storyboardPayload);
     expect(prompt.critical_instruction).toEqual([
       'Do not include captions, subtitles, or watermarks.',
       'Do not include background music. Output visuals only.',
     ]);
+  });
+
+  it('omits narrator and character profiles when not present in audio narrative', () => {
+    const shot = createShotRecord({
+      storyboardPayload: {
+        framingAndAngle: 'Medium',
+        compositionAndContent: 'Two characters talking',
+        referencedDesigns: {
+          characters: ['hero', 'villain'],
+          environments: ['arena'],
+        },
+        audioAndNarrative: [
+          {
+            type: 'dialogue',
+            source: 'villain',
+            line: 'You cannot win.',
+            delivery: 'Menacing whisper.',
+          },
+        ],
+      } as any,
+    });
+
+    const prompt = assembleShotVideoPrompt(shot, createVisualDesignDocument(), createAudioDesignDocument());
+
+    expect(prompt.audio_design.narrator_voice_profile).toBeUndefined();
+    expect(prompt.audio_design.character_voice_profiles).toHaveLength(1);
+    expect(prompt.audio_design.character_voice_profiles[0]).toEqual(
+      expect.objectContaining({ character_id: 'villain' })
+    );
   });
 
   it('throws when referenced designs are missing', () => {
@@ -112,9 +199,9 @@ describe('assembleShotVideoPrompt', () => {
       },
     } as any);
 
-    expect(() => assembleShotVideoPrompt(shot, createVisualDesignDocument())).toThrow(
-      ShotVideoTaskError
-    );
+    expect(() =>
+      assembleShotVideoPrompt(shot, createVisualDesignDocument(), createAudioDesignDocument())
+    ).toThrow(ShotVideoTaskError);
   });
 });
 
@@ -200,7 +287,7 @@ describe('runShotVideoTask', () => {
         initialPrompt: 'Prompt',
         storyConstitution: null,
         visualDesignDocument: createVisualDesignDocument(),
-        audioDesignDocument: null,
+        audioDesignDocument: createAudioDesignDocument(),
         visualReferencePackage: null,
       })),
     };
@@ -253,7 +340,6 @@ describe('runShotVideoTask', () => {
     expect(metadata.request.config).toEqual(
       expect.objectContaining({
         numberOfVideos: 1,
-        generateAudio: false,
       })
     );
     expect(metadata.request.config.referenceImages).toEqual(
@@ -297,7 +383,7 @@ describe('runShotVideoTask', () => {
         initialPrompt: 'Prompt',
         storyConstitution: null,
         visualDesignDocument: createVisualDesignDocument(),
-        audioDesignDocument: null,
+        audioDesignDocument: createAudioDesignDocument(),
         visualReferencePackage: null,
       })),
     };

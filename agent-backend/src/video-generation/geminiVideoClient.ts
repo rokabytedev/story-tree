@@ -3,7 +3,6 @@ import type {
   GenerateVideosOperation,
   GenerateVideosParameters,
   VideoGenerationReferenceImage,
-  VideoGenerationReferenceType,
 } from '@google/genai';
 
 import { GeminiApiError } from '../gemini/errors.js';
@@ -148,7 +147,7 @@ function convertReferenceImage(
   reference: GeminiVideoReferenceImage
 ): VideoGenerationReferenceImage {
   return {
-    referenceType: VideoGenerationReferenceType.ASSET,
+    referenceType: 'ASSET',
     image: {
       imageBytes: reference.data.toString('base64'),
       mimeType: reference.mimeType,
@@ -283,7 +282,6 @@ function buildGenerateVideosParameters(
       aspectRatio,
       resolution,
       durationSeconds,
-      generateAudio: false,
       referenceImages: referenceImages.length
         ? referenceImages.map(convertReferenceImage)
         : undefined,

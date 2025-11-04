@@ -1,22 +1,33 @@
 import { ShotVideoTaskError } from './errors.js';
-import type { ShotRecord, ShotProductionStoryboardEntry } from '../shot-production/types.js';
+import type {
+  ShotRecord,
+  ShotProductionStoryboardEntry,
+  AudioNarrativeEntry,
+} from '../shot-production/types.js';
 import type {
   VisualDesignCharacterDesign,
   VisualDesignDocument,
   VisualDesignEnvironmentDesign,
 } from '../visual-design/types.js';
+import type {
+  AudioDesignDocument,
+  AudioVoiceProfile,
+  NarratorVoiceProfile,
+} from '../audio-design/types.js';
 
 export interface AssembledShotVideoPrompt {
   global_aesthetic: Record<string, unknown>;
   character_designs: VisualDesignCharacterDesign[];
   environment_designs: VisualDesignEnvironmentDesign[];
+  audio_design: ShotVideoAudioDesignSection;
   storyboard_payload: ShotProductionStoryboardEntry;
   critical_instruction: string[];
 }
 
 export function assembleShotVideoPrompt(
   shot: ShotRecord,
-  visualDesignDocument: VisualDesignDocument
+  visualDesignDocument: VisualDesignDocument,
+  audioDesignDocument: AudioDesignDocument
 ): AssembledShotVideoPrompt {
   if (!shot) {
     throw new ShotVideoTaskError('assembleShotVideoPrompt requires a shot record.');
@@ -37,6 +48,11 @@ export function assembleShotVideoPrompt(
     visualDesignDocument,
     referencedDesigns.environments ?? []
   );
+  const audioDesign = assembleAudioDesignSection(
+    audioDesignDocument,
+    storyboard,
+    referencedDesigns.characters ?? []
+  );
 
   const sanitizedCharacterDesigns = redactCharacterModelSheetPaths(characterDesigns);
   const sanitizedEnvironmentDesigns = redactEnvironmentReferenceImagePaths(
@@ -47,12 +63,141 @@ export function assembleShotVideoPrompt(
     global_aesthetic: globalAesthetic,
     character_designs: sanitizedCharacterDesigns,
     environment_designs: sanitizedEnvironmentDesigns,
+    audio_design: audioDesign,
     storyboard_payload: storyboard,
     critical_instruction: [
       'Do not include captions, subtitles, or watermarks.',
       'Do not include background music. Output visuals only.',
     ],
   };
+}
+
+interface ShotVideoAudioDesignSection {
+  sonic_identity?: Record<string, unknown>;
+  narrator_voice_profile?: NarratorVoiceProfile | Record<string, unknown>;
+  character_voice_profiles: AudioVoiceProfile[];
+}
+
+function assembleAudioDesignSection(
+  audioDesign: AudioDesignDocument,
+  storyboard: ShotProductionStoryboardEntry,
+  referencedCharacterIds: string[]
+): ShotVideoAudioDesignSection {
+  if (!audioDesign || typeof audioDesign !== 'object') {
+    throw new ShotVideoTaskError('Audio design document must be provided to assemble prompts.');
+  }
+
+  const section: ShotVideoAudioDesignSection = {
+    character_voice_profiles: [],
+  };
+
+  const audioRecord = audioDesign as Record<string, unknown>;
+
+  const sonicIdentityRecord = resolveRecord(audioRecord, ['sonic_identity', 'sonicIdentity']);
+  const soundEffectPhilosophy = resolveString(sonicIdentityRecord, [
+    'sound_effect_philosophy',
+    'soundEffectPhilosophy',
+  ]);
+  if (soundEffectPhilosophy) {
+    section.sonic_identity = {
+      sound_effect_philosophy: soundEffectPhilosophy,
+    };
+  }
+
+  const narrator = resolveRecord(audioRecord, ['narrator_voice_profile', 'narratorVoiceProfile']);
+  if (narrator) {
+    section.narrator_voice_profile = narrator as NarratorVoiceProfile | Record<string, unknown>;
+  }
+
+  const speakers = extractNarrativeSpeakers(storyboard?.audioAndNarrative ?? []);
+
+  const referenced = referencedCharacterIds
+    ?.map((id) => id?.trim())
+    .filter((id): id is string => Boolean(id));
+
+  const narratorPresent = speakers.has('narrator');
+  if (narratorPresent && section.narrator_voice_profile) {
+    // already assigned narrator when available in document; nothing else required here.
+  } else if (!narratorPresent) {
+    delete section.narrator_voice_profile;
+  }
+
+  if (!referenced || referenced.length === 0) {
+    section.character_voice_profiles = [];
+    return section;
+  }
+
+  const profileLookup = buildVoiceProfileLookup(audioDesign.character_voice_profiles);
+
+  const selectedProfiles: AudioVoiceProfile[] = [];
+  for (const characterId of referenced) {
+    if (!speakers.has(characterId)) {
+      continue;
+    }
+    const profile = profileLookup.get(characterId);
+    if (profile) {
+      selectedProfiles.push(profile);
+    }
+  }
+
+  section.character_voice_profiles = selectedProfiles;
+  return section;
+}
+
+function extractNarrativeSpeakers(entries: AudioNarrativeEntry[] | undefined): Set<string> {
+  const speakers = new Set<string>();
+  if (!Array.isArray(entries)) {
+    return speakers;
+  }
+
+  for (const entry of entries) {
+    const source = entry?.source;
+    if (typeof source === 'string') {
+      const trimmed = source.trim();
+      if (trimmed) {
+        speakers.add(trimmed);
+      }
+    }
+  }
+
+  return speakers;
+}
+
+function buildVoiceProfileLookup(
+  profiles: AudioVoiceProfile[] | undefined
+): Map<string, AudioVoiceProfile> {
+  const lookup = new Map<string, AudioVoiceProfile>();
+  if (!Array.isArray(profiles)) {
+    return lookup;
+  }
+
+  for (const profile of profiles) {
+    if (!profile || typeof profile !== 'object') {
+      continue;
+    }
+
+    const record = profile as AudioVoiceProfile & Record<string, unknown>;
+    const id = resolveString(record, ['character_id', 'characterId']);
+    if (!id) {
+      continue;
+    }
+
+    const normalized = id.trim();
+    if (!normalized) {
+      continue;
+    }
+
+    const cloned = { ...record } as AudioVoiceProfile & Record<string, unknown>;
+    if (!cloned.character_id && cloned.characterId) {
+      cloned.character_id = cloned.characterId as string;
+    }
+    if (Object.prototype.hasOwnProperty.call(cloned, 'characterId')) {
+      delete cloned.characterId;
+    }
+    lookup.set(normalized, cloned as AudioVoiceProfile);
+  }
+
+  return lookup;
 }
 
 function extractStoryboard(payload: unknown): ShotProductionStoryboardEntry {
@@ -256,4 +401,40 @@ function redactEnvironmentReferenceImagePaths(
 
     return mutated ? (cloned as VisualDesignEnvironmentDesign) : design;
   });
+}
+
+function resolveRecord(
+  input: Record<string, unknown>,
+  keys: string[]
+): Record<string, unknown> | undefined {
+  if (!input) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = input[key];
+    if (value && typeof value === 'object') {
+      return value as Record<string, unknown>;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveString(input: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+  if (!input) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+
+  return undefined;
 }

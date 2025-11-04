@@ -83,7 +83,6 @@ export function createStubGeminiVideoClient(
           aspectRatio: request.aspectRatio ?? DEFAULT_ASPECT_RATIO,
           resolution: request.resolution ?? DEFAULT_RESOLUTION,
           durationSeconds: request.durationSeconds ?? DEFAULT_DURATION_SECONDS,
-          generateAudio: false,
           referenceImages: referenceImages.length
             ? referenceImages.map((reference) => ({
                 referenceType: 'ASSET',
