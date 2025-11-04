@@ -969,6 +969,84 @@ describe('agentWorkflow CLI', () => {
     expect(runTask).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts --video-download-link for CREATE_SHOT_VIDEO tasks', async () => {
+    const { repository } = createStoriesRepositoryStub([
+      {
+        id: 'story-1',
+        displayName: 'Test Story',
+        initialPrompt: 'Test prompt',
+        storyConstitution: null,
+        visualDesignDocument: {},
+        audioDesignDocument: null,
+        visualReferencePackage: null,
+      },
+    ]);
+    const { repository: sceneletsRepository } = createSceneletsRepositoryStub();
+    const shotsRepository = createShotsRepositoryStub();
+
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue(repository);
+    createSceneletsRepositoryMock.mockReturnValue(sceneletsRepository);
+    createShotsRepositoryMock.mockReturnValue(shotsRepository);
+
+    const workflowModule = await import('../src/workflow/storyWorkflow.js');
+    const runTask = vi.fn<StoryWorkflow['runTask']>(async (task) => {
+      expect(task).toBe('CREATE_SHOT_VIDEO');
+    });
+
+    const workflow: StoryWorkflow = {
+      storyId: 'story-1',
+      runTask,
+      async runAllTasks() {
+        throw new Error('not implemented');
+      },
+    };
+
+    const resumeCalls: Array<[string, AgentWorkflowOptions]> = [];
+    const resumeSpy = vi
+      .spyOn(workflowModule, 'resumeWorkflowFromStoryId')
+      .mockImplementation(async (storyId: string, options: AgentWorkflowOptions) => {
+        resumeCalls.push([storyId, options]);
+        return workflow;
+      });
+
+    const downloadLink = 'https://example.com/video.mp4';
+
+    try {
+      await runCli(
+        [
+          'run-task',
+          '--task',
+          'CREATE_SHOT_VIDEO',
+          '--story-id',
+          'story-1',
+          '--scenelet-id',
+          'scenelet-1',
+          '--shot-index',
+          '1',
+          '--video-download-link',
+          downloadLink,
+          '--mode',
+          'real',
+        ],
+        {
+          SUPABASE_URL: 'http://localhost:54321',
+          SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+        }
+      );
+    } finally {
+      resumeSpy.mockRestore();
+    }
+
+    expect(resumeCalls).toHaveLength(1);
+    const [, workflowOptions] = resumeCalls[0] ?? [];
+    expect(workflowOptions.shotVideoTaskOptions?.videoDownloadLink).toBe(downloadLink);
+    expect(workflowOptions.shotVideoTaskOptions?.targetSceneletId).toBe('scenelet-1');
+    expect(workflowOptions.shotVideoTaskOptions?.targetShotIndex).toBe(1);
+    expect(workflowOptions.shotVideoTaskOptions?.dryRun).toBeUndefined();
+    expect(runTask).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects --dry-run for non video tasks', async () => {
     createSupabaseServiceClientMock.mockReturnValue({});
     createStoriesRepositoryMock.mockReturnValue({
@@ -1002,6 +1080,123 @@ describe('agentWorkflow CLI', () => {
 
     expect(process.exitCode).toBe(1);
     expect(errors.join(' ')).toContain('--dry-run is only supported with CREATE_SHOT_VIDEO task.');
+  });
+
+  it('rejects --video-download-link without scenelet-id', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue(createShotsRepositoryStub());
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_VIDEO',
+        '--story-id',
+        'story-1',
+        '--shot-index',
+        '1',
+        '--video-download-link',
+        'https://example.com/video.mp4',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain('--video-download-link requires --scenelet-id');
+  });
+
+  it('rejects --video-download-link without shot-index', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue(createShotsRepositoryStub());
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_VIDEO',
+        '--story-id',
+        'story-1',
+        '--scenelet-id',
+        'scenelet-1',
+        '--video-download-link',
+        'https://example.com/video.mp4',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain('--video-download-link requires --shot-index');
+  });
+
+  it('rejects --video-download-link combined with --dry-run', async () => {
+    createSupabaseServiceClientMock.mockReturnValue({});
+    createStoriesRepositoryMock.mockReturnValue({
+      getStoryById: vi.fn(async () => ({})),
+      createStory: vi.fn(),
+      updateStoryArtifacts: vi.fn(),
+    } as any);
+    createSceneletsRepositoryMock.mockReturnValue({
+      createScenelet: vi.fn(),
+      markSceneletAsBranchPoint: vi.fn(),
+      markSceneletAsTerminal: vi.fn(),
+      hasSceneletsForStory: vi.fn(async () => true),
+      listSceneletsByStory: vi.fn(async () => []),
+    } as any);
+    createShotsRepositoryMock.mockReturnValue(createShotsRepositoryStub());
+
+    await runCli(
+      [
+        'run-task',
+        '--task',
+        'CREATE_SHOT_VIDEO',
+        '--story-id',
+        'story-1',
+        '--scenelet-id',
+        'scenelet-1',
+        '--shot-index',
+        '1',
+        '--dry-run',
+        '--video-download-link',
+        'https://example.com/video.mp4',
+      ],
+      {
+        SUPABASE_URL: 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+      }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join(' ')).toContain('--video-download-link cannot be combined with --dry-run');
   });
 
   it('throws when shot-index flag is missing "--" prefix', async () => {

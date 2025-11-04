@@ -28,6 +28,7 @@ export interface ShotVideoTaskDependencies {
   basePublicPath?: string;
   referenceRecommenderOptions?: Partial<ReferenceImageRecommenderOptions>;
   referenceImageLimit?: number;
+  videoDownloadLink?: string;
 }
 
 export interface ShotVideoTaskResult {

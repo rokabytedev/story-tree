@@ -73,12 +73,14 @@ export interface GeminiVideoGenerationRequest {
 export interface GeminiVideoGenerationResult {
   videoData: Buffer;
   mimeType: 'video/mp4';
+  downloadUri?: string;
 }
 
 export type GeminiVideoRequestPreview = Record<string, unknown>;
 
 export interface GeminiVideoClient {
   generateVideo(options: GeminiVideoGenerationRequest): Promise<GeminiVideoGenerationResult>;
+  downloadVideoByUri(uri: string): Promise<GeminiVideoGenerationResult>;
   previewGenerateVideoRequest?(
     request: GeminiVideoGenerationRequest
   ): GeminiVideoRequestPreview;

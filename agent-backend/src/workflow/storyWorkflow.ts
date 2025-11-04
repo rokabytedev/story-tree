@@ -799,6 +799,10 @@ class StoryWorkflowImpl implements StoryWorkflow {
       dependencies.referenceImageLimit = overrides.referenceImageLimit;
     }
 
+    if (overrides?.videoDownloadLink) {
+      dependencies.videoDownloadLink = overrides.videoDownloadLink;
+    }
+
     const logger = overrides?.logger ?? this.logger;
     if (logger) {
       dependencies.logger = logger;

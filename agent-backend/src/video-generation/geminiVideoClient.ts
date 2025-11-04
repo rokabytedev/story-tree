@@ -1,3 +1,6 @@
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+
 import { GoogleGenAI } from '@google/genai';
 import type {
   GenerateVideosOperation,
@@ -34,6 +37,7 @@ export interface GeminiVideoClientOptions {
   pollIntervalMs?: number;
   transport?: GeminiVideoModelTransport;
   verbose?: boolean;
+  downloadVideo?: (uri: string) => Promise<Buffer>;
 }
 
 export interface GeminiVideoModelTransport {
@@ -41,10 +45,17 @@ export interface GeminiVideoModelTransport {
   getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation>;
 }
 
+interface ResolvedTransport {
+  transport: GeminiVideoModelTransport;
+  apiKey?: string;
+}
+
+const DEFAULT_VIDEO_MIME_TYPE: GeminiVideoGenerationResult['mimeType'] = 'video/mp4';
+
 export function createGeminiVideoClient(
   options: GeminiVideoClientOptions = {}
 ): GeminiVideoClient {
-  const transport = resolveTransport(options);
+  const { transport, apiKey: resolvedApiKey } = resolveTransport(options);
   const model = options.model?.trim() || DEFAULT_VIDEO_MODEL;
   const defaultAspectRatio = options.defaultAspectRatio ?? DEFAULT_ASPECT_RATIO;
   const defaultResolution = options.defaultResolution ?? DEFAULT_RESOLUTION;
@@ -57,6 +68,8 @@ export function createGeminiVideoClient(
     'pollIntervalMs'
   );
   const verbose = options.verbose ?? false;
+  const downloadVideo =
+    options.downloadVideo ?? createDefaultVideoDownloader(resolvedApiKey, verbose);
   const requestDefaults = {
     model,
     aspectRatio: defaultAspectRatio,
@@ -80,7 +93,7 @@ export function createGeminiVideoClient(
           try {
             const operation = await transport.generateVideos(params);
             const completed = await pollOperation(operation, transport, pollIntervalMs, verbose);
-            return extractVideoResult(completed);
+            return await extractVideoResult(completed, downloadVideo, verbose);
           } catch (error) {
             throw normalizeGeminiError(error);
           }
@@ -97,15 +110,45 @@ export function createGeminiVideoClient(
       const params = buildGenerateVideosParameters(request, requestDefaults);
       return redactGenerateVideosParameters(params);
     },
+    async downloadVideoByUri(uri: string): Promise<GeminiVideoGenerationResult> {
+      const trimmed = uri?.trim?.();
+      if (!trimmed) {
+        throw new GeminiApiError('Gemini video download requires a non-empty URI.');
+      }
+
+      if (verbose) {
+        console.log('[gemini-video-client] Downloading Gemini video from URI', { uri: trimmed });
+      }
+
+      console.log(trimmed);
+
+      let videoData: Buffer;
+      try {
+        videoData = await downloadVideo(trimmed);
+      } catch (error) {
+        throw normalizeGeminiError(error);
+      }
+
+      return {
+        videoData,
+        mimeType: DEFAULT_VIDEO_MIME_TYPE,
+        downloadUri: trimmed,
+      };
+    },
   };
 }
 
-function resolveTransport(options: GeminiVideoClientOptions): GeminiVideoModelTransport {
+function resolveTransport(options: GeminiVideoClientOptions): ResolvedTransport {
+  const candidateApiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
+
   if (options.transport) {
-    return options.transport;
+    return {
+      transport: options.transport,
+      apiKey: candidateApiKey,
+    };
   }
 
-  const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
+  const apiKey = candidateApiKey;
   if (!apiKey) {
     throw new GeminiApiError(
       'Missing GEMINI_API_KEY. Set it in the environment before generating videos.'
@@ -115,11 +158,14 @@ function resolveTransport(options: GeminiVideoClientOptions): GeminiVideoModelTr
   const ai = new GoogleGenAI({ apiKey });
 
   return {
-    generateVideos: (params) => ai.models.generateVideos(params),
-    getVideosOperation: (operation) =>
-      ai.operations.getVideosOperation({
-        operation,
-      }),
+    transport: {
+      generateVideos: (params) => ai.models.generateVideos(params),
+      getVideosOperation: (operation) =>
+        ai.operations.getVideosOperation({
+          operation,
+        }),
+    },
+    apiKey,
   };
 }
 
@@ -185,7 +231,11 @@ async function pollOperation(
   return current;
 }
 
-function extractVideoResult(operation: GenerateVideosOperation): GeminiVideoGenerationResult {
+async function extractVideoResult(
+  operation: GenerateVideosOperation,
+  downloadVideo: (uri: string) => Promise<Buffer>,
+  verbose: boolean
+): Promise<GeminiVideoGenerationResult> {
   const response = operation.response;
   if (!response || !Array.isArray(response.generatedVideos) || response.generatedVideos.length === 0) {
     throw new GeminiApiError('Gemini video generation did not return any video data.');
@@ -197,20 +247,47 @@ function extractVideoResult(operation: GenerateVideosOperation): GeminiVideoGene
   }
 
   if (video.videoBytes) {
-    const mimeType = typeof video.mimeType === 'string' && video.mimeType.trim()
-      ? video.mimeType
-      : 'video/mp4';
+    const mimeType =
+      typeof video.mimeType === 'string' && video.mimeType.trim()
+        ? video.mimeType
+        : DEFAULT_VIDEO_MIME_TYPE;
 
     return {
       videoData: Buffer.from(video.videoBytes, 'base64'),
-      mimeType,
+      mimeType: normalizeMimeType(mimeType),
     };
   }
 
   if (video.uri) {
-    throw new GeminiApiError(
-      `Gemini returned a video URI (${video.uri}) instead of inline bytes. Configure the client to request inline data or provide storage integration.`
-    );
+    const trimmedUri = video.uri.trim();
+
+    if (verbose) {
+      console.log('[gemini-video-client] Gemini returned video URI', { uri: trimmedUri });
+    }
+
+    console.log(trimmedUri);
+
+    try {
+      const videoData = await downloadVideo(trimmedUri);
+      const mimeType =
+        typeof video.mimeType === 'string' && video.mimeType.trim()
+          ? video.mimeType
+          : DEFAULT_VIDEO_MIME_TYPE;
+
+      return {
+        videoData,
+        mimeType: normalizeMimeType(mimeType),
+        downloadUri: trimmedUri,
+      };
+    } catch (error) {
+      if (error instanceof GeminiApiError) {
+        throw error;
+      }
+      throw new GeminiApiError(
+        `Failed to download Gemini video from URI ${trimmedUri}.`,
+        error instanceof Error ? error : undefined
+      );
+    }
   }
 
   throw new GeminiApiError('Gemini video generation response did not contain usable video data.');
@@ -286,5 +363,163 @@ function buildGenerateVideosParameters(
         ? referenceImages.map(convertReferenceImage)
         : undefined,
     },
+  };
+}
+
+function normalizeMimeType(value: string): GeminiVideoGenerationResult['mimeType'] {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'video/mp4' || normalized === 'mp4') {
+    return 'video/mp4';
+  }
+  return 'video/mp4';
+}
+
+function createDefaultVideoDownloader(
+  apiKey: string | undefined,
+  verbose: boolean
+): (uri: string) => Promise<Buffer> {
+  return async (uri: string) => {
+    const trimmed = uri?.trim?.();
+    if (!trimmed) {
+      throw new GeminiApiError('Gemini video download URI must be a non-empty string.');
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmed);
+    } catch {
+      throw new GeminiApiError(`Gemini video download URI is invalid: ${trimmed}`);
+    }
+
+    const requestFactory =
+      parsedUrl.protocol === 'http:' ? httpRequest : parsedUrl.protocol === 'https:' ? httpsRequest : null;
+    if (!requestFactory) {
+      throw new GeminiApiError(
+        `Unsupported protocol "${parsedUrl.protocol}" for Gemini video download.`
+      );
+    }
+
+    if (!apiKey) {
+      throw new GeminiApiError(
+        'GEMINI_API_KEY is required to download video assets from Gemini storage URIs.'
+      );
+    }
+
+    if (!parsedUrl.searchParams.has('key')) {
+      parsedUrl.searchParams.set('key', apiKey);
+    }
+
+    const requestHeaders: Record<string, string> = {};
+    if (apiKey) {
+      requestHeaders['x-goog-api-key'] = apiKey;
+      if (apiKey.startsWith('ya29.')) {
+        requestHeaders.Authorization = `Bearer ${apiKey}`;
+      }
+    }
+
+    if (verbose) {
+      const sanitizedUrl = apiKey ? parsedUrl.toString().replaceAll(apiKey, '<redacted>') : parsedUrl.toString();
+      const sanitizedHeaders = Object.entries(requestHeaders).reduce<Record<string, string>>((acc, [key, value]) => {
+        acc[key] = key.toLowerCase().includes('key') || key.toLowerCase() === 'authorization' ? '<redacted>' : value;
+        return acc;
+      }, {});
+      console.log('[gemini-video-client] Download request', {
+        method: 'GET',
+        url: sanitizedUrl,
+        headers: sanitizedHeaders,
+      });
+    }
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const handleError = (error: unknown) => {
+        if (error instanceof GeminiApiError) {
+          reject(error);
+          return;
+        }
+        reject(
+          new GeminiApiError(
+            `Failed to download Gemini video from ${trimmed}: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          )
+        );
+      };
+
+      const req = requestFactory(
+        {
+          method: 'GET',
+          hostname: parsedUrl.hostname,
+          path: `${parsedUrl.pathname}${parsedUrl.search}`,
+          port: parsedUrl.port ? Number(parsedUrl.port) : undefined,
+          headers: requestHeaders,
+        },
+        (res) => {
+          const statusCode = res.statusCode ?? 0;
+          const location = res.headers.location;
+
+          if (statusCode >= 300 && statusCode < 400 && location) {
+            res.resume();
+            let redirectUri: string;
+            try {
+              redirectUri = new URL(location, parsedUrl).toString();
+            } catch {
+              handleError(
+                new GeminiApiError(
+                  `Gemini video download received invalid redirect location: ${location}`
+                )
+              );
+              return;
+            }
+
+            createDefaultVideoDownloader(apiKey, verbose)(redirectUri)
+              .then(resolve)
+              .catch(reject);
+            return;
+          }
+
+          if (statusCode < 200 || statusCode >= 300) {
+            res.resume();
+            handleError(
+              new GeminiApiError(
+                `Gemini video download failed with status ${statusCode} ${res.statusMessage ?? ''}`.trim()
+              )
+            );
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+
+          res.on('data', (chunk) => {
+            if (typeof chunk === 'string') {
+              chunks.push(Buffer.from(chunk));
+            } else {
+              chunks.push(chunk);
+            }
+          });
+
+          res.on('error', handleError);
+
+          res.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            if (buffer.length === 0) {
+              handleError(new GeminiApiError('Downloaded Gemini video is empty.'));
+              return;
+            }
+
+            if (verbose) {
+              console.log('[gemini-video-client] Downloaded Gemini video bytes', {
+                uri: trimmed,
+                size: buffer.length,
+              });
+            }
+
+            resolve(buffer);
+          });
+        }
+      );
+
+      req.on('error', handleError);
+      req.end();
+    });
   };
 }

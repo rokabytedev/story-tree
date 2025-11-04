@@ -436,4 +436,71 @@ describe('runShotVideoTask', () => {
     );
     expect(result).toEqual({ generatedVideos: 1, skippedExisting: 0, totalShots: 1 });
   });
+
+  it('downloads video when videoDownloadLink is provided', async () => {
+    const storiesRepository = {
+      getStoryById: vi.fn(async () => ({
+        id: 'story-123',
+        displayName: 'Story',
+        initialPrompt: 'Prompt',
+        storyConstitution: null,
+        visualDesignDocument: createVisualDesignDocument(),
+        audioDesignDocument: createAudioDesignDocument(),
+        visualReferencePackage: null,
+      })),
+    };
+
+    const shot = createShotRecord();
+
+    const shotsRepository = {
+      getShotsByStory: vi.fn(async () => ({
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': [shot],
+      })),
+      getShotsBySceneletRef: vi.fn(),
+      findSceneletIdsMissingShots: vi.fn(),
+      findShotsMissingImages: vi.fn(),
+      findShotsMissingVideos: vi.fn(async () => []),
+      createSceneletShots: vi.fn(),
+      updateShotImagePaths: vi.fn(),
+      updateShotAudioPath: vi.fn(),
+      updateShotVideoPath: vi.fn(async () => shot),
+    } as any;
+
+    const geminiVideoClient = {
+      generateVideo: vi.fn(),
+      downloadVideoByUri: vi.fn(async () => ({
+        videoData: Buffer.from('downloaded-video'),
+        mimeType: 'video/mp4',
+        downloadUri: 'https://example.com/video.mp4',
+      })),
+    };
+
+    const videoStorage = {
+      saveVideo: vi.fn(async () => 'generated/story-123/shots/scenelet-1/shot-1.mp4'),
+    };
+
+    const result = await runShotVideoTask('story-123', {
+      storiesRepository: storiesRepository as any,
+      shotsRepository,
+      geminiVideoClient: geminiVideoClient as any,
+      videoStorage,
+      videoDownloadLink: 'https://example.com/video.mp4',
+    });
+
+    expect(geminiVideoClient.downloadVideoByUri).toHaveBeenCalledWith('https://example.com/video.mp4');
+    expect(geminiVideoClient.generateVideo).not.toHaveBeenCalled();
+    expect(videoStorage.saveVideo).toHaveBeenCalledWith(
+      Buffer.from('downloaded-video'),
+      'story-123',
+      'shots/scenelet-1',
+      'shot-1.mp4'
+    );
+    expect(shotsRepository.updateShotVideoPath).toHaveBeenCalledWith(
+      'story-123',
+      'scenelet-1',
+      1,
+      'generated/story-123/shots/scenelet-1/shot-1.mp4'
+    );
+    expect(result).toEqual({ generatedVideos: 1, skippedExisting: 0, totalShots: 1 });
+  });
 });

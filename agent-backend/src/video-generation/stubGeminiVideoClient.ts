@@ -65,6 +65,13 @@ export function createStubGeminiVideoClient(
         mimeType: 'video/mp4',
       };
     },
+    async downloadVideoByUri(_uri: string): Promise<GeminiVideoGenerationResult> {
+      const buffer = loadFixture();
+      return {
+        videoData: buffer,
+        mimeType: 'video/mp4',
+      };
+    },
     previewGenerateVideoRequest(request: GeminiVideoGenerationRequest): GeminiVideoRequestPreview {
       const userPrompt = request.userPrompt?.trim();
       if (!userPrompt) {

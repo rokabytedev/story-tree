@@ -12,7 +12,7 @@ import { loadReferenceImagesFromPaths, ReferenceImageLoadError } from '../image-
 import type { ShotRecord } from '../shot-production/types.js';
 import type { VisualDesignDocument } from '../visual-design/types.js';
 import type { AudioDesignDocument } from '../audio-design/types.js';
-import type { GeminiVideoClient, GeminiVideoGenerationRequest } from '../gemini/types.js';
+import type { GeminiVideoGenerationRequest } from '../gemini/types.js';
 
 const FALLBACK_VIDEO_MODEL = process.env.GEMINI_VIDEO_MODEL?.trim() || 'veo-3.1-generate-preview';
 const FALLBACK_VIDEO_ASPECT_RATIO = '16:9';
@@ -35,6 +35,7 @@ export async function runShotVideoTask(
     dryRun = false,
     retry,
     verbose = false,
+    videoDownloadLink,
   } = dependencies;
 
   if (!storiesRepository || !shotsRepository) {
@@ -47,6 +48,10 @@ export async function runShotVideoTask(
 
   if (!dryRun && !videoStorage) {
     throw new ShotVideoTaskError('videoStorage is required for shot video generation.');
+  }
+
+  if (videoDownloadLink && dryRun) {
+    throw new ShotVideoTaskError('Video download link mode cannot be used with dry-run.');
   }
 
   const story = await storiesRepository.getStoryById(storyId);
@@ -145,6 +150,62 @@ export async function runShotVideoTask(
       throw new ShotVideoTaskError('videoStorage dependency is required when not running in dry-run mode.');
     },
   };
+
+  if (videoDownloadLink) {
+    if (!geminiVideoClient) {
+      throw new ShotVideoTaskError('geminiVideoClient is required to download shot video assets.');
+    }
+
+    if (shotsToProcess.length !== 1) {
+      throw new ShotVideoTaskError(
+        'Video download link mode requires targeting exactly one shot. Provide both --scenelet-id and --shot-index.'
+      );
+    }
+
+    const shot = shotsToProcess[0];
+    const normalizedScenelet = normalizeNameForPath(shot.sceneletId);
+    const filename = `shot-${shot.shotIndex}.mp4`;
+
+    let downloadResult;
+    try {
+      downloadResult = await geminiVideoClient.downloadVideoByUri(videoDownloadLink);
+    } catch (error) {
+      const cause = error instanceof Error ? error : undefined;
+      const details = cause?.message ? ` Reason: ${cause.message}` : '';
+      throw new ShotVideoTaskError(
+        `Failed to download Gemini video for shot ${shot.sceneletId}#${shot.shotIndex}.${details}`,
+        cause
+      );
+    }
+
+    const relativeVideoPath = await effectiveVideoStorage.saveVideo(
+      downloadResult.videoData,
+      storyId,
+      `shots/${normalizedScenelet}`,
+      filename
+    );
+
+    await shotsRepository.updateShotVideoPath(
+      storyId,
+      shot.sceneletId,
+      shot.shotIndex,
+      relativeVideoPath
+    );
+
+    logger?.debug?.('Downloaded shot video from Gemini link', {
+      storyId,
+      sceneletId: shot.sceneletId,
+      shotIndex: shot.shotIndex,
+      videoFilePath: relativeVideoPath,
+      downloadUri: downloadResult.downloadUri ?? videoDownloadLink,
+    });
+
+    return {
+      generatedVideos: 1,
+      skippedExisting,
+      totalShots: shotsToProcess.length,
+    };
+  }
 
   let generatedVideos = 0;
 
@@ -255,6 +316,7 @@ export async function runShotVideoTask(
       sceneletId: shot.sceneletId,
       shotIndex: shot.shotIndex,
       videoFilePath: relativeVideoPath,
+      downloadUri: result.downloadUri,
     });
   }
 

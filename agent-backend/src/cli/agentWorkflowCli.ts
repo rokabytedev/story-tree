@@ -103,6 +103,7 @@ interface RunTaskCommandOptions extends BaseCliOptions {
   shotIndex?: number;
   override?: boolean;
   dryRun?: boolean;
+  videoDownloadLink?: string;
   outputPath?: string;
   overwrite?: boolean;
 }
@@ -402,6 +403,12 @@ async function buildWorkflowDependencies(
       shotVideoOptions = {
         ...shotVideoOptions,
         dryRun: true,
+      };
+    }
+    if (options.videoDownloadLink) {
+      shotVideoOptions = {
+        ...shotVideoOptions,
+        videoDownloadLink: options.videoDownloadLink,
       };
     }
   }
@@ -736,6 +743,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
   let resumeShotAudioFlag = false;
   let resumeShotVideoFlag = false;
   let dryRunFlag = false;
+  let videoDownloadLink: string | undefined;
   let bundleOutputPath: string | undefined;
   let bundleOverwrite = false;
 
@@ -867,6 +875,14 @@ function parseArguments(argv: string[]): ParsedCliCommand {
       case '--dry-run':
         dryRunFlag = true;
         break;
+      case '--video-download-link': {
+        const value = rest[++index];
+        if (!value || value.startsWith('-')) {
+          throw new CliParseError('Missing value for --video-download-link flag.');
+        }
+        videoDownloadLink = value.trim();
+        break;
+      }
       default:
         throw new CliParseError(`Unknown flag: ${token}`);
     }
@@ -943,6 +959,22 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         throw new CliParseError('--dry-run cannot be combined with --override.');
       }
 
+      if (videoDownloadLink && task !== 'CREATE_SHOT_VIDEO') {
+        throw new CliParseError('--video-download-link can only be used with CREATE_SHOT_VIDEO task.');
+      }
+
+      if (videoDownloadLink && dryRunFlag) {
+        throw new CliParseError('--video-download-link cannot be combined with --dry-run.');
+      }
+
+      if (videoDownloadLink && !sceneletId) {
+        throw new CliParseError('--video-download-link requires --scenelet-id to target a single shot.');
+      }
+
+      if (videoDownloadLink && shotIndex === undefined) {
+        throw new CliParseError('--video-download-link requires --shot-index to target a single shot.');
+      }
+
       return {
         command: 'run-task',
         storyId: trimmedStoryId,
@@ -961,6 +993,7 @@ function parseArguments(argv: string[]): ParsedCliCommand {
         override: overrideFlag,
         resumeCharacterModelSheets: resumeModelSheets,
         dryRun: dryRunFlag || undefined,
+        videoDownloadLink: videoDownloadLink || undefined,
         outputPath: bundleOutputPath,
         overwrite: bundleOverwrite,
         ...modeOptions,
@@ -1200,6 +1233,7 @@ function printHelp(): void {
   console.log('  --shot-index <number>        Target a specific shot (1-based, use with --scenelet-id).');
   console.log('  --override [true|false]      Regenerate outputs even if they already exist (model sheets, environment references, shot video, or shot audio).');
   console.log('  --dry-run                    Validate shot video prompts and asset wiring without calling Gemini (CREATE_SHOT_VIDEO).');
+  console.log('  --video-download-link <url>  Download an existing Gemini video URI without regenerating (CREATE_SHOT_VIDEO).');
   console.log('  --output-path <path>         Override player bundle output directory (CREATE_PLAYER_BUNDLE).');
   console.log('  --overwrite                  Replace existing player bundle output when the folder already exists.');
   console.log('  --resume-model-sheets        Resume character model sheet generation (batch mode only).');
