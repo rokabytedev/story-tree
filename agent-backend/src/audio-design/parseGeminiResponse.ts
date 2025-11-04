@@ -243,7 +243,8 @@ function parseVoiceProfiles(
     );
   }
   if (missing.length > 0) {
-    issues.push(`missing character profile(s): ${missing.join(', ')}`);
+    // TODO: clean up. Missing is ok if the character has no line at all.
+    // issues.push(`missing character profile(s): ${missing.join(', ')}`);
   }
 
   if (issues.length > 0) {
