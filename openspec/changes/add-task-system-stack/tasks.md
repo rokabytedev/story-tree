@@ -1,0 +1,6 @@
+- [ ] Create Supabase migrations + repositories for `story_tasks` and `story_task_events`
+- [ ] Stand up BullMQ-based worker service that wraps agent-backend tasks and writes progress updates
+- [ ] Implement Next.js Story Task APIs (enqueue, status feed, cancel) with validation and Supabase auth guards
+- [ ] Add Story Tree UI mutation flows (create, rename/delete, artifact regeneration, constitution chat) with real-time progress wiring
+- [ ] Backfill integration tests (worker + API) and Playwright smoke checks for UI task flows
+- [ ] Run `openspec validate add-task-system-stack --strict`
