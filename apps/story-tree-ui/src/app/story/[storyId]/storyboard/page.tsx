@@ -22,15 +22,8 @@ export default async function StoryboardTab({
         </header>
         <EmptyState
           title="Storyboard data unavailable"
-          message={`We could not generate a storyboard for ${storyId}. Add scenelets to see the interactive tree.`}
+          message="Invoke the interactive scriptwriting task to add scenelets to see the interactive tree."
         />
-        <p className="text-xs text-text-muted/70">
-          Curious about the upcoming experience? Review{" "}
-          <span className="font-medium text-highlight">
-            ui_mocks/storyboard.{`{png,html}`}
-          </span>{" "}
-          in the repository for the current design direction.
-        </p>
       </div>
     );
   }
