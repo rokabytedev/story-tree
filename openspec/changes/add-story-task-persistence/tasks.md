@@ -1,0 +1,5 @@
+- [ ] Define Supabase migrations for `story_tasks` and `story_task_events` with constraints and realtime settings
+- [ ] Implement Supabase repository (CRUD + list by story) with Vitest coverage for happy/edge paths
+- [ ] Add agent-backend logging helpers that consume the repository to create tasks and append events
+- [ ] Document environment variables and local setup for the new tables in `supabase/README.md`
+- [ ] Run `openspec validate add-story-task-persistence --strict`

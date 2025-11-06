@@ -1,0 +1,6 @@
+- [ ] Scaffold BullMQ worker service with configuration, health checks, and logging
+- [ ] Wire worker to agent-backend task runners (constitution, workflow tasks) with structured progress updates
+- [ ] Build Next.js API handlers (`POST /api/story-tasks`, `GET /api/story-tasks/:id`, `POST /api/story-tasks/:id/cancel`) with Zod validation and repository integration
+- [ ] Add integration tests covering job enqueue, progress updates, cancellation, and failure propagation
+- [ ] Update developer docs with Redis setup instructions and worker runbook
+- [ ] Run `openspec validate add-story-task-worker --strict`

@@ -1,0 +1,6 @@
+- [ ] Build task-aware Story index modal for creating stories with realtime progress display
+- [ ] Add story detail header actions (rename, delete, run workflow task) with optimistic UI and error rollback
+- [ ] Implement shared Task Drawer component that subscribes to Supabase channels and merges with REST fallbacks
+- [ ] Ship constitution chat panel that streams `chat_message` events and refreshes content on completion
+- [ ] Add component and Playwright smoke tests for major flows (create, rename, chat, delete)
+- [ ] Run `openspec validate add-story-task-ui-controls --strict`
